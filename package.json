@@ -6,10 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:migrate": "prisma migrate deploy",
+    "db:seed": "node --env-file=.env prisma/seed.mjs",
+    "db:setup": "prisma migrate deploy && npm run db:seed"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "next": "16.4.2",
+    "prisma": "^6.19.3",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
@@ -22,5 +27,11 @@
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "prisma@6.19.3": true,
+    "@prisma/client@6.19.3": true,
+    "@prisma/engines@6.19.3": true,
+    "unrs-resolver": false
   }
 }

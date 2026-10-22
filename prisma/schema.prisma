@@ -1,0 +1,47 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AssignmentStatus {
+  TODO
+  SUBMITTED
+}
+
+model Teacher {
+  id       Int       @id @default(autoincrement())
+  name     String
+  idNumber String    @unique
+  students Student[]
+}
+
+model Student {
+  id          Int          @id @default(autoincrement())
+  name        String
+  className   String
+  phone       String
+  teacherId   Int
+  teacher     Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  assignments Assignment[]
+  createdAt   DateTime     @default(now())
+
+  @@index([teacherId])
+}
+
+model Assignment {
+  id        Int              @id @default(autoincrement())
+  title     String
+  dueDate   DateTime
+  status    AssignmentStatus @default(TODO)
+  // Left null until the assignment has been graded.
+  grade     Int?
+  studentId Int
+  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime         @default(now())
+
+  @@index([studentId])
+}
