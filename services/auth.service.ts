@@ -3,10 +3,10 @@ import { verify, hash } from "@node-rs/argon2";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { SESSION_COOKIE } from "@/constants/auth.constant";
 import { prisma } from "@/lib/db";
 import type { TSessionTeacher, TSignInDto } from "@/types/auth.type";
 
-const SESSION_COOKIE = "session";
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
 
 export const INVALID_CREDENTIALS_MESSAGE = "Invalid credentials";

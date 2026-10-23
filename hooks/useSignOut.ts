@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { authClientService } from "@/services/auth.client.service";
+import { AUTH_PAGE } from "@/constants/auth.constant";
 
 const GENERIC_ERROR_TEXT = "ההתנתקות נכשלה, נסו שוב";
 
@@ -17,7 +18,7 @@ export const useSignOut = () => {
 
     try {
       await authClientService.signOut();
-      router.replace("/auth");
+      router.replace(AUTH_PAGE);
       router.refresh();
     } catch {
       setIsPending(false);

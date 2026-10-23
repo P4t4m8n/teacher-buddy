@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError } from "@/services/api.client.service";
 import { authClientService } from "@/services/auth.client.service";
+import { DASHBOARD_PAGE } from "@/constants/auth.constant";
 import { DEMO_TEACHER } from "@/constants/demo.constant";
 import type { TApiFieldErrors } from "@/types/api.type";
 import type { TSignInDto } from "@/types/auth.type";
@@ -24,7 +25,7 @@ export const useSignIn = () => {
 
     try {
       await authClientService.signIn(dto);
-      router.replace("/dashboard");
+      router.replace(DASHBOARD_PAGE);
       router.refresh();
     } catch (error: unknown) {
       setIsPending(false);

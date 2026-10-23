@@ -1,36 +1,136 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Teacher Buddy
 
-## Getting Started
+A small web app for teachers to manage their students and track assignments and grades.
+Built as a home assignment; the UI is in Hebrew (RTL) and follows the system light/dark theme.
 
-First, run the development server:
+> [Assignment PDF](./docs/assignment.pdf)
+
+
+## Demo login
+
+| Field | Value |
+|---|---|
+| Name | `דנה כהן` |
+| ID number | `123456789` |
+
+The sign-in page also has a **"כניסה עם מורה לדוגמה"** button that signs in with this teacher in one click.
+There is no registration flow, as the assignment allows. The teacher is created by the seed script (`npm run db:seed`).
+
+## Requirements
+
+- Node.js 22 or newer
+- PostgreSQL 15 or newer (developed on 18)
+
+## Run it
 
 ```bash
+# 1. Install dependencies (also generates the Prisma client)
+npm install
+
+# 2. Create an empty PostgreSQL database, for example:
+#    CREATE DATABASE teacher_buddy;
+
+# 3. Configure the environment
+cp .env.example .env        # on Windows PowerShell: Copy-Item .env.example .env
+# then edit .env (see "Environment variables" below)
+
+# 4. Create the tables and the demo data
+npm run db:setup
+
+# 5. Start the app
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open <http://localhost:3000>. Signed-out visitors are always redirected to `/auth`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+For a production build: `npm run build` and then `npm start`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Environment variables
 
-## Learn More
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string, e.g. `postgresql://USER:PASSWORD@localhost:5432/teacher_buddy` |
+| `DATABASE_URL_TEST` | Connection string of a **separate** database used only by the e2e tests |
+| `JWT_SECRET` | Secret used to sign session tokens. Use a long random value: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
+| `COOKIE_SECURE` | `true` marks the session cookie as `Secure`. Set it to `true` only when the app is served over **https**. Keep `false` for local runs over http: Safari does not store `Secure` cookies on `http://localhost`, so sign-in would not stick. |
 
-To learn more about Next.js, take a look at the following resources:
+### Database scripts
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Script | What it does |
+|---|---|
+| `npm run db:setup` | Applies the migrations and seeds the demo data |
+| `npm run db:migrate` | Applies existing migrations only (`prisma migrate deploy`) |
+| `npm run db:seed` | Creates the demo teacher, classes and students (safe to re-run) |
+| `npx prisma migrate dev --name <name>` | After editing `prisma/schema.prisma`: creates and applies a new migration |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Tests
 
-## Deploy on Vercel
+```bash
+npm run test:unit    # Vitest, no database needed
+npm run test:e2e     # Playwright (API and UI), needs the test database
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+One-time setup for the e2e tests:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Create a second empty database and set `DATABASE_URL_TEST` in `.env`. The e2e run never touches `DATABASE_URL`.
+2. Install the browser: `npx playwright install chromium`
+3. Prepare the test database: `npm run db:test:setup` (migrates and seeds it).
+4. **Stop `npm run dev` before running the e2e tests.** Next.js allows one dev server per project folder, and the tests start their own on port 3100.
+
+## Technologies
+
+| Layer | Choice | Why |
+|---|---|---|
+| Front-end | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4 | One project for UI and API, server components, fast styling with built-in dark mode and RTL support |
+| Back-end | Next.js route handlers (`app/api/...`) and a `proxy.ts` | Simple REST endpoints next to the UI; the proxy guards every route |
+| Database | PostgreSQL with Prisma 7 (`@prisma/adapter-pg`) | Relational data (teacher, class, student, assignment), typed queries, versioned migrations |
+| Validation | zod | One schema validates request bodies and gives per-field error messages |
+| Authentication | JWT in an `httpOnly` cookie (`jose`), passwords hashed with Argon2 (`@node-rs/argon2`) | Stateless sessions, and the ID number (the "password") is never stored in plain text |
+| Tests | Vitest (unit) and Playwright (API + UI e2e) | Fast unit tests for the services, real-browser tests for the full flows |
+
+## How authentication works
+
+- The teacher signs in with **name + ID number**. The ID number is the password and is stored only as an Argon2 hash.
+- A successful sign-in sets a signed 24-hour JWT in an `httpOnly`, `SameSite=Lax` cookie. It contains only the teacher's id.
+- Unknown names and wrong ID numbers return the same error, and both cost the same time (no user enumeration).
+- [`proxy.ts`](./proxy.ts) protects everything except `/auth` and the auth API. It verifies the token's signature and expiry; without a valid session, pages redirect to `/auth` and API calls get `401`.
+- Pages and handlers then call `getSessionTeacher()` ([`services/auth.service.ts`](./services/auth.service.ts)), which also checks the teacher still exists in the database. Data queries will use this teacher id, never an id sent by the client.
+- If a cookie is validly signed but its teacher no longer exists (for example after a database reset), the page redirects to `/api/auth/session-expired`, which clears the cookie. Without this, `/auth` and `/dashboard` would redirect to each other forever.
+
+### Auth API
+
+| Method and path | Auth | Description |
+|---|---|---|
+| `POST /api/auth/login` | public | Body `{ name, idNumber }`. `200` with `{ teacher }` and the session cookie, `400` with field errors, `401` for wrong credentials |
+| `POST /api/auth/logout` | public | Clears the session cookie. `200` |
+| `GET /api/auth/me` | session | `200` with `{ teacher: { id, name } }`, `401` otherwise |
+| `GET /api/auth/session-expired` | public | Clears the cookie and redirects to `/auth` |
+
+## Data model
+
+- **Teacher**: name (unique), password hash
+- **Class**: name, belongs to a teacher (unique per teacher)
+- **Student**: name, phone, belongs to a teacher and to a class
+- **Assignment**: title, due date, status (`TODO` / `SUBMITTED`), optional grade (empty until graded), belongs to a student
+
+All ids are UUID v7. A class that still has students cannot be deleted.
+
+## Project structure
+
+```
+app/                 Pages (page.tsx) and route handlers (route.ts) only
+  (root)/auth        Sign-in page
+  (root)/dashboard   Dashboard (first protected page)
+  api/auth/...       Auth endpoints
+components/          UI components, grouped by feature (auth, dashboard, ui)
+hooks/               Client-side state and logic (useSignIn, useSignOut)
+services/            Server services (auth.service.ts) and client API services
+schemas/             zod schemas
+types/               Shared TypeScript types
+constants/           Shared constants (demo teacher, auth paths)
+lib/db.ts            Prisma client
+prisma/              Schema, migrations and seed
+proxy.ts             Route protection
+tests/               Playwright e2e tests
+scripts/             Helper scripts (test database setup)
+```

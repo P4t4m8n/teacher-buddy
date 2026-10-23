@@ -1,11 +1,18 @@
 import { jwtVerify } from "jose";
 import { NextRequest, NextResponse } from "next/server";
+import {
+  AUTH_PAGE,
+  DASHBOARD_PAGE,
+  SESSION_COOKIE,
+  SESSION_EXPIRED_PATH,
+} from "@/constants/auth.constant";
 
-// Local constants (not imported from auth.service) so the proxy never pulls in Prisma/argon2.
-const SESSION_COOKIE = "session";
-const AUTH_PAGE = "/auth";
-const DASHBOARD_PAGE = "/dashboard";
-const PUBLIC_API_PATHS: string[] = ["/api/auth/login", "/api/auth/logout"];
+// session-expired must stay public: it is the way out for a cookie the proxy cannot tell is stale.
+const PUBLIC_API_PATHS: string[] = [
+  "/api/auth/login",
+  "/api/auth/logout",
+  SESSION_EXPIRED_PATH,
+];
 
 // Checks signature and expiry only (no DB). Handlers and pages still validate the session themselves.
 const hasValidSession = async (token: string | undefined): Promise<boolean> => {
