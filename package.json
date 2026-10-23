@@ -12,6 +12,7 @@
     "db:seed": "prisma db seed",
     "db:setup": "prisma migrate deploy && prisma db seed",
     "db:test:setup": "tsx scripts/test-db-setup.ts",
+    "db:test:reset": "tsx scripts/test-db-setup.ts --reset",
     "test:unit": "vitest run",
     "test:e2e": "playwright test"
   },

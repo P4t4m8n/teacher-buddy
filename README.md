@@ -14,7 +14,9 @@ Built as a home assignment; the UI is in Hebrew (RTL) and follows the system lig
 | ID number | `123456789` |
 
 The sign-in page also has a **"כניסה עם מורה לדוגמה"** button that signs in with this teacher in one click.
-There is no registration flow, as the assignment allows. The teacher is created by the seed script (`npm run db:seed`).
+There is no registration flow, as the assignment allows. The teachers are created by the seed script (`npm run db:seed`).
+
+The seed also creates demo classes and students in Hebrew (4 classes and 10 students for `דנה כהן`). It adds a second teacher, `יוסי מזרחי` (ID number `111222333`) with one class and two students, so you can check that a teacher only sees their own students. The seed data is in [`prisma/seed-data.ts`](./prisma/seed-data.ts).
 
 ## Requirements
 
@@ -60,7 +62,7 @@ For a production build: `npm run build` and then `npm start`.
 |---|---|
 | `npm run db:setup` | Applies the migrations and seeds the demo data |
 | `npm run db:migrate` | Applies existing migrations only (`prisma migrate deploy`) |
-| `npm run db:seed` | Creates the demo teacher, classes and students (safe to re-run) |
+| `npm run db:seed` | Creates the demo teachers, classes and students (safe to re-run: a teacher who already has data is skipped) |
 | `npx prisma migrate dev --name <name>` | After editing `prisma/schema.prisma`: creates and applies a new migration |
 
 ## Tests
@@ -74,7 +76,7 @@ One-time setup for the e2e tests:
 
 1. Create a second empty database and set `DATABASE_URL_TEST` in `.env`. The e2e run never touches `DATABASE_URL`.
 2. Install the browser: `npx playwright install chromium`
-3. Prepare the test database: `npm run db:test:setup` (migrates and seeds it).
+3. Prepare the test database: `npm run db:test:setup` (migrates and seeds it). After the seed data changes, use `npm run db:test:reset` instead: it wipes the test database first (and never touches `DATABASE_URL`).
 4. **Stop `npm run dev` before running the e2e tests.** Next.js allows one dev server per project folder, and the tests start their own on port 3100.
 
 ## Technologies
@@ -106,6 +108,14 @@ One-time setup for the e2e tests:
 | `GET /api/auth/me` | session | `200` with `{ teacher: { id, name } }`, `401` otherwise |
 | `GET /api/auth/session-expired` | public | Clears the cookie and redirects to `/auth` |
 
+### Students API
+
+| Method and path | Auth | Description |
+|---|---|---|
+| `GET /api/students` | session | `200` with `{ students: [{ id, name, phone, class: { id, name } }] }`, sorted by name. Only the signed-in teacher's students; `401` otherwise |
+
+The teacher id always comes from the verified session, never from the request, so a teacher cannot read another teacher's students.
+
 ## Data model
 
 - **Teacher**: name (unique), password hash
@@ -122,6 +132,7 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/auth        Sign-in page
   (root)/dashboard   Dashboard (first protected page)
   api/auth/...       Auth endpoints
+  api/students       Students endpoint
 components/          UI components, grouped by feature (auth, dashboard, ui)
 hooks/               Client-side state and logic (useSignIn, useSignOut)
 services/            Server services (auth.service.ts) and client API services

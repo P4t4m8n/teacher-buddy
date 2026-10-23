@@ -18,5 +18,10 @@ function run(command: string): void {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
+// --reset wipes the test database first, so it always matches the current seed data.
+if (process.argv.includes("--reset")) {
+  run("npx prisma migrate reset --force");
+}
+
 run("npx prisma migrate deploy");
 run("npx prisma db seed");

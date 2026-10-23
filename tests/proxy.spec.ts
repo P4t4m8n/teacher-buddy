@@ -64,9 +64,13 @@ test.describe("proxy: valid session", () => {
     const dashboard = await request.get("/dashboard", { maxRedirects: 0 });
     expect(dashboard.status()).toBe(200);
 
-    // Passed the proxy: the route does not exist yet, so Next answers 404 instead of 401.
+    // Passed the proxy: this route does not exist, so Next answers 404 instead of 401.
+    const missing = await request.get("/api/does-not-exist");
+    expect(missing.status()).toBe(404);
+
+    // A real protected route answers with its data.
     const api = await request.get("/api/students");
-    expect(api.status()).toBe(404);
+    expect(api.status()).toBe(200);
   });
 
   test("redirects /auth and / to the dashboard", async ({ request }) => {

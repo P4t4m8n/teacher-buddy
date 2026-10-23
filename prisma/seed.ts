@@ -2,78 +2,53 @@ import "dotenv/config";
 import { hash } from "@node-rs/argon2";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
-import { DEMO_TEACHER as TEACHER } from "../constants/demo.constant";
+import { SEED_TEACHERS, type TSeedTeacher } from "./seed-data";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
-// The ID number is the password and is only stored as an Argon2 hash.
-
-const day = 24 * 60 * 60 * 1000;
-const inDays = (n: number) => new Date(Date.now() + n * day);
-
-async function main() {
+async function seedTeacher(seed: TSeedTeacher): Promise<void> {
+  // The ID number is the password and is only stored as an Argon2 hash.
   const teacher = await prisma.teacher.upsert({
-    where: { name: TEACHER.name },
+    where: { name: seed.name },
     update: {},
-    create: { name: TEACHER.name, passwordHash: await hash(TEACHER.idNumber) },
+    create: { name: seed.name, passwordHash: await hash(seed.idNumber) },
   });
 
   // Only seed sample data once so re-running the seed never duplicates rows.
-  if ((await prisma.student.count({ where: { teacherId: teacher.id } })) > 0) {
-    console.log("Sample data already present, skipping.");
+  if ((await prisma.class.count({ where: { teacherId: teacher.id } })) > 0) {
+    console.log(`"${seed.name}" already has data, skipping.`);
     return;
   }
 
-  const [class1, class2] = await Promise.all(
-    ["ח'1", "ט'2"].map((name) =>
-      prisma.class.create({ data: { name, teacherId: teacher.id } }),
-    ),
+  for (const { name, students } of seed.classes) {
+    await prisma.class.create({
+      data: {
+        name,
+        teacherId: teacher.id,
+        students: {
+          create: students.map((student) => ({ ...student, teacherId: teacher.id })),
+        },
+      },
+    });
+  }
+
+  const studentCount: number = seed.classes.reduce((sum, { students }) => sum + students.length, 0);
+  console.log(
+    `Seeded "${seed.name}" (ID ${seed.idNumber}): ${seed.classes.length} classes, ${studentCount} students.`,
   );
+}
 
-  await prisma.student.create({
-    data: {
-      name: "נועה לוי",
-      phone: "050-1234567",
-      teacherId: teacher.id,
-      classId: class1.id,
-      assignments: {
-        create: [
-          { title: "חיבור על הטבע", dueDate: inDays(-7), status: "SUBMITTED", grade: 92 },
-          { title: "תרגילי שברים", dueDate: inDays(5), status: "TODO" },
-        ],
-      },
-    },
-  });
-
-  await prisma.student.create({
-    data: {
-      name: "איתי ברק",
-      phone: "052-7654321",
-      teacherId: teacher.id,
-      classId: class1.id,
-      assignments: {
-        create: [{ title: "פרויקט במדעים", dueDate: inDays(-2), status: "SUBMITTED" }],
-      },
-    },
-  });
-
-  await prisma.student.create({
-    data: {
-      name: "מאיה אברהם",
-      phone: "054-1112233",
-      teacherId: teacher.id,
-      classId: class2.id,
-    },
-  });
-
-  console.log(`Seeded teacher "${TEACHER.name}" (ID ${TEACHER.idNumber}) with sample data.`);
+async function main(): Promise<void> {
+  for (const seed of SEED_TEACHERS) {
+    await seedTeacher(seed);
+  }
 }
 
 main()
-  .catch((e) => {
-    console.error(e);
+  .catch((error: unknown) => {
+    console.error(error);
     process.exitCode = 1;
   })
   .finally(() => prisma.$disconnect());
