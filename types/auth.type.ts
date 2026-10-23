@@ -11,3 +11,7 @@ export type TSessionTeacher = {
 export type TSignInResponse = {
   teacher: TSessionTeacher;
 };
+
+export type TSignOutResponse = {
+  message: string;
+};

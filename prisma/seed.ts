@@ -2,14 +2,13 @@ import "dotenv/config";
 import { hash } from "@node-rs/argon2";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
+import { DEMO_TEACHER as TEACHER } from "../constants/demo.constant";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
-// Demo teacher used to log in (the spec does not require a registration flow).
 // The ID number is the password and is only stored as an Argon2 hash.
-const TEACHER = { name: "דנה כהן", idNumber: "123456789" };
 
 const day = 24 * 60 * 60 * 1000;
 const inDays = (n: number) => new Date(Date.now() + n * day);

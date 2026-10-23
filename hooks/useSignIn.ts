@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ApiError } from "@/services/api.client.service";
 import { authClientService } from "@/services/auth.client.service";
+import { DEMO_TEACHER } from "@/constants/demo.constant";
 import type { TApiFieldErrors } from "@/types/api.type";
 import type { TSignInDto } from "@/types/auth.type";
 
@@ -16,19 +17,10 @@ export const useSignIn = () => {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TApiFieldErrors>({});
 
-  const handleSubmit = async (
-    event: React.SubmitEvent<HTMLFormElement>,
-  ): Promise<void> => {
-    event.preventDefault();
+  const signIn = async (dto: TSignInDto): Promise<void> => {
     setIsPending(true);
     setErrorMessage(null);
     setFieldErrors({});
-
-    const form = new FormData(event.currentTarget);
-    const dto: TSignInDto = {
-      name: String(form.get("name") ?? ""),
-      idNumber: String(form.get("idNumber") ?? ""),
-    };
 
     try {
       await authClientService.signIn(dto);
@@ -48,5 +40,21 @@ export const useSignIn = () => {
     }
   };
 
-  return { isPending, errorMessage, fieldErrors, handleSubmit };
+  const handleSubmit = async (
+    event: React.SubmitEvent<HTMLFormElement>,
+  ): Promise<void> => {
+    event.preventDefault();
+
+    const form = new FormData(event.currentTarget);
+    await signIn({
+      name: String(form.get("name") ?? ""),
+      idNumber: String(form.get("idNumber") ?? ""),
+    });
+  };
+
+  const handleDemoSignIn = async (): Promise<void> => {
+    await signIn(DEMO_TEACHER);
+  };
+
+  return { isPending, errorMessage, fieldErrors, handleSubmit, handleDemoSignIn };
 };
