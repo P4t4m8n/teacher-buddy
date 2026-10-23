@@ -24,3 +24,27 @@ body {
   color: var(--foreground);
   font-family: var(--font-heebo), Arial, Helvetica, sans-serif;
 }
+
+/* Keep the page behind an open bottom sheet from scrolling. */
+body:has(dialog[open]) {
+  overflow: hidden;
+}
+
+@keyframes bottom-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.bottom-sheet[open] {
+  animation: bottom-sheet-in 200ms ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-sheet[open] {
+    animation: none;
+  }
+}

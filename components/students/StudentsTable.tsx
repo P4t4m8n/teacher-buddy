@@ -1,0 +1,78 @@
+import { StudentActions } from "@/components/students/StudentActions";
+import type { TStudent } from "@/types/student.type";
+
+type TStudentsTableProps = {
+  students: TStudent[];
+};
+
+const HEADER_CELL_CLASSES =
+  "px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400";
+
+export const StudentsTable = ({ students }: TStudentsTableProps) => {
+  if (students.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
+        עדיין אין תלמידים
+      </p>
+    );
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <table className="w-full border-collapse">
+        <thead className="bg-slate-50 dark:bg-slate-800/50">
+          <tr>
+            <th scope="col" className={`${HEADER_CELL_CLASSES} text-start`}>
+              שם
+            </th>
+            <th scope="col" className={`${HEADER_CELL_CLASSES} text-start`}>
+              כיתה
+            </th>
+            <th scope="col" className={`${HEADER_CELL_CLASSES} hidden text-start md:table-cell`}>
+              טלפון
+            </th>
+            <th scope="col" className={`${HEADER_CELL_CLASSES} text-end`}>
+              פעולות
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+          {students.map((student: TStudent) => (
+            <tr key={student.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
+              <td className="px-4 py-3">
+                <div className="flex items-center gap-3">
+                  <span
+                    aria-hidden="true"
+                    className="flex size-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300"
+                  >
+                    {student.name.charAt(0)}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-medium">{student.name}</div>
+                    {/* On narrow screens the phone moves under the name, to save a column. */}
+                    <span dir="ltr" className="inline-block text-xs text-slate-500 md:hidden dark:text-slate-400">
+                      {student.phone}
+                    </span>
+                  </div>
+                </div>
+              </td>
+              <td className="px-4 py-3">
+                <span className="inline-flex rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300">
+                  {student.class.name}
+                </span>
+              </td>
+              <td className="hidden px-4 py-3 text-sm text-slate-600 md:table-cell dark:text-slate-300">
+                <span dir="ltr" className="inline-block">
+                  {student.phone}
+                </span>
+              </td>
+              <td className="px-4 py-3">
+                <StudentActions student={student} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};

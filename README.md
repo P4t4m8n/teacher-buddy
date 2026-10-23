@@ -130,15 +130,15 @@ All ids are UUID v7. A class that still has students cannot be deleted.
 ```
 app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/auth        Sign-in page
-  (root)/dashboard   Dashboard (first protected page)
+  (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading)
   api/auth/...       Auth endpoints
   api/students       Students endpoint
-components/          UI components, grouped by feature (auth, dashboard, ui)
-hooks/               Client-side state and logic (useSignIn, useSignOut)
+components/          UI components, grouped by feature (auth, dashboard, students, ui)
+hooks/               Client-side state and logic (useSignIn, useSignOut, useBottomSheet)
 services/            Server services (auth.service.ts) and client API services
 schemas/             zod schemas
 types/               Shared TypeScript types
-constants/           Shared constants (demo teacher, auth paths)
+constants/           Shared constants (demo teacher, auth paths, student action links)
 lib/db.ts            Prisma client
 prisma/              Schema, migrations and seed
 proxy.ts             Route protection

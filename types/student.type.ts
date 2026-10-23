@@ -13,3 +13,9 @@ export type TStudent = {
 export type TGetStudentsResponse = {
   students: TStudent[];
 };
+
+export type TStudentAction = {
+  key: "new-assignment" | "edit-assignment" | "grade";
+  label: string;
+  href: string;
+};
