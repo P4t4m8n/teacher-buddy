@@ -7,3 +7,7 @@ export type TSessionTeacher = {
   id: string;
   name: string;
 };
+
+export type TSignInResponse = {
+  teacher: TSessionTeacher;
+};
