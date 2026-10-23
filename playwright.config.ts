@@ -27,5 +27,7 @@ export default defineConfig({
     port: PORT,
     reuseExistingServer: false,
     timeout: 120_000,
+    // Fixed so the cookie assertions do not depend on the developer's .env.
+    env: { COOKIE_SECURE: "false" },
   },
 });

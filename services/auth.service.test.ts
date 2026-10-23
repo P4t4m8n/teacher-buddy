@@ -1,21 +1,22 @@
 import { hash } from "@node-rs/argon2";
-import { jwtVerify } from "jose";
+import { jwtVerify, SignJWT } from "jose";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   findUnique: vi.fn(),
   cookieSet: vi.fn(),
+  cookieGet: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("next/headers", () => ({
-  cookies: async () => ({ set: mocks.cookieSet }),
+  cookies: async () => ({ set: mocks.cookieSet, get: mocks.cookieGet }),
 }));
 vi.mock("@/lib/db", () => ({
   prisma: { teacher: { findUnique: mocks.findUnique } },
 }));
 
-import { signIn, signOut } from "./auth.service";
+import { getSessionTeacher, signIn, signOut } from "./auth.service";
 
 const ID_NUMBER = "123456789";
 let teacher: { id: string; name: string; passwordHash: string };
@@ -31,6 +32,7 @@ beforeAll(async () => {
 beforeEach(() => {
   mocks.findUnique.mockReset();
   mocks.cookieSet.mockReset();
+  mocks.cookieGet.mockReset();
 });
 
 afterEach(() => {
@@ -110,5 +112,131 @@ describe("signOut", () => {
   it("does not touch the database", async () => {
     await signOut();
     expect(mocks.findUnique).not.toHaveBeenCalled();
+  });
+});
+
+describe("cookie Secure flag (COOKIE_SECURE)", () => {
+  const readSecureFlag = async (action: "signIn" | "signOut"): Promise<unknown> => {
+    mocks.findUnique.mockResolvedValue(teacher);
+    if (action === "signIn") {
+      await signIn({ name: teacher.name, idNumber: ID_NUMBER });
+    } else {
+      await signOut();
+    }
+    return mocks.cookieSet.mock.calls[0][2].secure;
+  };
+
+  for (const action of ["signIn", "signOut"] as const) {
+    it(`${action}: is Secure when COOKIE_SECURE is "true"`, async () => {
+      vi.stubEnv("COOKIE_SECURE", "true");
+      expect(await readSecureFlag(action)).toBe(true);
+    });
+
+    it(`${action}: is not Secure when COOKIE_SECURE is "false"`, async () => {
+      vi.stubEnv("COOKIE_SECURE", "false");
+      expect(await readSecureFlag(action)).toBe(false);
+    });
+
+    it(`${action}: is not Secure when COOKIE_SECURE is empty or not exactly "true"`, async () => {
+      for (const value of ["", "yes", "1", "TRUE"]) {
+        mocks.cookieSet.mockReset();
+        vi.stubEnv("COOKIE_SECURE", value);
+        expect(await readSecureFlag(action), value).toBe(false);
+      }
+    });
+  }
+});
+
+describe("getSessionTeacher", () => {
+  const TEACHER_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
+  const sessionTeacher = { id: TEACHER_ID, name: "דנה כהן" };
+  const secret = (): Uint8Array => new TextEncoder().encode(process.env.JWT_SECRET);
+
+  const signToken = (
+    payload: Record<string, unknown>,
+    options: { key?: Uint8Array; alg?: string; expiresAt?: string | number } = {},
+  ): Promise<string> =>
+    new SignJWT(payload)
+      .setProtectedHeader({ alg: options.alg ?? "HS256" })
+      .setIssuedAt()
+      .setExpirationTime(options.expiresAt ?? "1h")
+      .sign(options.key ?? secret());
+
+  const withCookie = (token: string): void => {
+    mocks.cookieGet.mockReturnValue({ name: "session", value: token });
+  };
+
+  it("returns the teacher for a valid session and looks them up by the token's id", async () => {
+    withCookie(await signToken({ teacherId: TEACHER_ID }));
+    mocks.findUnique.mockResolvedValue(sessionTeacher);
+
+    const result = await getSessionTeacher();
+
+    expect(result).toEqual(sessionTeacher);
+    expect(mocks.cookieGet).toHaveBeenCalledWith("session");
+    expect(mocks.findUnique).toHaveBeenCalledWith({
+      where: { id: TEACHER_ID },
+      select: { id: true, name: true },
+    });
+  });
+
+  it("returns null when there is no session cookie", async () => {
+    mocks.cookieGet.mockReturnValue(undefined);
+
+    expect(await getSessionTeacher()).toBeNull();
+    expect(mocks.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns null for a token that is not a JWT", async () => {
+    withCookie("forged.token.value");
+
+    expect(await getSessionTeacher()).toBeNull();
+    expect(mocks.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns null for a token signed with another secret", async () => {
+    const otherKey = new TextEncoder().encode("another-secret-another-secret-123");
+    withCookie(await signToken({ teacherId: TEACHER_ID }, { key: otherKey }));
+
+    expect(await getSessionTeacher()).toBeNull();
+    expect(mocks.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns null for an expired token", async () => {
+    const aMinuteAgo = Math.floor(Date.now() / 1000) - 60;
+    withCookie(await signToken({ teacherId: TEACHER_ID }, { expiresAt: aMinuteAgo }));
+
+    expect(await getSessionTeacher()).toBeNull();
+    expect(mocks.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns null for a token signed with a different algorithm", async () => {
+    withCookie(await signToken({ teacherId: TEACHER_ID }, { alg: "HS512" }));
+
+    expect(await getSessionTeacher()).toBeNull();
+    expect(mocks.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the token has no valid teacher id", async () => {
+    for (const payload of [{}, { teacherId: 123 }, { teacherId: "not-a-uuid" }]) {
+      withCookie(await signToken(payload));
+
+      expect(await getSessionTeacher()).toBeNull();
+    }
+    expect(mocks.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns null when the teacher no longer exists", async () => {
+    withCookie(await signToken({ teacherId: TEACHER_ID }));
+    mocks.findUnique.mockResolvedValue(null);
+
+    expect(await getSessionTeacher()).toBeNull();
+  });
+
+  it("throws when JWT_SECRET is missing instead of treating it as signed out", async () => {
+    withCookie("any.token.value");
+    vi.stubEnv("JWT_SECRET", "");
+
+    await expect(getSessionTeacher()).rejects.toThrow("JWT_SECRET is required");
   });
 });

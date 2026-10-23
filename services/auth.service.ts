@@ -1,7 +1,8 @@
 import "server-only";
 import { verify, hash } from "@node-rs/argon2";
-import { SignJWT } from "jose";
+import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
+import { z } from "zod";
 import { prisma } from "@/lib/db";
 import type { TSessionTeacher, TSignInDto } from "@/types/auth.type";
 
@@ -12,12 +13,21 @@ export const INVALID_CREDENTIALS_MESSAGE = "Invalid credentials";
 // Valid hash used only so an unknown name costs the same time as a wrong ID number.
 const DUMMY_HASH: Promise<string> = hash("dummy-id-number");
 
-const COOKIE_OPTIONS = {
-  httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  path: "/",
-  sameSite: "lax" as const,
+type TCookieOptions = {
+  httpOnly: boolean;
+  secure: boolean;
+  path: string;
+  sameSite: "lax";
 };
+
+// Safari rejects Secure cookies over plain http (e.g. `npm start` on localhost), so the flag
+// is opt-in: set COOKIE_SECURE=true when the app is served over https.
+const getCookieOptions = (): TCookieOptions => ({
+  httpOnly: true,
+  secure: process.env.COOKIE_SECURE === "true",
+  path: "/",
+  sameSite: "lax",
+});
 
 const getJwtSecret = (): Uint8Array => {
   const secret: string | undefined = process.env.JWT_SECRET;
@@ -36,7 +46,7 @@ const createJWT = async (teacherId: string): Promise<string> => {
 const createCookie = async (token: string): Promise<void> => {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, token, {
-    ...COOKIE_OPTIONS,
+    ...getCookieOptions(),
     maxAge: SESSION_TTL_SECONDS,
   });
 };
@@ -62,7 +72,33 @@ export const signIn = async (dto: TSignInDto): Promise<TSessionTeacher> => {
 export const signOut = async (): Promise<void> => {
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE, "", {
-    ...COOKIE_OPTIONS,
+    ...getCookieOptions(),
     maxAge: 0,
+  });
+};
+
+// Returns the signed-in teacher, or null when the session is missing, invalid, expired
+// or the teacher no longer exists. A missing JWT_SECRET is a config error and throws.
+export const getSessionTeacher = async (): Promise<TSessionTeacher | null> => {
+  const cookieStore = await cookies();
+  const token: string | undefined = cookieStore.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+
+  const secret: Uint8Array = getJwtSecret();
+
+  let teacherId: unknown;
+  try {
+    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+    teacherId = payload.teacherId;
+  } catch {
+    return null;
+  }
+
+  const parsedId = z.uuid().safeParse(teacherId);
+  if (!parsedId.success) return null;
+
+  return prisma.teacher.findUnique({
+    where: { id: parsedId.data },
+    select: { id: true, name: true },
   });
 };

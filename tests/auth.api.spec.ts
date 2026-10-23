@@ -19,6 +19,8 @@ test.describe("POST /api/auth/login", () => {
     expect(setCookie).toMatch(/SameSite=lax/i);
     expect(setCookie).toMatch(/Path=\//i);
     expect(setCookie).toMatch(/Max-Age=86400/i);
+    // COOKIE_SECURE is "false" for the test server, so Safari can store the cookie over http.
+    expect(setCookie).not.toMatch(/;\s*Secure/i);
   });
 
   test("trims the name and the ID number before validating", async ({ request }) => {
