@@ -125,3 +125,16 @@ export const gotoHydrated = async (page: Page, url: string): Promise<void> => {
     );
   });
 };
+
+// The add and edit pages share one form. The class is chosen by its name.
+export type TStudentFormValues = { name: string; phone: string; className: string };
+
+export const fillStudentForm = async (page: Page, { name, phone, className }: TStudentFormValues): Promise<void> => {
+  await page.getByLabel("שם התלמיד").fill(name);
+  await page.getByLabel("טלפון").fill(phone);
+  await page.getByLabel("כיתה").selectOption({ label: className });
+};
+
+// The submit button says "הוספה" on the add page and "שמירה" on the edit page.
+export const submitStudentForm = (page: Page, label: "הוספה" | "שמירה"): Promise<void> =>
+  page.getByRole("button", { name: label, exact: true }).click();

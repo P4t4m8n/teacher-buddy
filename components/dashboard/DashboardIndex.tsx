@@ -1,14 +1,13 @@
-import AddStudentButton from "@/components/students/AddStudentButton";
 import StudentsTable from "@/components/students/StudentsTable";
-import type { TClass } from "@/types/class.type";
+import { LinkButton } from "@/components/ui/LinkButton";
+import { NEW_STUDENT_PAGE } from "@/constants/student.constant";
 import type { TStudent } from "@/types/student.type";
 
 type TDashboardPageProps = {
   students: TStudent[];
-  classes: TClass[];
 };
 
-export default function DashboardIndex({ students, classes }: TDashboardPageProps) {
+export default function DashboardIndex({ students }: TDashboardPageProps) {
   return (
     <>
       <h1 className="shrink-0 text-2xl font-bold tracking-tight">לוח בקרה</h1>
@@ -23,7 +22,9 @@ export default function DashboardIndex({ students, classes }: TDashboardPageProp
               ({students.length})
             </span>
           </h2>
-          <AddStudentButton classes={classes} />
+          <LinkButton href={NEW_STUDENT_PAGE} variant="primary" size="sm">
+            הוספת תלמיד
+          </LinkButton>
         </div>
         <StudentsTable students={students} />
       </section>

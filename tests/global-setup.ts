@@ -45,9 +45,15 @@ const warmUpServer = async (baseURL: string): Promise<void> => {
     await page.goto("/auth");
     await page.request.post("/api/auth/login", { data: DEMO_TEACHER });
     await page.goto("/dashboard");
-    await page.getByRole("button", { name: "הוספת תלמיד" }).click();
+    // Opens a delete confirmation, so the scripts of the modal are compiled too.
+    await page.getByRole("button", { name: /^מחיקה עבור/ }).first().click();
     await page.getByRole("dialog").waitFor();
     await page.keyboard.press("Escape");
+    const detailsHref = await page.getByRole("link", { name: /^פרטים עבור/ }).first().getAttribute("href");
+    const editHref = await page.getByRole("link", { name: /^עריכה עבור/ }).first().getAttribute("href");
+    for (const path of ["/dashboard/students/new", detailsHref, editHref]) {
+      if (path) await page.goto(path);
+    }
     for (const path of ["/api/auth/me", "/api/students", "/api/classes", "/api/auth/session-expired"]) {
       await page.request.get(path, { maxRedirects: 0 });
     }

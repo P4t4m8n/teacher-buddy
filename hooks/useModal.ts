@@ -11,11 +11,7 @@ export const useModal = (isOpen: boolean) => {
     const dialog: HTMLDialogElement | null = dialogRef.current;
     if (!dialog) return;
 
-    if (isOpen && !dialog.open) {
-      dialog.showModal();
-      // React's autoFocus runs while the dialog is still closed, so focus is moved here instead.
-      dialog.querySelector<HTMLElement>("[data-autofocus]")?.focus();
-    }
+    if (isOpen && !dialog.open) dialog.showModal();
     if (!isOpen && dialog.open) dialog.close();
   }, [isOpen]);
 

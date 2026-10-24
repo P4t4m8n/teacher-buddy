@@ -128,7 +128,7 @@ The teacher id always comes from the verified session, never from the request, s
 
 | Method and path | Auth | Description |
 |---|---|---|
-| `GET /api/classes` | session | `200` with `{ classes: [{ id, name }] }`, sorted by name. All of the signed-in teacher's classes, including classes with no students (the add-student form needs them); `401` otherwise |
+| `GET /api/classes` | session | `200` with `{ classes: [{ id, name }] }`, sorted by name. All of the signed-in teacher's classes, including classes with no students; `401` otherwise |
 
 ### Error responses
 
@@ -158,8 +158,11 @@ All ids are UUID v7. A class that still has students cannot be deleted.
 ```
 app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/auth        Sign-in page
-  (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading); each row links to the student page and to edit, and has a delete button with a confirmation
-  (root)/dashboard/students/[id]   Student details page (a missing student, another teacher's or a malformed id all show the same not-found page)
+  (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading); a link to add a student, and each row links to the student page and to edit, and has a delete button with a confirmation
+  (root)/dashboard/students/new          Add-student page
+  (root)/dashboard/students/[id]         Student details page (a missing student, another teacher's or a malformed id all show the same not-found page)
+  (root)/dashboard/students/[id]/edit    Edit-student page, filled from the database; shares one form (StudentForm) with the add page
+  (root)/dashboard/layout.tsx            The header and the page frame, shared by every dashboard page
   api/auth/...       Auth endpoints
   api/students       Students endpoints (list, create, and /[id]: details, update, delete)
   api/classes        Classes endpoint

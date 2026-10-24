@@ -2,18 +2,23 @@
 
 import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
+import { LinkButton } from "@/components/ui/LinkButton";
 import { SelectField } from "@/components/ui/SelectField";
+import { DASHBOARD_PAGE } from "@/constants/auth.constant";
 import { useStudentForm } from "@/hooks/useStudentForm";
 import type { TClass } from "@/types/class.type";
+import type { TStudent } from "@/types/student.type";
 
 type TStudentFormProps = {
   classes: TClass[];
-  onSaved: () => void;
-  onCancel: () => void;
+  // With a student the form edits that student. Without one it adds a new student.
+  student?: TStudent;
 };
 
-export default function StudentForm({ classes, onSaved, onCancel }: TStudentFormProps) {
-  const { isPending, errorMessage, fieldErrors, handleSubmit } = useStudentForm({ onSaved });
+export default function StudentForm({ classes, student }: TStudentFormProps) {
+  const { isPending, errorMessage, fieldErrors, handleSubmit } = useStudentForm({
+    studentId: student?.id,
+  });
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
@@ -21,7 +26,8 @@ export default function StudentForm({ classes, onSaved, onCancel }: TStudentForm
         label="שם התלמיד"
         name="name"
         autoComplete="off"
-        data-autofocus
+        autoFocus
+        defaultValue={student?.name}
         errors={fieldErrors.name}
       />
       <FormField
@@ -32,6 +38,7 @@ export default function StudentForm({ classes, onSaved, onCancel }: TStudentForm
         dir="ltr"
         autoComplete="off"
         placeholder="050-1234567"
+        defaultValue={student?.phone}
         errors={fieldErrors.phone}
       />
       <SelectField
@@ -39,6 +46,7 @@ export default function StudentForm({ classes, onSaved, onCancel }: TStudentForm
         name="classId"
         placeholder="בחרו כיתה"
         options={classes.map(({ id, name }: TClass) => ({ value: id, label: name }))}
+        defaultValue={student?.class.id ?? ""}
         errors={fieldErrors.classId}
       />
 
@@ -52,11 +60,11 @@ export default function StudentForm({ classes, onSaved, onCancel }: TStudentForm
       )}
 
       <div className="flex justify-end gap-3">
-        <Button variant="secondary" onClick={onCancel} disabled={isPending}>
+        <LinkButton href={DASHBOARD_PAGE} size="md">
           ביטול
-        </Button>
+        </LinkButton>
         <Button type="submit" disabled={isPending}>
-          {isPending ? "שומר..." : "הוספה"}
+          {isPending ? "שומר..." : student ? "שמירה" : "הוספה"}
         </Button>
       </div>
     </form>
