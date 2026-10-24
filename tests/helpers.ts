@@ -18,12 +18,21 @@ export const signInAs = async (request: APIRequestContext, seed: TSeedTeacher): 
   expect(login.status()).toBe(200);
 };
 
-// The signed-in teacher's students.
+// The student list of the signed-in teacher.
 export const getStudentList = async (request: APIRequestContext): Promise<TStudent[]> => {
   const response = await request.get("/api/students");
   expect(response.status()).toBe(200);
   return (await response.json()).students;
 };
+
+// Random values for tests that create data in the shared test database, so parallel tests and
+// repeated runs never collide.
+export const randomLetters = (length: number): string =>
+  Array.from({ length }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
+export const randomDigits = (length: number): string =>
+  Array.from({ length }, () => Math.floor(Math.random() * 10)).join("");
+export const uniqueName = (): string => `בדיקה ${randomLetters(12)}`;
+export const uniquePhone = (): string => `050-${randomDigits(7)}`;
 
 // Signed with the real secret (playwright.config.ts loads .env), so it passes the proxy's token check.
 export const signToken = async (teacherId: string, expiresAt: string | number): Promise<string> => {

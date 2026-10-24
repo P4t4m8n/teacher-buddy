@@ -79,6 +79,8 @@ One-time setup for the e2e tests:
 3. Prepare the test database: `npm run db:test:setup` (migrates and seeds it). After the seed data changes, use `npm run db:test:reset` instead: it wipes the test database first (and never touches `DATABASE_URL`).
 4. **Stop `npm run dev` before running the e2e tests.** Next.js allows one dev server per project folder, and the tests start their own on port 3100.
 
+The tests that create students use two dedicated teachers (`נעמה שרון` and `רונית אביב`), so the demo teachers' data is never changed. Before every run, `tests/global-setup.ts` deletes everything those two teachers gained in earlier runs and keeps their seeded students. It refuses to run unless the database name in `DATABASE_URL_TEST` contains "test". It then warms up the dev server (loads the pages once in a browser, creating no data), because the first requests would otherwise all wait for the pages to compile at the same time and time out.
+
 ## Technologies
 
 | Layer | Choice | Why |
@@ -158,7 +160,7 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   api/students       Students endpoint
   api/classes        Classes endpoint
 components/          UI components, grouped by feature (auth, dashboard, students, ui)
-hooks/               Client-side state and logic (useSignIn, useSignOut, useBottomSheet)
+hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useBottomSheet, useModal, useDisclosure)
 services/            Server services (auth.service.ts) and client API services
 schemas/             zod schemas
 types/               Shared TypeScript types

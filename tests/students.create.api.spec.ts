@@ -2,21 +2,23 @@ import { expect, test, type APIRequestContext, type APIResponse } from "@playwri
 import { ERROR_MESSAGES } from "../constants/error.constant";
 import { DEMO_SEED, WRITE_OTHER_SEED, WRITE_SEED } from "../prisma/seed-data";
 import type { TStudent, TStudentClass } from "../types/student.type";
-import { getStudentList, signInAs, signToken, UNKNOWN_TEACHER_ID } from "./helpers";
+import {
+  getStudentList,
+  randomDigits,
+  randomLetters,
+  signInAs,
+  signToken,
+  UNKNOWN_TEACHER_ID,
+  uniqueName,
+  uniquePhone,
+} from "./helpers";
 
 const STUDENTS_URL = "/api/students";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-// These tests create students in the shared test database, so every test uses its own random name
-// and phone: parallel tests and repeated runs never collide. They only use the WRITE_SEED teacher,
-// so the read-only tests that count the other teachers' rows are not affected.
-const randomLetters = (length: number): string =>
-  Array.from({ length }, () => String.fromCharCode(97 + Math.floor(Math.random() * 26))).join("");
-const randomDigits = (length: number): string =>
-  Array.from({ length }, () => Math.floor(Math.random() * 10)).join("");
-const uniqueName = (): string => `בדיקה ${randomLetters(12)}`;
-const uniquePhone = (): string => `050-${randomDigits(7)}`;
-
+// These tests create students in the shared test database with random names and phones (see helpers),
+// so parallel tests and repeated runs never collide. They only use the write teachers, so the
+// read-only tests that count the other teachers' rows are not affected.
 type TWriteClasses = { first: TStudentClass; second: TStudentClass };
 
 // The class ids are only discoverable through the seeded students, one per class.

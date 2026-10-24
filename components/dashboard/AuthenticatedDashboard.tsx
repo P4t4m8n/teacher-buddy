@@ -1,7 +1,9 @@
 import { SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
 import { getSessionTeacher } from "@/services/auth.service";
+import { getClasses } from "@/services/class.service";
 import { getStudents } from "@/services/student.service";
 import { TSessionTeacher } from "@/types/auth.type";
+import { TClass } from "@/types/class.type";
 import { TStudent } from "@/types/student.type";
 import { redirect } from "next/navigation";
 import DashboardIndex from "./DashboardIndex";
@@ -14,7 +16,10 @@ export default async function AuthenticatedDashboard() {
   // to /dashboard in an endless loop. SESSION_EXPIRED_PATH clears the cookie first.
   if (!teacher) redirect(SESSION_EXPIRED_PATH);
 
-  const students: TStudent[] = await getStudents(teacher.id);
+  const [students, classes]: [TStudent[], TClass[]] = await Promise.all([
+    getStudents(teacher.id),
+    getClasses(teacher.id),
+  ]);
 
-  return <DashboardIndex teacherName={teacher.name} students={students} />;
+  return <DashboardIndex teacherName={teacher.name} students={students} classes={classes} />;
 }

@@ -12,7 +12,10 @@ export default function DashboardSkeleton() {
       </header>
       <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
         <div className="h-8 w-40 shrink-0 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
-        <div className="mb-4 mt-8 h-6 w-32 shrink-0 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+        <div className="mb-4 mt-8 flex shrink-0 items-center justify-between gap-4">
+          <div className="h-6 w-32 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+          <div className="h-8 w-28 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800" />
+        </div>
         <StudentsTableSkeleton />
       </main>
     </div>

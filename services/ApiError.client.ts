@@ -1,5 +1,5 @@
 import { ERROR_MESSAGES } from "@/constants/error.constant";
-import { TApiFieldErrors } from "@/types/api.type";
+import type { TApiFieldErrors, TFormErrors } from "@/types/api.type";
 
 export default class ApiError extends Error {
   status: number;
@@ -15,5 +15,12 @@ export default class ApiError extends Error {
   static from(error: unknown): ApiError {
     if (error instanceof ApiError) return error;
     return new ApiError(ERROR_MESSAGES.network, 0);
+  }
+
+  toFormErrors(): TFormErrors {
+    if (this.status === 400 && this.fields) {
+      return { errorMessage: null, fieldErrors: this.fields };
+    }
+    return { errorMessage: this.message, fieldErrors: {} };
   }
 }

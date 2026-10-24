@@ -6,7 +6,7 @@ import { authClientService } from "@/services/auth.client.service";
 import { DASHBOARD_PAGE } from "@/constants/auth.constant";
 import { DEMO_TEACHER } from "@/constants/demo.constant";
 
-import type { TApiFieldErrors } from "@/types/api.type";
+import type { TApiFieldErrors, TFormErrors } from "@/types/api.type";
 import type { TSignInDto } from "@/types/auth.type";
 import ApiError from "@/services/ApiError.client";
 
@@ -27,12 +27,9 @@ export const useSignIn = () => {
       router.refresh();
     } catch (error: unknown) {
       setIsPending(false);
-      const { status, message, fields } = ApiError.from(error);
-      if (status === 400 && fields) {
-        setFieldErrors(fields);
-        return;
-      }
-      setErrorMessage(message);
+      const formErrors: TFormErrors = ApiError.from(error).toFormErrors();
+      setErrorMessage(formErrors.errorMessage);
+      setFieldErrors(formErrors.fieldErrors);
     }
   };
 
