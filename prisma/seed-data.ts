@@ -66,4 +66,16 @@ export const OTHER_SEED: TSeedTeacher = {
   ],
 };
 
-export const SEED_TEACHERS: TSeedTeacher[] = [DEMO_SEED, OTHER_SEED];
+// A third teacher whose data the write tests (create student, later edit and delete) change freely,
+// so the read-only tests that count rows for the other teachers keep passing. Each class has one
+// student so the tests can find the class ids through GET /api/students.
+export const WRITE_SEED: TSeedTeacher = {
+  name: "נעמה שרון",
+  idNumber: "444555666",
+  classes: [
+    { name: "א'1", students: [{ name: "אלון בדיקה", phone: "050-0000001" }] },
+    { name: "א'2", students: [{ name: "אורית בדיקה", phone: "050-0000002" }] },
+  ],
+};
+
+export const SEED_TEACHERS: TSeedTeacher[] = [DEMO_SEED, OTHER_SEED, WRITE_SEED];

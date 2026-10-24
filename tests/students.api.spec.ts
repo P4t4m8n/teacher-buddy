@@ -1,7 +1,6 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { DEMO_SEED, OTHER_SEED, type TSeedTeacher } from "../prisma/seed-data";
-import type { TStudent } from "../types/student.type";
-import { signToken, UNKNOWN_TEACHER_ID } from "./helpers";
+import { getStudentList, signInAs, signToken, UNKNOWN_TEACHER_ID } from "./helpers";
 
 const STUDENTS_URL = "/api/students";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -13,19 +12,6 @@ const expectedStudents = (seed: TSeedTeacher): Record<string, { phone: string; c
       students.map(({ name, phone }) => [name, { phone, className }]),
     ),
   );
-
-const signInAs = async (request: APIRequestContext, seed: TSeedTeacher): Promise<void> => {
-  const login = await request.post("/api/auth/login", {
-    data: { name: seed.name, idNumber: seed.idNumber },
-  });
-  expect(login.status()).toBe(200);
-};
-
-const getStudentList = async (request: APIRequestContext): Promise<TStudent[]> => {
-  const response = await request.get(STUDENTS_URL);
-  expect(response.status()).toBe(200);
-  return (await response.json()).students;
-};
 
 test.describe("GET /api/students: authorization", () => {
   test("returns 401 without a session", async ({ request }) => {
