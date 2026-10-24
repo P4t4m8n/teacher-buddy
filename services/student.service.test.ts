@@ -23,7 +23,7 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
-import { createStudent, deleteStudent, getStudent, getStudents } from "./student.service";
+import { createStudent, deleteStudent, findStudent, getStudent, getStudents } from "./student.service";
 
 const TEACHER_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
 const STUDENT_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f70";
@@ -206,6 +206,29 @@ describe("createStudent", () => {
 });
 
 const NOT_UUIDS = ["", "abc", "1", "0198f0a2-7b3c", "../etc/passwd", "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5fzz", "null"];
+
+describe("findStudent", () => {
+  const student = { id: STUDENT_ID, name: "נועה לוי", phone: "050-1234567", class: { id: "c1", name: "ח'1" } };
+
+  it("returns the student, looked up by id AND teacher", async () => {
+    mocks.findFirst.mockResolvedValue(student);
+
+    expect(await findStudent(TEACHER_ID, STUDENT_ID)).toEqual(student);
+    expect(mocks.findFirst.mock.calls[0][0].where).toEqual({ id: STUDENT_ID, teacherId: TEACHER_ID });
+  });
+
+  it("returns null when there is no such student for this teacher", async () => {
+    mocks.findFirst.mockResolvedValue(null);
+
+    expect(await findStudent(TEACHER_ID, STUDENT_ID)).toBeNull();
+  });
+
+  it.each(NOT_UUIDS)("returns null for the id %j without querying the database", async (id) => {
+    expect(await findStudent(TEACHER_ID, id)).toBeNull();
+
+    expect(mocks.findFirst).not.toHaveBeenCalled();
+  });
+});
 
 describe("getStudent", () => {
   const student = {

@@ -21,5 +21,5 @@ export default async function AuthenticatedDashboard() {
     getClasses(teacher.id),
   ]);
 
-  return <DashboardIndex teacherName={teacher.name} students={students} classes={classes} />;
+  return <DashboardIndex students={students} classes={classes} />;
 }

@@ -24,14 +24,20 @@ export const getStudents = async (teacherId: string): Promise<TStudent[]> => {
   });
 };
 
-// A student that does not exist and a student of another teacher look the same (404), so ids cannot be probed.
-export const getStudent = async (teacherId: string, studentId: string): Promise<TStudent> => {
-  if (!isUuid(studentId)) throw AppError.studentNotFound();
+// For pages: null when there is no such student. A student that does not exist, one of another
+// teacher and an id that is not a uuid all give null, so ids cannot be probed.
+export const findStudent = async (teacherId: string, studentId: string): Promise<TStudent | null> => {
+  if (!isUuid(studentId)) return null;
 
-  const student = await prisma.student.findFirst({
+  return prisma.student.findFirst({
     where: { id: studentId, teacherId },
     select: STUDENT_SELECT,
   });
+};
+
+// For route handlers: the same, but a missing student is a 404 AppError.
+export const getStudent = async (teacherId: string, studentId: string): Promise<TStudent> => {
+  const student: TStudent | null = await findStudent(teacherId, studentId);
   if (!student) throw AppError.studentNotFound();
 
   return student;

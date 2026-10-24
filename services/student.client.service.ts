@@ -1,5 +1,9 @@
 import { apiClientService } from "@/services/api.client.service";
-import type { TCreateStudentDto, TCreateStudentResponse } from "@/types/student.type";
+import type {
+  TCreateStudentDto,
+  TCreateStudentResponse,
+  TDeleteStudentResponse,
+} from "@/types/student.type";
 
 const STUDENTS_ENDPOINT = "students";
 
@@ -10,6 +14,11 @@ const createStudent = (dto: TCreateStudentDto): Promise<TCreateStudentResponse> 
   );
 };
 
+const deleteStudent = (studentId: string): Promise<TDeleteStudentResponse> => {
+  return apiClientService.delete<TDeleteStudentResponse>(`${STUDENTS_ENDPOINT}/${studentId}`);
+};
+
 export const studentClientService = {
   createStudent,
+  deleteStudent,
 };

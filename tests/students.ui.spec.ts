@@ -4,11 +4,10 @@ import { gotoHydrated } from "./helpers";
 
 const DASHBOARD_URL = "/dashboard";
 const FIRST_STUDENT = DEMO_SEED.classes[0].students[0];
-const ACTION_LABELS = ["מטלה חדשה", "עריכת מטלה", "הזנת ציון"];
+const ACTION_LABELS = ["פרטים", "עריכה"];
 const ACTION_PATHS = [
-  /\/students\/[0-9a-f-]{36}\/assignments\/new$/,
-  /\/students\/[0-9a-f-]{36}\/assignments$/,
-  /\/students\/[0-9a-f-]{36}\/grade$/,
+  /\/dashboard\/students\/[0-9a-f-]{36}$/,
+  /\/dashboard\/students\/[0-9a-f-]{36}\/edit$/,
 ];
 
 // page.request shares its cookies with the page, so this signs the browser in without the UI.
@@ -61,7 +60,7 @@ test.describe("students table: wide screen", () => {
     }
   });
 
-  test("each row has the three action links, pointing at that student's pages", async ({ page }) => {
+  test("each row has the details and edit links, pointing at that student's pages, and a delete button", async ({ page }) => {
     const row = studentRow(page, FIRST_STUDENT.name);
 
     for (const [index, label] of ACTION_LABELS.entries()) {
@@ -69,17 +68,12 @@ test.describe("students table: wide screen", () => {
       await expect(link).toBeVisible();
       await expect(link).toHaveAttribute("href", ACTION_PATHS[index]);
     }
+    await expect(row.getByRole("button", { name: `מחיקה עבור ${FIRST_STUDENT.name}` })).toBeVisible();
   });
 
-  test("hides the mobile actions button", async ({ page }) => {
-    const row = studentRow(page, FIRST_STUDENT.name);
-
-    await expect(row.getByRole("button", { name: `פעולות עבור ${FIRST_STUDENT.name}` })).toBeHidden();
-  });
-
-  test("an action link opens that page", async ({ page }) => {
+  test("the details link opens the student's page", async ({ page }) => {
     await studentRow(page, FIRST_STUDENT.name)
-      .getByRole("link", { name: `מטלה חדשה עבור ${FIRST_STUDENT.name}` })
+      .getByRole("link", { name: `פרטים עבור ${FIRST_STUDENT.name}` })
       .click();
 
     await expect(page).toHaveURL(ACTION_PATHS[0]);
@@ -103,8 +97,6 @@ test.describe("students table: another teacher", () => {
 test.describe("students table: narrow screen", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  const sheetTriggerName = `פעולות עבור ${FIRST_STUDENT.name}`;
-
   test.beforeEach(async ({ page }) => {
     await signInAs(page, DEMO_SEED);
     await gotoHydrated(page, DASHBOARD_URL);
@@ -117,81 +109,24 @@ test.describe("students table: narrow screen", () => {
     ).toBeVisible();
   });
 
-  test("replaces the action links with one button", async ({ page }) => {
+  test("keeps the three actions on a narrow screen, inside the screen", async ({ page }) => {
     const row = studentRow(page, FIRST_STUDENT.name);
 
-    await expect(row.getByRole("button", { name: sheetTriggerName })).toBeVisible();
-    await expect(row.getByRole("link", { name: /מטלה חדשה עבור/ })).toBeHidden();
-  });
-
-  test("the button opens a bottom sheet with the three links", async ({ page }) => {
-    await page.getByRole("button", { name: sheetTriggerName }).click();
-
-    const sheet = page.getByRole("dialog", { name: sheetTriggerName });
-    await expect(sheet).toBeVisible();
-    for (const [index, label] of ACTION_LABELS.entries()) {
-      const link = sheet.getByRole("link", { name: label });
-      await expect(link).toBeVisible();
-      await expect(link).toHaveAttribute("href", ACTION_PATHS[index]);
+    for (const label of ACTION_LABELS) {
+      await expect(row.getByRole("link", { name: `${label} עבור ${FIRST_STUDENT.name}` })).toBeVisible();
     }
+    await expect(row.getByRole("button", { name: `מחיקה עבור ${FIRST_STUDENT.name}` })).toBeVisible();
 
-    // The sheet sits at the bottom of the screen.
-    const box = await sheet.boundingBox();
-    expect(box).not.toBeNull();
-    expect(box!.y + box!.height).toBeGreaterThan(844 - 2);
+    const width: number = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(width).toBeLessThanOrEqual(390);
   });
 
-  test("Escape closes the sheet", async ({ page }) => {
-    await page.getByRole("button", { name: sheetTriggerName }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
+  test("the details link opens the student's page", async ({ page }) => {
+    await studentRow(page, FIRST_STUDENT.name)
+      .getByRole("link", { name: `פרטים עבור ${FIRST_STUDENT.name}` })
+      .click();
 
-    await page.keyboard.press("Escape");
-
-    await expect(page.getByRole("dialog")).toBeHidden();
-  });
-
-  test("the close button closes the sheet", async ({ page }) => {
-    await page.getByRole("button", { name: sheetTriggerName }).click();
-
-    await page.getByRole("dialog").getByRole("button", { name: "סגירה" }).click();
-
-    await expect(page.getByRole("dialog")).toBeHidden();
-  });
-
-  test("tapping the backdrop closes the sheet", async ({ page }) => {
-    await page.getByRole("button", { name: sheetTriggerName }).click();
-    await expect(page.getByRole("dialog")).toBeVisible();
-
-    await page.mouse.click(195, 30);
-
-    await expect(page.getByRole("dialog")).toBeHidden();
-  });
-
-  test("the page behind the open sheet cannot scroll", async ({ page }) => {
-    await page.getByRole("button", { name: sheetTriggerName }).click();
-
-    await expect(page.locator("body")).toHaveCSS("overflow", "hidden");
-
-    await page.keyboard.press("Escape");
-    await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
-  });
-
-  test("a link in the sheet opens that page", async ({ page }) => {
-    await page.getByRole("button", { name: sheetTriggerName }).click();
-
-    await page.getByRole("dialog").getByRole("link", { name: "הזנת ציון" }).click();
-
-    await expect(page).toHaveURL(ACTION_PATHS[2]);
-  });
-
-  test("each student has their own sheet", async ({ page }) => {
-    const second = DEMO_SEED.classes[0].students[1];
-
-    await page.getByRole("button", { name: `פעולות עבור ${second.name}` }).click();
-
-    const sheet = page.getByRole("dialog");
-    await expect(sheet).toHaveAccessibleName(`פעולות עבור ${second.name}`);
-    await expect(sheet.getByRole("link", { name: "מטלה חדשה" })).toBeVisible();
+    await expect(page).toHaveURL(ACTION_PATHS[0]);
   });
 });
 

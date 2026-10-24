@@ -20,16 +20,28 @@ export const signInAs = async (request: APIRequestContext, seed: TSeedTeacher): 
   expect(login.status()).toBe(200);
 };
 
+// The dev server closes idle keep-alive connections after about 5 seconds. A test that waits longer
+// between two API calls can reuse a connection that is already closed, which fails with ECONNRESET.
+// Only for reads (GET): sending a read again is safe.
+const getWithRetry = async (request: APIRequestContext, url: string): Promise<APIResponse> => {
+  try {
+    return await request.get(url);
+  } catch (error: unknown) {
+    if (!String(error).includes("ECONNRESET")) throw error;
+    return request.get(url);
+  }
+};
+
 // The student list of the signed-in teacher.
 export const getStudentList = async (request: APIRequestContext): Promise<TStudent[]> => {
-  const response = await request.get("/api/students");
+  const response = await getWithRetry(request, "/api/students");
   expect(response.status()).toBe(200);
   return (await response.json()).students;
 };
 
 // The class list of the signed-in teacher.
 export const getClassList = async (request: APIRequestContext): Promise<TClass[]> => {
-  const response = await request.get("/api/classes");
+  const response = await getWithRetry(request, "/api/classes");
   expect(response.status()).toBe(200);
   return (await response.json()).classes;
 };

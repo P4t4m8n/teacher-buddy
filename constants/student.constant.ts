@@ -1,20 +1,15 @@
 import type { TStudentAction } from "@/types/student.type";
 
-// Hardcoded for now: these pages are built in the assignments feature.
+// The links of a student row. Delete is not here: it is a button, not a link.
 export const getStudentActions = (studentId: string): TStudentAction[] => [
   {
-    key: "new-assignment",
-    label: "מטלה חדשה",
-    href: `/students/${studentId}/assignments/new`,
+    key: "details",
+    label: "פרטים",
+    href: `/dashboard/students/${studentId}`,
   },
   {
-    key: "edit-assignment",
-    label: "עריכת מטלה",
-    href: `/students/${studentId}/assignments`,
-  },
-  {
-    key: "grade",
-    label: "הזנת ציון",
-    href: `/students/${studentId}/grade`,
+    key: "edit",
+    label: "עריכה",
+    href: `/dashboard/students/${studentId}/edit`,
   },
 ];

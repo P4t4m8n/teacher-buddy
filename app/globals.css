@@ -25,22 +25,9 @@ body {
   font-family: var(--font-heebo), Arial, Helvetica, sans-serif;
 }
 
-/* Keep the page behind an open bottom sheet from scrolling. */
+/* Keep the page behind an open modal from scrolling. */
 body:has(dialog[open]) {
   overflow: hidden;
-}
-
-@keyframes bottom-sheet-in {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-.bottom-sheet[open] {
-  animation: bottom-sheet-in 200ms ease-out;
 }
 
 @keyframes modal-in {
@@ -59,7 +46,6 @@ body:has(dialog[open]) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .bottom-sheet[open],
   .modal[open] {
     animation: none;
   }

@@ -157,12 +157,13 @@ All ids are UUID v7. A class that still has students cannot be deleted.
 ```
 app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/auth        Sign-in page
-  (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading)
+  (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading); each row links to the student page and to edit, and has a delete button with a confirmation
+  (root)/dashboard/students/[id]   Student details page (a missing student, another teacher's or a malformed id all show the same not-found page)
   api/auth/...       Auth endpoints
   api/students       Students endpoints (list, create, and /[id]: details, delete)
   api/classes        Classes endpoint
 components/          UI components, grouped by feature (auth, dashboard, students, ui)
-hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useBottomSheet, useModal, useDisclosure)
+hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useDeleteStudent, useModal, useDisclosure)
 services/            Server services (auth.service.ts) and client API services
 schemas/             zod schemas
 types/               Shared TypeScript types

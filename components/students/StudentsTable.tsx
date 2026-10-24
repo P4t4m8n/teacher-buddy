@@ -26,11 +26,7 @@ export default function StudentsTable({ students }: TStudentsTableProps) {
     >
       <table className="w-full border-collapse">
         <TableHead />
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-          {students.map((student: TStudent) => (
-            <TableRow key={student.id} student={student} />
-          ))}
-        </tbody>
+        <TableBody students={students} />
       </table>
     </div>
   );
@@ -60,6 +56,16 @@ const TableHead = () => {
   );
 };
 
+const TableBody = ({ students }: { students: TStudent[] }) => {
+  return (
+    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+      {students.map((student: TStudent) => (
+        <TableRow key={student.id} student={student} />
+      ))}
+    </tbody>
+  );
+};
+
 const TableRow = ({ student }: { student: TStudent }) => {
   return (
     <tr
@@ -79,7 +85,7 @@ const TableRow = ({ student }: { student: TStudent }) => {
             {/* On narrow screens the phone moves under the name, to save a column. */}
             <span
               dir="ltr"
-              className="inline-block text-xs text-slate-500 md:hidden dark:text-slate-400"
+              className="inline-block whitespace-nowrap text-xs text-slate-500 md:hidden dark:text-slate-400"
             >
               {student.phone}
             </span>

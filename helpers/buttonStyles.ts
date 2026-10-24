@@ -1,4 +1,4 @@
-export type TButtonVariant = "primary" | "secondary";
+export type TButtonVariant = "primary" | "secondary" | "danger";
 export type TButtonSize = "sm" | "md";
 
 const BASE_CLASSES =
@@ -9,6 +9,8 @@ const VARIANT_CLASSES: Record<TButtonVariant, string> = {
     "bg-indigo-600 text-white shadow-sm hover:bg-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400",
   secondary:
     "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800",
+  danger:
+    "bg-red-600 text-white shadow-sm hover:bg-red-500 dark:bg-red-500 dark:hover:bg-red-400",
 };
 
 const SIZE_CLASSES: Record<TButtonSize, string> = {

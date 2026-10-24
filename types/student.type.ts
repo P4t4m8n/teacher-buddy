@@ -33,7 +33,7 @@ export type TDeleteStudentResponse = {
 };
 
 export type TStudentAction = {
-  key: "new-assignment" | "edit-assignment" | "grade";
+  key: "details" | "edit";
   label: string;
   href: string;
 };

@@ -1,4 +1,4 @@
-import { BottomSheet } from "@/components/ui/BottomSheet";
+import DeleteStudentButton from "@/components/students/DeleteStudentButton";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { getStudentActions } from "@/constants/student.constant";
 import type { TStudent, TStudentAction } from "@/types/student.type";
@@ -11,37 +11,18 @@ export default function StudentActions({ student }: TStudentActionsProps) {
   const actions: TStudentAction[] = getStudentActions(student.id);
 
   return (
-    <>
-      <div className="hidden items-center justify-end gap-2 md:flex">
-        {actions.map((action: TStudentAction) => (
-          <LinkButton
-            key={action.key}
-            href={action.href}
-            variant={action.key === "new-assignment" ? "primary" : "secondary"}
-            size="sm"
-            aria-label={`${action.label} עבור ${student.name}`}
-          >
-            {action.label}
-          </LinkButton>
-        ))}
-      </div>
-
-      <div className="flex justify-end md:hidden">
-        <BottomSheet
-          triggerLabel="פעולות"
-          title={`פעולות עבור ${student.name}`}
+    <div className="flex flex-wrap items-center justify-end gap-2">
+      {actions.map((action: TStudentAction) => (
+        <LinkButton
+          key={action.key}
+          href={action.href}
+          size="sm"
+          aria-label={`${action.label} עבור ${student.name}`}
         >
-          <ul className="flex flex-col gap-2">
-            {actions.map((action: TStudentAction) => (
-              <li key={action.key}>
-                <LinkButton href={action.href} className="w-full justify-start">
-                  {action.label}
-                </LinkButton>
-              </li>
-            ))}
-          </ul>
-        </BottomSheet>
-      </div>
-    </>
+          {action.label}
+        </LinkButton>
+      ))}
+      <DeleteStudentButton student={student} />
+    </div>
   );
 }
