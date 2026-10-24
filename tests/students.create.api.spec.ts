@@ -210,14 +210,34 @@ test.describe("POST /api/students: creating", () => {
     expect(student.phone).toBe(phone);
   });
 
-  test("stores the phone exactly as typed", async ({ request }) => {
+  test("saves the phone in one format, however it was typed", async ({ request }) => {
     const { first } = await getWriteClasses(request);
+    const digits = randomDigits(7);
+    const cases: [string, string][] = [
+      [`050${digits}`, `050-${digits}`],
+      [`050-${digits}`, `050-${digits}`],
+      [`072${digits}`, `072-${digits}`],
+      [`03${digits}`, `03-${digits}`],
+      [`03-${digits}`, `03-${digits}`],
+      [`  050${digits}  `, `050-${digits}`],
+    ];
 
-    for (const phone of [`050${randomDigits(7)}`, `03-${randomDigits(7)}`, `072${randomDigits(7)}`]) {
-      const response = await createStudent(request, { name: uniqueName(), phone, classId: first.id });
-      expect(response.status(), phone).toBe(201);
-      expect((await response.json()).student.phone).toBe(phone);
+    for (const [typed, saved] of cases) {
+      const response = await createStudent(request, { name: uniqueName(), phone: typed, classId: first.id });
+      expect(response.status(), typed).toBe(201);
+      expect((await response.json()).student.phone, typed).toBe(saved);
     }
+  });
+
+  test("the list shows the saved format of a phone typed without a hyphen", async ({ request }) => {
+    const { first } = await getWriteClasses(request);
+    const name = uniqueName();
+    const digits = randomDigits(7);
+
+    await createStudent(request, { name, phone: `050${digits}`, classId: first.id });
+
+    const found = (await getStudentList(request)).find((student) => student.name === name);
+    expect(found?.phone).toBe(`050-${digits}`);
   });
 
   test("accepts the shortest and the longest name", async ({ request }) => {

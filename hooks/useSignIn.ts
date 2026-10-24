@@ -10,9 +10,6 @@ import type { TApiFieldErrors } from "@/types/api.type";
 import type { TSignInDto } from "@/types/auth.type";
 import ApiError from "@/services/ApiError.client";
 
-const INVALID_CREDENTIALS_TEXT = "שם או תעודת זהות שגויים";
-const GENERIC_ERROR_TEXT = "אירעה שגיאה, נסו שוב מאוחר יותר";
-
 export const useSignIn = () => {
   const router = useRouter();
   const [isPending, setIsPending] = useState<boolean>(false);
@@ -30,15 +27,12 @@ export const useSignIn = () => {
       router.refresh();
     } catch (error: unknown) {
       setIsPending(false);
-      if (error instanceof ApiError && error.status === 400 && error.fields) {
-        setFieldErrors(error.fields);
+      const { status, message, fields } = ApiError.from(error);
+      if (status === 400 && fields) {
+        setFieldErrors(fields);
         return;
       }
-      if (error instanceof ApiError && error.status === 401) {
-        setErrorMessage(INVALID_CREDENTIALS_TEXT);
-        return;
-      }
-      setErrorMessage(GENERIC_ERROR_TEXT);
+      setErrorMessage(message);
     }
   };
 

@@ -115,7 +115,7 @@ One-time setup for the e2e tests:
 | `GET /api/students` | session | `200` with `{ students: [{ id, name, phone, class: { id, name } }] }`, sorted by name. Only the signed-in teacher's students; `401` otherwise |
 | `POST /api/students` | session | Body `{ name, phone, classId }`. `201` with `{ student }` (same shape as the list items). `400` with field errors, `401`, `404` if the class does not exist or is not the teacher's, `409` if the teacher already has a student with the same name and phone |
 
-Validation for `POST /api/students`: the name is trimmed, 2-60 characters, letters, spaces, apostrophes and hyphens only. The phone is an Israeli number, trimmed, with an optional hyphen after the area code (`050-1234567`, `0501234567` and `03-1234567` are valid) and is stored exactly as typed. Two phones with the same digits count as the same phone when checking for duplicates.
+Validation for `POST /api/students`: the name is trimmed, 2-60 characters, letters, spaces, apostrophes and hyphens only. The phone is an Israeli number, trimmed, accepted with or without the hyphen (`050-1234567`, `0501234567`, `03-1234567` and `031234567` are all valid). It is saved in one format: `xxx-xxxxxxx` for 10 digits (`050-1234567`) and `xx-xxxxxxx` for 9-digit landlines (`03-1234567`), so the same phone is always the same text. A phone with the same digits as an existing one counts as the same phone when checking for duplicates.
 
 The teacher id always comes from the verified session, never from the request, so a teacher cannot read another teacher's students or add a student to another teacher's class.
 

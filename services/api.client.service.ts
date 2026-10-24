@@ -1,3 +1,4 @@
+import { ERROR_MESSAGES } from "@/constants/error.constant";
 import type { TApiErrorBody } from "@/types/api.type";
 import ApiError from "./ApiError.client";
 
@@ -11,6 +12,15 @@ type TApiService = {
   buildQuery(filter: Record<string, unknown>): string;
 };
 type TMethod = "GET" | "POST" | "PUT" | "DELETE";
+
+// An error body is JSON from API, but a proxy or a crashed server can answer with an HTML page.
+const readErrorBody = async (res: Response): Promise<TApiErrorBody | null> => {
+  try {
+    return (await res.json()) as TApiErrorBody;
+  } catch {
+    return null;
+  }
+};
 
 const ajax = async <T>(
   endpoint: string,
@@ -39,11 +49,17 @@ const ajax = async <T>(
     endpoint += `?${queryParams.toString()}`;
   }
 
-  const res = await fetch(url, options);
+  let res: Response;
+  try {
+    res = await fetch(url, options);
+  } catch {
+    // The request never got an answer: the connection is down or the server is unreachable.
+    throw new ApiError(ERROR_MESSAGES.network, 0);
+  }
 
   if (!res.ok) {
-    const body: TApiErrorBody = await res.json();
-    throw new ApiError(body.error, res.status, body.fields);
+    const body: TApiErrorBody | null = await readErrorBody(res);
+    throw new ApiError(body?.error ?? ERROR_MESSAGES.internal, res.status, body?.fields);
   }
 
   return (await res.json()) as T;

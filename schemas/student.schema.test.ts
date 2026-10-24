@@ -55,6 +55,25 @@ describe("createStudentSchema: valid input", () => {
       expect(fieldsWith({ phone })).toEqual([]);
     },
   );
+
+  it.each([
+    ["a mobile without a hyphen", "0501234567", "050-1234567"],
+    ["a mobile with a hyphen", "050-1234567", "050-1234567"],
+    ["a 07x number without a hyphen", "0721234567", "072-1234567"],
+    ["a landline without a hyphen", "031234567", "03-1234567"],
+    ["a landline with a hyphen", "03-1234567", "03-1234567"],
+    ["a phone with spaces around it", "  0501234567  ", "050-1234567"],
+  ])("saves %s in one format", (_label, phone, expected) => {
+    expect(createStudentSchema.parse({ ...valid, phone }).phone).toBe(expected);
+  });
+
+  it("saves the same phone as the same text, however it was typed", () => {
+    const saved = ["0501234567", "050-1234567", " 050-1234567 "].map(
+      (phone) => createStudentSchema.parse({ ...valid, phone }).phone,
+    );
+
+    expect(new Set(saved).size).toBe(1);
+  });
 });
 
 describe("createStudentSchema: invalid name", () => {

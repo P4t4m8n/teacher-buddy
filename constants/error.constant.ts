@@ -10,4 +10,6 @@ export const ERROR_MESSAGES = {
   classNotFound: "הכיתה לא נמצאה",
   studentExists: "תלמיד בשם הזה ועם אותו מספר טלפון כבר קיים",
   internal: "אירעה שגיאה בשרת, נסו שוב מאוחר יותר",
+  // Only used by the client, when the request never got an answer from the server.
+  network: "לא ניתן להתחבר לשרת, בדקו את החיבור ונסו שוב",
 } as const;
