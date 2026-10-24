@@ -4,9 +4,14 @@ import { Button } from "@/components/ui/Button";
 import { FormField } from "@/components/ui/FormField";
 import { useSignIn } from "@/hooks/useSignIn";
 
-export const SignInForm = () => {
-  const { isPending, errorMessage, fieldErrors, handleSubmit, handleDemoSignIn } =
-    useSignIn();
+export default function SignInForm() {
+  const {
+    isPending,
+    errorMessage,
+    fieldErrors,
+    handleSubmit,
+    handleDemoSignIn,
+  } = useSignIn();
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
@@ -54,4 +59,4 @@ export const SignInForm = () => {
       </Button>
     </form>
   );
-};
+}

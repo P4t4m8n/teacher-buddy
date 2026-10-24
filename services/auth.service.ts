@@ -3,14 +3,16 @@ import { verify, hash } from "@node-rs/argon2";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { SESSION_COOKIE } from "@/constants/auth.constant";
+import {
+  SESSION_COOKIE,
+  INVALID_CREDENTIALS_MESSAGE,
+} from "@/constants/auth.constant";
 import { prisma } from "@/lib/db";
 import type { TSessionTeacher, TSignInDto } from "@/types/auth.type";
 
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
 
-export const INVALID_CREDENTIALS_MESSAGE = "Invalid credentials";
-// Valid hash used only so an unknown name costs the same time as a wrong ID number.
+// Valid hash used only so an unknown name costs the same time as a wrong ID number to prevent timing attacks.
 const DUMMY_HASH: Promise<string> = hash("dummy-id-number");
 
 type TCookieOptions = {
@@ -77,8 +79,7 @@ export const signOut = async (): Promise<void> => {
   });
 };
 
-// Returns the signed-in teacher, or null when the session is missing, invalid, expired
-// or the teacher no longer exists. A missing JWT_SECRET is a config error and throws.
+//  A missing JWT_SECRET is a config error and throws.
 export const getSessionTeacher = async (): Promise<TSessionTeacher | null> => {
   const cookieStore = await cookies();
   const token: string | undefined = cookieStore.get(SESSION_COOKIE)?.value;
@@ -88,7 +89,9 @@ export const getSessionTeacher = async (): Promise<TSessionTeacher | null> => {
 
   let teacherId: unknown;
   try {
-    const { payload } = await jwtVerify(token, secret, { algorithms: ["HS256"] });
+    const { payload } = await jwtVerify(token, secret, {
+      algorithms: ["HS256"],
+    });
     teacherId = payload.teacherId;
   } catch {
     return null;

@@ -7,8 +7,7 @@ type TStudentActionsProps = {
   student: TStudent;
 };
 
-// Wide screens: the links sit in the row. Narrow screens: one button opens a bottom sheet with the same links.
-export const StudentActions = ({ student }: TStudentActionsProps) => {
+export default function StudentActions({ student }: TStudentActionsProps) {
   const actions: TStudentAction[] = getStudentActions(student.id);
 
   return (
@@ -28,7 +27,10 @@ export const StudentActions = ({ student }: TStudentActionsProps) => {
       </div>
 
       <div className="flex justify-end md:hidden">
-        <BottomSheet triggerLabel="פעולות" title={`פעולות עבור ${student.name}`}>
+        <BottomSheet
+          triggerLabel="פעולות"
+          title={`פעולות עבור ${student.name}`}
+        >
           <ul className="flex flex-col gap-2">
             {actions.map((action: TStudentAction) => (
               <li key={action.key}>
@@ -42,4 +44,4 @@ export const StudentActions = ({ student }: TStudentActionsProps) => {
       </div>
     </>
   );
-};
+}

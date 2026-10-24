@@ -1,4 +1,4 @@
-import { StudentActions } from "@/components/students/StudentActions";
+import StudentActions from "@/components/students/StudentActions";
 import type { TStudent } from "@/types/student.type";
 
 type TStudentsTableProps = {
@@ -6,9 +6,9 @@ type TStudentsTableProps = {
 };
 
 const HEADER_CELL_CLASSES =
-  "px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400";
+  "sticky top-0 z-10 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400";
 
-export const StudentsTable = ({ students }: TStudentsTableProps) => {
+export default function StudentsTable({ students }: TStudentsTableProps) {
   if (students.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
@@ -18,9 +18,14 @@ export const StudentsTable = ({ students }: TStudentsTableProps) => {
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <div
+      role="region"
+      aria-label="רשימת התלמידים"
+      tabIndex={0}
+      className="min-h-0 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-sm focus-visible:outline-2 focus-visible:outline-indigo-500 dark:border-slate-800 dark:bg-slate-900"
+    >
       <table className="w-full border-collapse">
-        <thead className="bg-slate-50 dark:bg-slate-800/50">
+        <thead>
           <tr>
             <th scope="col" className={`${HEADER_CELL_CLASSES} text-start`}>
               שם
@@ -28,7 +33,10 @@ export const StudentsTable = ({ students }: TStudentsTableProps) => {
             <th scope="col" className={`${HEADER_CELL_CLASSES} text-start`}>
               כיתה
             </th>
-            <th scope="col" className={`${HEADER_CELL_CLASSES} hidden text-start md:table-cell`}>
+            <th
+              scope="col"
+              className={`${HEADER_CELL_CLASSES} hidden text-start md:table-cell`}
+            >
               טלפון
             </th>
             <th scope="col" className={`${HEADER_CELL_CLASSES} text-end`}>
@@ -38,7 +46,10 @@ export const StudentsTable = ({ students }: TStudentsTableProps) => {
         </thead>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
           {students.map((student: TStudent) => (
-            <tr key={student.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
+            <tr
+              key={student.id}
+              className="transition hover:bg-slate-50 dark:hover:bg-slate-800/40"
+            >
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <span
@@ -50,7 +61,10 @@ export const StudentsTable = ({ students }: TStudentsTableProps) => {
                   <div className="min-w-0">
                     <div className="font-medium">{student.name}</div>
                     {/* On narrow screens the phone moves under the name, to save a column. */}
-                    <span dir="ltr" className="inline-block text-xs text-slate-500 md:hidden dark:text-slate-400">
+                    <span
+                      dir="ltr"
+                      className="inline-block text-xs text-slate-500 md:hidden dark:text-slate-400"
+                    >
                       {student.phone}
                     </span>
                   </div>
@@ -75,4 +89,4 @@ export const StudentsTable = ({ students }: TStudentsTableProps) => {
       </table>
     </div>
   );
-};
+}

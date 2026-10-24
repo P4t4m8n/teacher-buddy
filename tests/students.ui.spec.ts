@@ -194,3 +194,83 @@ test.describe("students table: narrow screen", () => {
     await expect(sheet.getByRole("link", { name: "מטלה חדשה" })).toBeVisible();
   });
 });
+
+test.describe("students table: scrolling", () => {
+  const studentsRegion = (page: Page) => page.getByRole("region", { name: "רשימת התלמידים" });
+
+  const pageMetrics = (page: Page) =>
+    page.evaluate(() => ({
+      scrollHeight: document.documentElement.scrollHeight,
+      innerHeight: window.innerHeight,
+      scrollY: window.scrollY,
+    }));
+
+  test.beforeEach(async ({ page }) => {
+    await signInAs(page, DEMO_SEED);
+  });
+
+  const SHORT_SCREENS = [
+    { label: "wide", viewport: { width: 1280, height: 500 } },
+    { label: "narrow", viewport: { width: 390, height: 700 } },
+  ];
+
+  for (const { label, viewport } of SHORT_SCREENS) {
+    test(`${label} short screen: only the student rows scroll, not the page`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await gotoHydrated(page, DASHBOARD_URL);
+      const region = studentsRegion(page);
+
+      // The page itself fits the screen.
+      const before = await pageMetrics(page);
+      expect(before.scrollHeight).toBeLessThanOrEqual(before.innerHeight);
+
+      // The list is taller than its box, so it scrolls inside.
+      const sizes = await region.evaluate((element) => ({
+        scrollHeight: element.scrollHeight,
+        clientHeight: element.clientHeight,
+      }));
+      expect(sizes.scrollHeight).toBeGreaterThan(sizes.clientHeight);
+
+      // Scrolling over the list moves the rows and leaves the page where it is.
+      await expect(page.locator("tbody tr").first()).toBeInViewport();
+      await region.hover();
+      await page.mouse.wheel(0, 3000);
+      await expect(page.locator("tbody tr").last()).toBeInViewport();
+      await expect(page.locator("tbody tr").first()).not.toBeInViewport();
+      expect((await pageMetrics(page)).scrollY).toBe(0);
+
+      // The page header and the table header stay put while the rows scroll.
+      await expect(page.getByRole("button", { name: "התנתקות" })).toBeInViewport();
+      const regionBox = await region.boundingBox();
+      const headerBox = await page.getByRole("columnheader", { name: "שם" }).boundingBox();
+      expect(Math.abs(headerBox!.y - regionBox!.y)).toBeLessThanOrEqual(2);
+    });
+  }
+
+  test("tall screen: the list is only as tall as its rows and does not scroll", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 1600 });
+    await gotoHydrated(page, DASHBOARD_URL);
+    const region = studentsRegion(page);
+
+    const sizes = await region.evaluate((element) => ({
+      scrollHeight: element.scrollHeight,
+      clientHeight: element.clientHeight,
+    }));
+    expect(sizes.scrollHeight).toBeLessThanOrEqual(sizes.clientHeight);
+
+    const box = await region.boundingBox();
+    expect(box!.y + box!.height).toBeLessThan(1600 - 100);
+  });
+
+  test("the scrollable list can be focused, so the keyboard can scroll it", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 500 });
+    await gotoHydrated(page, DASHBOARD_URL);
+    const region = studentsRegion(page);
+
+    await region.focus();
+    await page.keyboard.press("End");
+
+    await expect(page.locator("tbody tr").last()).toBeInViewport();
+    expect((await pageMetrics(page)).scrollY).toBe(0);
+  });
+});

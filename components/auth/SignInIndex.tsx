@@ -1,7 +1,7 @@
-import { SignInForm } from "@/components/auth/SignInForm";
+import SignInForm from "@/components/auth/SignInForm";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 
-export const SignInPage = () => {
+export default function SignInIndex() {
   return (
     <main className="flex flex-1 items-center justify-center bg-linear-to-b from-indigo-50 via-slate-50 to-slate-50 p-6 dark:from-slate-900 dark:via-slate-950 dark:to-slate-950">
       <div className="w-full max-w-md">
@@ -18,4 +18,4 @@ export const SignInPage = () => {
       </div>
     </main>
   );
-};
+}

@@ -7,16 +7,20 @@ import type {
 
 const AUTH_ENDPOINT = "auth/";
 
+const signIn = (dto: TSignInDto): Promise<TSignInResponse> => {
+  return apiClientService.post<TSignInDto, TSignInResponse>(
+    `${AUTH_ENDPOINT}login`,
+    dto,
+  );
+};
+
+const signOut = (): Promise<TSignOutResponse> => {
+  return apiClientService.post<undefined, TSignOutResponse>(
+    `${AUTH_ENDPOINT}logout`,
+  );
+};
+
 export const authClientService = {
-  signIn(dto: TSignInDto): Promise<TSignInResponse> {
-    return apiClientService.post<TSignInDto, TSignInResponse>(
-      `${AUTH_ENDPOINT}login`,
-      dto,
-    );
-  },
-  signOut(): Promise<TSignOutResponse> {
-    return apiClientService.post<undefined, TSignOutResponse>(
-      `${AUTH_ENDPOINT}logout`,
-    );
-  },
+  signIn,
+  signOut,
 };

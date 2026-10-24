@@ -2,7 +2,7 @@ export type TButtonVariant = "primary" | "secondary";
 export type TButtonSize = "sm" | "md";
 
 const BASE_CLASSES =
-  "inline-flex items-center justify-center rounded-lg font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-60";
+  "hover:cursor-pointer inline-flex items-center justify-center rounded-lg font-semibold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-60";
 
 const VARIANT_CLASSES: Record<TButtonVariant, string> = {
   primary:

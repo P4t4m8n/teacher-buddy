@@ -6,6 +6,7 @@ import { ApiError } from "@/services/api.client.service";
 import { authClientService } from "@/services/auth.client.service";
 import { DASHBOARD_PAGE } from "@/constants/auth.constant";
 import { DEMO_TEACHER } from "@/constants/demo.constant";
+
 import type { TApiFieldErrors } from "@/types/api.type";
 import type { TSignInDto } from "@/types/auth.type";
 
@@ -42,11 +43,12 @@ export const useSignIn = () => {
   };
 
   const handleSubmit = async (
-    event: React.SubmitEvent<HTMLFormElement>,
+    e: React.SubmitEvent<HTMLFormElement>,
   ): Promise<void> => {
-    event.preventDefault();
+    e.preventDefault();
 
-    const form = new FormData(event.currentTarget);
+    const form = new FormData(e.currentTarget);
+    
     await signIn({
       name: String(form.get("name") ?? ""),
       idNumber: String(form.get("idNumber") ?? ""),

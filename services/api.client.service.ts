@@ -1,19 +1,7 @@
-import type { TApiErrorBody, TApiFieldErrors } from "@/types/api.type";
+import type { TApiErrorBody } from "@/types/api.type";
+import ApiError from "./ApiError.client";
 
 const BASE_URL = "/api/";
-
-// Minimal placeholder so callers can read the status and field errors; to be replaced by the error service.
-export class ApiError extends Error {
-  status: number;
-  fields?: TApiFieldErrors;
-
-  constructor(message: string, status: number, fields?: TApiFieldErrors) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-    this.fields = fields;
-  }
-}
 
 type TApiService = {
   get<T>(endpoint: string, data?: unknown): Promise<T>;
@@ -27,7 +15,7 @@ type TMethod = "GET" | "POST" | "PUT" | "DELETE";
 const ajax = async <T>(
   endpoint: string,
   method: TMethod = "GET",
-  data: unknown = null
+  data: unknown = null,
 ): Promise<T> => {
   const url = `${BASE_URL}${endpoint}`;
   const options: RequestInit = {

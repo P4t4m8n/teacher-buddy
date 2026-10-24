@@ -2,7 +2,7 @@ import {
   getButtonClasses,
   type TButtonSize,
   type TButtonVariant,
-} from "@/components/ui/buttonStyles";
+} from "@/helpers/buttonStyles";
 
 type TButtonProps = {
   variant?: TButtonVariant;

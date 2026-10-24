@@ -1,5 +1,5 @@
-import { SignInPage } from "@/components/auth/SignInPage";
+import SignInIndex from "@/components/auth/SignInIndex";
 
 export default function AuthPage() {
-  return <SignInPage />;
+  return <SignInIndex />;
 }

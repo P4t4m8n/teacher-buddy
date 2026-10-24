@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/Button";
 import { useSignOut } from "@/hooks/useSignOut";
 
-export const LogoutButton = () => {
+export default function LogoutButton() {
   const { isPending, errorMessage, handleSignOut } = useSignOut();
 
   return (
@@ -18,4 +18,4 @@ export const LogoutButton = () => {
       </Button>
     </div>
   );
-};
+}
