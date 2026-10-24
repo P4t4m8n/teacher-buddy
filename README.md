@@ -119,6 +119,12 @@ Validation for `POST /api/students`: the name is trimmed, 2-60 characters, lette
 
 The teacher id always comes from the verified session, never from the request, so a teacher cannot read another teacher's students or add a student to another teacher's class.
 
+### Classes API
+
+| Method and path | Auth | Description |
+|---|---|---|
+| `GET /api/classes` | session | `200` with `{ classes: [{ id, name }] }`, sorted by name. All of the signed-in teacher's classes, including classes with no students (the add-student form needs them); `401` otherwise |
+
 ### Error responses
 
 Every error the API returns has the same shape, and its message is in Hebrew: `{ "error": "<Hebrew message>" }`, plus `"fields": { "<field>": ["<Hebrew message>"] }` for a `400` validation error.
@@ -150,6 +156,7 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading)
   api/auth/...       Auth endpoints
   api/students       Students endpoint
+  api/classes        Classes endpoint
 components/          UI components, grouped by feature (auth, dashboard, students, ui)
 hooks/               Client-side state and logic (useSignIn, useSignOut, useBottomSheet)
 services/            Server services (auth.service.ts) and client API services
