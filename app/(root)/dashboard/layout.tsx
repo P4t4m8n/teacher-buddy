@@ -3,5 +3,9 @@ export default function MainLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <>
+      <main>{children}</main>
+    </>
+  );
 }

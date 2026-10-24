@@ -1,9 +1,8 @@
-import LogoutButton from "@/components/auth/LogoutButton";
 import AddStudentButton from "@/components/students/AddStudentButton";
-import  StudentsTable  from "@/components/students/StudentsTable";
-import { BrandLogo } from "@/components/ui/BrandLogo";
+import StudentsTable from "@/components/students/StudentsTable";
 import type { TClass } from "@/types/class.type";
 import type { TStudent } from "@/types/student.type";
+import DashboardHeader from "./DashboardHeader";
 
 type TDashboardPageProps = {
   teacherName: string;
@@ -18,17 +17,7 @@ export default function DashboardIndex({
 }: TDashboardPageProps) {
   return (
     <div className="flex h-dvh flex-col">
-      <header className="shrink-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          <BrandLogo />
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              {teacherName}
-            </span>
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
+      <DashboardHeader teacherName={teacherName} />
       <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
         <h1 className="shrink-0 text-2xl font-bold tracking-tight">לוח בקרה</h1>
         <section
