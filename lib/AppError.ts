@@ -34,6 +34,10 @@ export class AppError extends Error {
     return new AppError(ERROR_MESSAGES.classNotFound, 404);
   }
 
+  static studentNotFound(): AppError {
+    return new AppError(ERROR_MESSAGES.studentNotFound, 404);
+  }
+
   static studentExists(): AppError {
     return new AppError(ERROR_MESSAGES.studentExists, 409);
   }

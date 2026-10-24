@@ -17,7 +17,6 @@ export default function DashboardIndex({
   classes,
 }: TDashboardPageProps) {
   return (
-    // h-dvh fixes the page to the viewport, so only the students list scrolls, never the whole page.
     <div className="flex h-dvh flex-col">
       <header className="shrink-0 border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">

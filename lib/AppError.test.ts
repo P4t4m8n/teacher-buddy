@@ -17,6 +17,7 @@ describe("AppError", () => {
     ["invalidCredentials", AppError.invalidCredentials(), 401, ERROR_MESSAGES.invalidCredentials],
     ["invalidJson", AppError.invalidJson(), 400, ERROR_MESSAGES.invalidJson],
     ["classNotFound", AppError.classNotFound(), 404, ERROR_MESSAGES.classNotFound],
+    ["studentNotFound", AppError.studentNotFound(), 404, ERROR_MESSAGES.studentNotFound],
     ["studentExists", AppError.studentExists(), 409, ERROR_MESSAGES.studentExists],
   ])("%s has the right status and its Hebrew message", (_name, error, status, message) => {
     expect(error.status).toBe(status);

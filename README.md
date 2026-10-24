@@ -116,10 +116,12 @@ The tests that create students use two dedicated teachers (`נעמה שרון` a
 |---|---|---|
 | `GET /api/students` | session | `200` with `{ students: [{ id, name, phone, class: { id, name } }] }`, sorted by name. Only the signed-in teacher's students; `401` otherwise |
 | `POST /api/students` | session | Body `{ name, phone, classId }`. `201` with `{ student }` (same shape as the list items). `400` with field errors, `401`, `404` if the class does not exist or is not the teacher's, `409` if the teacher already has a student with the same name and phone |
+| `GET /api/students/[id]` | session | `200` with `{ student: { id, name, phone, class: { id, name } } }`. `401`, or `404` if there is no such student, it belongs to another teacher, or the id is not a uuid (all three answer the same, so ids cannot be probed) |
+| `DELETE /api/students/[id]` | session | `200` with `{ id }`. Deletes the student and their assignments for good (the database cascades the delete). `401`, or `404` in the same cases as above |
 
 Validation for `POST /api/students`: the name is trimmed, 2-60 characters, letters, spaces, apostrophes and hyphens only. The phone is an Israeli number, trimmed, accepted with or without the hyphen (`050-1234567`, `0501234567`, `03-1234567` and `031234567` are all valid). It is saved in one format: `xxx-xxxxxxx` for 10 digits (`050-1234567`) and `xx-xxxxxxx` for 9-digit landlines (`03-1234567`), so the same phone is always the same text. A teacher cannot have two students with the same name and phone: the database has a unique index on `(teacherId, name, phone)`, so this also holds when two identical requests arrive at the same moment (one is created, the others get `409`). Two different teachers can each have a student with the same name and phone.
 
-The teacher id always comes from the verified session, never from the request, so a teacher cannot read another teacher's students or add a student to another teacher's class.
+The teacher id always comes from the verified session, never from the request, so a teacher cannot read, delete or add to another teacher's students or classes.
 
 ### Classes API
 
@@ -157,7 +159,7 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/auth        Sign-in page
   (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading)
   api/auth/...       Auth endpoints
-  api/students       Students endpoint
+  api/students       Students endpoints (list, create, and /[id]: details, delete)
   api/classes        Classes endpoint
 components/          UI components, grouped by feature (auth, dashboard, students, ui)
 hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useBottomSheet, useModal, useDisclosure)

@@ -24,6 +24,14 @@ export type TCreateStudentResponse = {
   student: TStudent;
 };
 
+export type TGetStudentResponse = {
+  student: TStudent;
+};
+
+export type TDeleteStudentResponse = {
+  id: string;
+};
+
 export type TStudentAction = {
   key: "new-assignment" | "edit-assignment" | "grade";
   label: string;

@@ -1,7 +1,9 @@
 import { expect, type APIRequestContext, type APIResponse, type Page } from "@playwright/test";
 import { SignJWT } from "jose";
+import { Client } from "pg";
 import { DEMO_TEACHER } from "../constants/demo.constant";
 import type { TSeedTeacher } from "../prisma/seed-data";
+import type { TClass } from "../types/class.type";
 import type { TStudent } from "../types/student.type";
 
 // The demo teacher created by the seed.
@@ -24,6 +26,44 @@ export const getStudentList = async (request: APIRequestContext): Promise<TStude
   expect(response.status()).toBe(200);
   return (await response.json()).students;
 };
+
+// The class list of the signed-in teacher.
+export const getClassList = async (request: APIRequestContext): Promise<TClass[]> => {
+  const response = await request.get("/api/classes");
+  expect(response.status()).toBe(200);
+  return (await response.json()).classes;
+};
+
+// Direct access to the test database, for what the API cannot do yet (like creating assignments).
+const withTestDb = async <T>(run: (client: Client) => Promise<T>): Promise<T> => {
+  const url: string | undefined = process.env.DATABASE_URL_TEST;
+  if (!url) throw new Error("DATABASE_URL_TEST is required to run this test");
+
+  const client = new Client({ connectionString: url });
+  await client.connect();
+  try {
+    return await run(client);
+  } finally {
+    await client.end();
+  }
+};
+
+export const insertAssignment = (studentId: string): Promise<unknown> =>
+  withTestDb((client) =>
+    client.query(
+      `insert into "Assignment" (id, title, "dueDate", status, "studentId")
+       values (gen_random_uuid(), 'מטלת בדיקה', now(), 'TODO'::"AssignmentStatus", $1)`,
+      [studentId],
+    ),
+  );
+
+export const countAssignments = (studentId: string): Promise<number> =>
+  withTestDb(async (client) => {
+    const result = await client.query('select count(*)::int as count from "Assignment" where "studentId" = $1', [
+      studentId,
+    ]);
+    return result.rows[0].count as number;
+  });
 
 // Random values for tests that create data in the shared test database, so parallel tests and
 // repeated runs never collide.

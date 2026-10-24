@@ -8,6 +8,7 @@ export const ERROR_MESSAGES = {
   validation: "הנתונים שהוזנו אינם תקינים",
   invalidJson: "גוף הבקשה אינו תקין",
   classNotFound: "הכיתה לא נמצאה",
+  studentNotFound: "התלמיד לא נמצא",
   studentExists: "תלמיד בשם הזה ועם אותו מספר טלפון כבר קיים",
   internal: "אירעה שגיאה בשרת, נסו שוב מאוחר יותר",
   // Only used by the client, when the request never got an answer from the server.

@@ -13,6 +13,7 @@ describe("ERROR_MESSAGES", () => {
       "invalidJson",
       "network",
       "studentExists",
+      "studentNotFound",
       "unauthorized",
       "validation",
     ]);

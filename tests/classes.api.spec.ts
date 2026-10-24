@@ -1,19 +1,12 @@
-import { expect, test, type APIRequestContext } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { ERROR_MESSAGES } from "../constants/error.constant";
 import { DEMO_SEED, OTHER_SEED, WRITE_SEED, type TSeedTeacher } from "../prisma/seed-data";
-import type { TClass } from "../types/class.type";
-import { getStudentList, signInAs, signToken, UNKNOWN_TEACHER_ID } from "./helpers";
+import { getClassList, getStudentList, signInAs, signToken, UNKNOWN_TEACHER_ID } from "./helpers";
 
 const CLASSES_URL = "/api/classes";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const classNamesOf = (seed: TSeedTeacher): string[] => seed.classes.map(({ name }) => name);
-
-const getClassList = async (request: APIRequestContext): Promise<TClass[]> => {
-  const response = await request.get(CLASSES_URL);
-  expect(response.status()).toBe(200);
-  return (await response.json()).classes;
-};
 
 test.describe("GET /api/classes: authorization", () => {
   test("returns 401 without a session", async ({ request }) => {

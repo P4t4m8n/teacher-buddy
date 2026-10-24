@@ -4,21 +4,29 @@ import { AppError } from "@/lib/AppError";
 
 const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
+  findFirst: vi.fn(),
   create: vi.fn(),
+  deleteMany: vi.fn(),
   classFindFirst: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/db", () => ({
   prisma: {
-    student: { findMany: mocks.findMany, create: mocks.create },
+    student: {
+      findMany: mocks.findMany,
+      findFirst: mocks.findFirst,
+      create: mocks.create,
+      deleteMany: mocks.deleteMany,
+    },
     class: { findFirst: mocks.classFindFirst },
   },
 }));
 
-import { createStudent, getStudents } from "./student.service";
+import { createStudent, deleteStudent, getStudent, getStudents } from "./student.service";
 
 const TEACHER_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
+const STUDENT_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f70";
 
 // The thrown value must be an AppError with the right status and Hebrew message.
 const expectAppError = async (promise: Promise<unknown>, expected: AppError): Promise<void> => {
@@ -32,7 +40,9 @@ const expectAppError = async (promise: Promise<unknown>, expected: AppError): Pr
 
 beforeEach(() => {
   mocks.findMany.mockReset();
+  mocks.findFirst.mockReset();
   mocks.create.mockReset();
+  mocks.deleteMany.mockReset();
   mocks.classFindFirst.mockReset();
 });
 
@@ -192,5 +202,97 @@ describe("createStudent", () => {
     mocks.create.mockRejectedValue(new Error("database down"));
 
     await expect(createStudent(TEACHER_ID, dto)).rejects.toThrow("database down");
+  });
+});
+
+const NOT_UUIDS = ["", "abc", "1", "0198f0a2-7b3c", "../etc/passwd", "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5fzz", "null"];
+
+describe("getStudent", () => {
+  const student = {
+    id: STUDENT_ID,
+    name: "נועה לוי",
+    phone: "050-1234567",
+    class: { id: "c1", name: "ח'1" },
+  };
+
+  it("looks the student up by id AND teacher, so another teacher's student is not found", async () => {
+    mocks.findFirst.mockResolvedValue(student);
+
+    await getStudent(TEACHER_ID, STUDENT_ID);
+
+    expect(mocks.findFirst).toHaveBeenCalledTimes(1);
+    expect(mocks.findFirst.mock.calls[0][0].where).toEqual({ id: STUDENT_ID, teacherId: TEACHER_ID });
+  });
+
+  it("selects only the public fields and the class, never the teacher", async () => {
+    mocks.findFirst.mockResolvedValue(student);
+
+    await getStudent(TEACHER_ID, STUDENT_ID);
+
+    expect(mocks.findFirst.mock.calls[0][0].select).toEqual({
+      id: true,
+      name: true,
+      phone: true,
+      class: { select: { id: true, name: true } },
+    });
+  });
+
+  it("returns the student", async () => {
+    mocks.findFirst.mockResolvedValue(student);
+
+    expect(await getStudent(TEACHER_ID, STUDENT_ID)).toEqual(student);
+  });
+
+  it("throws a 404 student not found AppError when there is no such student for this teacher", async () => {
+    mocks.findFirst.mockResolvedValue(null);
+
+    await expectAppError(getStudent(TEACHER_ID, STUDENT_ID), AppError.studentNotFound());
+  });
+
+  it.each(NOT_UUIDS)("throws the same 404 for the id %j without querying the database", async (id) => {
+    await expectAppError(getStudent(TEACHER_ID, id), AppError.studentNotFound());
+
+    expect(mocks.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("lets database errors through for the route handler to handle", async () => {
+    mocks.findFirst.mockRejectedValue(new Error("database down"));
+
+    await expect(getStudent(TEACHER_ID, STUDENT_ID)).rejects.toThrow("database down");
+  });
+});
+
+describe("deleteStudent", () => {
+  it("deletes with ONE statement that matches the id AND the teacher", async () => {
+    mocks.deleteMany.mockResolvedValue({ count: 1 });
+
+    await deleteStudent(TEACHER_ID, STUDENT_ID);
+
+    expect(mocks.deleteMany).toHaveBeenCalledTimes(1);
+    expect(mocks.deleteMany).toHaveBeenCalledWith({ where: { id: STUDENT_ID, teacherId: TEACHER_ID } });
+  });
+
+  it("returns nothing when the student was deleted", async () => {
+    mocks.deleteMany.mockResolvedValue({ count: 1 });
+
+    await expect(deleteStudent(TEACHER_ID, STUDENT_ID)).resolves.toBeUndefined();
+  });
+
+  it("throws a 404 student not found AppError when nothing was deleted", async () => {
+    mocks.deleteMany.mockResolvedValue({ count: 0 });
+
+    await expectAppError(deleteStudent(TEACHER_ID, STUDENT_ID), AppError.studentNotFound());
+  });
+
+  it.each(NOT_UUIDS)("throws the same 404 for the id %j without touching the database", async (id) => {
+    await expectAppError(deleteStudent(TEACHER_ID, id), AppError.studentNotFound());
+
+    expect(mocks.deleteMany).not.toHaveBeenCalled();
+  });
+
+  it("lets database errors through for the route handler to handle", async () => {
+    mocks.deleteMany.mockRejectedValue(new Error("database down"));
+
+    await expect(deleteStudent(TEACHER_ID, STUDENT_ID)).rejects.toThrow("database down");
   });
 });
