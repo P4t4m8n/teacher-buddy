@@ -15,7 +15,6 @@ enum AssignmentStatus {
 model Teacher {
   id           String    @id @default(uuid(7)) @db.Uuid
   name         String    @unique
-  // Argon2 hash of the teacher's ID number (the login "password").
   passwordHash String
   classes      Class[]
   students     Student[]
@@ -37,12 +36,12 @@ model Student {
   phone       String
   teacherId   String       @db.Uuid
   teacher     Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  // A class that still has students cannot be deleted.
   classId     String       @db.Uuid
   class       Class        @relation(fields: [classId], references: [id], onDelete: Restrict)
   assignments Assignment[]
   createdAt   DateTime     @default(now())
 
+  @@unique([teacherId, name, phone])
   @@index([teacherId])
   @@index([classId])
 }
@@ -52,7 +51,6 @@ model Assignment {
   title     String
   dueDate   DateTime
   status    AssignmentStatus @default(TODO)
-  // Left null until the assignment has been graded.
   grade     Int?
   studentId String           @db.Uuid
   student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)

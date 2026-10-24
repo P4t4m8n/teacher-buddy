@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext, type APIResponse } from "@playwright/test";
 import { ERROR_MESSAGES } from "../constants/error.constant";
-import { DEMO_SEED, WRITE_SEED } from "../prisma/seed-data";
+import { DEMO_SEED, WRITE_OTHER_SEED, WRITE_SEED } from "../prisma/seed-data";
 import type { TStudent, TStudentClass } from "../types/student.type";
 import { getStudentList, signInAs, signToken, UNKNOWN_TEACHER_ID } from "./helpers";
 
@@ -383,5 +383,67 @@ test.describe("POST /api/students: duplicates", () => {
     const response = await createStudent(request, { name, phone, classId: second.id });
 
     expect(response.status()).toBe(409);
+  });
+
+  test("identical requests at the same moment: exactly one is created, the rest get 409", async ({
+    request,
+  }) => {
+    const { first } = await getWriteClasses(request);
+    const body = { name: uniqueName(), phone: uniquePhone(), classId: first.id };
+
+    const responses = await Promise.all(Array.from({ length: 8 }, () => createStudent(request, body)));
+
+    const statuses = responses.map((response) => response.status()).sort();
+    expect(statuses).toEqual([201, 409, 409, 409, 409, 409, 409, 409]);
+    expect((await namesIn(request)).filter((name) => name === body.name)).toHaveLength(1);
+  });
+
+  test("the same phone typed two ways at the same moment is still one student", async ({ request }) => {
+    const { first } = await getWriteClasses(request);
+    const name = uniqueName();
+    const digits = randomDigits(7);
+
+    const responses = await Promise.all([
+      createStudent(request, { name, phone: `050-${digits}`, classId: first.id }),
+      createStudent(request, { name, phone: `050${digits}`, classId: first.id }),
+      createStudent(request, { name, phone: `050-${digits}`, classId: first.id }),
+      createStudent(request, { name, phone: `050${digits}`, classId: first.id }),
+    ]);
+
+    const statuses = responses.map((response) => response.status()).sort();
+    expect(statuses).toEqual([201, 409, 409, 409]);
+    expect((await namesIn(request)).filter((studentName) => studentName === name)).toHaveLength(1);
+  });
+
+  test("different students at the same moment are all created", async ({ request }) => {
+    const { first } = await getWriteClasses(request);
+
+    const responses = await Promise.all(
+      Array.from({ length: 5 }, () =>
+        createStudent(request, { name: uniqueName(), phone: uniquePhone(), classId: first.id }),
+      ),
+    );
+
+    expect(responses.map((response) => response.status())).toEqual([201, 201, 201, 201, 201]);
+  });
+
+  test("two teachers can each have a student with the same name and phone", async ({
+    request,
+    playwright,
+    baseURL,
+  }) => {
+    const { first } = await getWriteClasses(request);
+    const second = await playwright.request.newContext({ baseURL });
+    await signInAs(second, WRITE_OTHER_SEED);
+    const secondClass: TStudentClass = (await getStudentList(second))[0].class;
+    const name = uniqueName();
+    const phone = uniquePhone();
+
+    const mine = await createStudent(request, { name, phone, classId: first.id });
+    const theirs = await createStudent(second, { name, phone, classId: secondClass.id });
+
+    expect(mine.status()).toBe(201);
+    expect(theirs.status()).toBe(201);
+    await second.dispose();
   });
 });

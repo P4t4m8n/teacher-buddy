@@ -16,7 +16,7 @@ Built as a home assignment; the UI is in Hebrew (RTL) and follows the system lig
 The sign-in page also has a **"כניסה עם מורה לדוגמה"** button that signs in with this teacher in one click.
 There is no registration flow, as the assignment allows. The teachers are created by the seed script (`npm run db:seed`).
 
-The seed also creates demo classes and students in Hebrew (4 classes and 10 students for `דנה כהן`). It adds a second teacher, `יוסי מזרחי` (ID number `111222333`) with one class and two students, so you can check that a teacher only sees their own students. A third teacher, `נעמה שרון` (ID number `444555666`), exists for the automated tests that create data. The seed data is in [`prisma/seed-data.ts`](./prisma/seed-data.ts).
+The seed also creates demo classes and students in Hebrew (4 classes and 10 students for `דנה כהן`). It adds a second teacher, `יוסי מזרחי` (ID number `111222333`) with one class and two students, so you can check that a teacher only sees their own students. A third teacher, `נעמה שרון` (ID number `444555666`), and a fourth, `רונית אביב` (ID number `777888999`), exist for the automated tests that create data, so those tests never change the demo teachers' data. The seed data is in [`prisma/seed-data.ts`](./prisma/seed-data.ts).
 
 ## Requirements
 
@@ -115,7 +115,7 @@ One-time setup for the e2e tests:
 | `GET /api/students` | session | `200` with `{ students: [{ id, name, phone, class: { id, name } }] }`, sorted by name. Only the signed-in teacher's students; `401` otherwise |
 | `POST /api/students` | session | Body `{ name, phone, classId }`. `201` with `{ student }` (same shape as the list items). `400` with field errors, `401`, `404` if the class does not exist or is not the teacher's, `409` if the teacher already has a student with the same name and phone |
 
-Validation for `POST /api/students`: the name is trimmed, 2-60 characters, letters, spaces, apostrophes and hyphens only. The phone is an Israeli number, trimmed, accepted with or without the hyphen (`050-1234567`, `0501234567`, `03-1234567` and `031234567` are all valid). It is saved in one format: `xxx-xxxxxxx` for 10 digits (`050-1234567`) and `xx-xxxxxxx` for 9-digit landlines (`03-1234567`), so the same phone is always the same text. A phone with the same digits as an existing one counts as the same phone when checking for duplicates.
+Validation for `POST /api/students`: the name is trimmed, 2-60 characters, letters, spaces, apostrophes and hyphens only. The phone is an Israeli number, trimmed, accepted with or without the hyphen (`050-1234567`, `0501234567`, `03-1234567` and `031234567` are all valid). It is saved in one format: `xxx-xxxxxxx` for 10 digits (`050-1234567`) and `xx-xxxxxxx` for 9-digit landlines (`03-1234567`), so the same phone is always the same text. A teacher cannot have two students with the same name and phone: the database has a unique index on `(teacherId, name, phone)`, so this also holds when two identical requests arrive at the same moment (one is created, the others get `409`). Two different teachers can each have a student with the same name and phone.
 
 The teacher id always comes from the verified session, never from the request, so a teacher cannot read another teacher's students or add a student to another teacher's class.
 
@@ -137,7 +137,7 @@ In the code, services throw an `AppError` ([`lib/AppError.ts`](./lib/AppError.ts
 
 - **Teacher**: name (unique), password hash
 - **Class**: name, belongs to a teacher (unique per teacher)
-- **Student**: name, phone, belongs to a teacher and to a class
+- **Student**: name, phone, belongs to a teacher and to a class. Unique per teacher by name and phone
 - **Assignment**: title, due date, status (`TODO` / `SUBMITTED`), optional grade (empty until graded), belongs to a student
 
 All ids are UUID v7. A class that still has students cannot be deleted.

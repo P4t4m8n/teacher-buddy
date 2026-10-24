@@ -78,4 +78,11 @@ export const WRITE_SEED: TSeedTeacher = {
   ],
 };
 
-export const SEED_TEACHERS: TSeedTeacher[] = [DEMO_SEED, OTHER_SEED, WRITE_SEED];
+// A second teacher the write tests can change freely, for tests that need two teachers to create data.
+export const WRITE_OTHER_SEED: TSeedTeacher = {
+  name: "רונית אביב",
+  idNumber: "777888999",
+  classes: [{ name: "ב'1", students: [{ name: "ברק בדיקה", phone: "050-0000003" }] }],
+};
+
+export const SEED_TEACHERS: TSeedTeacher[] = [DEMO_SEED, OTHER_SEED, WRITE_SEED, WRITE_OTHER_SEED];

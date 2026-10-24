@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Prisma } from "@/generated/prisma/client";
 import { AppError } from "@/lib/AppError";
 
 const mocks = vi.hoisted(() => ({
@@ -102,9 +103,12 @@ describe("createStudent", () => {
     mocks.classFindFirst.mockResolvedValue({ id: CLASS_ID });
   };
 
+  // The error Prisma throws when the database refuses a row because of a unique index.
+  const prismaError = (code: string): Prisma.PrismaClientKnownRequestError =>
+    new Prisma.PrismaClientKnownRequestError("database error", { code, clientVersion: "test" });
+
   it("looks the class up by id AND teacher, so another teacher's class is not found", async () => {
     givenOwnClass();
-    mocks.findMany.mockResolvedValue([]);
     mocks.create.mockResolvedValue(created);
 
     await createStudent(TEACHER_ID, dto);
@@ -126,7 +130,6 @@ describe("createStudent", () => {
 
   it("creates the student with the teacher id from the argument and returns it with its class", async () => {
     givenOwnClass();
-    mocks.findMany.mockResolvedValue([]);
     mocks.create.mockResolvedValue(created);
 
     const result = await createStudent(TEACHER_ID, dto);
@@ -146,7 +149,6 @@ describe("createStudent", () => {
 
   it("never lets extra fields from the request, like another teacherId, reach the database", async () => {
     givenOwnClass();
-    mocks.findMany.mockResolvedValue([]);
     mocks.create.mockResolvedValue(created);
     const dtoWithExtras = { ...dto, teacherId: "someone-else", id: "chosen-id" };
 
@@ -160,55 +162,33 @@ describe("createStudent", () => {
     });
   });
 
-  it("looks for duplicates only among this teacher's students with the same name", async () => {
+  it("does not read before it writes: the database's unique index is the duplicate check", async () => {
     givenOwnClass();
-    mocks.findMany.mockResolvedValue([]);
     mocks.create.mockResolvedValue(created);
 
     await createStudent(TEACHER_ID, dto);
 
-    expect(mocks.findMany).toHaveBeenCalledWith({
-      where: { teacherId: TEACHER_ID, name: dto.name },
-      select: { phone: true },
-    });
+    expect(mocks.findMany).not.toHaveBeenCalled();
+    expect(mocks.create).toHaveBeenCalledTimes(1);
   });
 
-  it("throws a 409 student exists AppError, and creates nothing, for the same name and phone", async () => {
+  it("throws a 409 student exists AppError when the database reports a unique violation (P2002)", async () => {
     givenOwnClass();
-    mocks.findMany.mockResolvedValue([{ phone: "050-1234567" }]);
+    mocks.create.mockRejectedValue(prismaError("P2002"));
 
     await expectAppError(createStudent(TEACHER_ID, dto), AppError.studentExists());
-
-    expect(mocks.create).not.toHaveBeenCalled();
   });
 
-  it("treats the same phone in another format as a duplicate", async () => {
+  it("does not turn other Prisma errors into a duplicate: a foreign key failure (P2003) goes through", async () => {
     givenOwnClass();
-    mocks.findMany.mockResolvedValue([{ phone: "0501234567" }]);
+    const foreignKeyError = prismaError("P2003");
+    mocks.create.mockRejectedValue(foreignKeyError);
 
-    await expectAppError(createStudent(TEACHER_ID, dto), AppError.studentExists());
-    expect(mocks.create).not.toHaveBeenCalled();
+    await expect(createStudent(TEACHER_ID, dto)).rejects.toBe(foreignKeyError);
   });
 
-  it("allows the same name with a different phone", async () => {
+  it("lets other database errors through for the route handler to handle", async () => {
     givenOwnClass();
-    mocks.findMany.mockResolvedValue([{ phone: "052-7654321" }]);
-    mocks.create.mockResolvedValue(created);
-
-    await expect(createStudent(TEACHER_ID, dto)).resolves.toEqual(created);
-  });
-
-  it("allows the same phone for a different name (nothing with that name exists)", async () => {
-    givenOwnClass();
-    mocks.findMany.mockResolvedValue([]);
-    mocks.create.mockResolvedValue(created);
-
-    await expect(createStudent(TEACHER_ID, dto)).resolves.toEqual(created);
-  });
-
-  it("lets database errors through for the route handler to handle", async () => {
-    givenOwnClass();
-    mocks.findMany.mockResolvedValue([]);
     mocks.create.mockRejectedValue(new Error("database down"));
 
     await expect(createStudent(TEACHER_ID, dto)).rejects.toThrow("database down");

@@ -1,6 +1,7 @@
 import "server-only";
 import { AppError } from "@/lib/AppError";
 import { prisma } from "@/lib/db";
+import { isUniqueViolation } from "@/lib/prismaError";
 import type { TCreateStudentDto, TStudent } from "@/types/student.type";
 
 const STUDENT_SELECT = {
@@ -9,8 +10,6 @@ const STUDENT_SELECT = {
   phone: true,
   class: { select: { id: true, name: true } },
 } as const;
-
-const digitsOf = (phone: string): string => phone.replace(/\D/g, "");
 
 export const getStudents = async (teacherId: string): Promise<TStudent[]> => {
   return prisma.student.findMany({
@@ -24,27 +23,20 @@ export const createStudent = async (
   teacherId: string,
   dto: TCreateStudentDto,
 ): Promise<TStudent> => {
-  // The class must belong to this teacher. A class that does not exist and another teacher's class
-  // look the same, so ids cannot be probed.
+
   const studentClass = await prisma.class.findFirst({
     where: { id: dto.classId, teacherId },
     select: { id: true },
   });
   if (!studentClass) throw AppError.classNotFound();
 
- 
-  const sameName = await prisma.student.findMany({
-    where: { teacherId, name: dto.name },
-    select: { phone: true },
-  });
-  const isDuplicate: boolean = sameName.some(
-    ({ phone }) => digitsOf(phone) === digitsOf(dto.phone),
-  );
-  if (isDuplicate) throw AppError.studentExists();
-
-  // Fields are listed one by one so nothing else from the request can reach the database.
-  return prisma.student.create({
-    data: { name: dto.name, phone: dto.phone, classId: dto.classId, teacherId },
-    select: STUDENT_SELECT,
-  });
+  try {
+    return await prisma.student.create({
+      data: { name: dto.name, phone: dto.phone, classId: dto.classId, teacherId },
+      select: STUDENT_SELECT,
+    });
+  } catch (error: unknown) {
+    if (isUniqueViolation(error)) throw AppError.studentExists();
+    throw error;
+  }
 };
