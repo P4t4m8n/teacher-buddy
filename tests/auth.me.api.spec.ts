@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { ERROR_MESSAGES } from "../constants/error.constant";
 import { signToken, TEACHER, UNKNOWN_TEACHER_ID } from "./helpers";
 
 const ME_URL = "/api/auth/me";
@@ -20,7 +21,7 @@ test.describe("GET /api/auth/me", () => {
     const response = await request.get(ME_URL);
 
     expect(response.status()).toBe(401);
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.unauthorized });
   });
 
   test("returns 401 for a forged cookie", async ({ request }) => {
@@ -29,7 +30,7 @@ test.describe("GET /api/auth/me", () => {
     });
 
     expect(response.status()).toBe(401);
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.unauthorized });
   });
 
   test("returns 401 for an expired token", async ({ request }) => {
@@ -47,7 +48,7 @@ test.describe("GET /api/auth/me", () => {
     const response = await request.get(ME_URL, { headers: { Cookie: `session=${token}` } });
 
     expect(response.status()).toBe(401);
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.unauthorized });
   });
 
   test("returns 401 after logout", async ({ request }) => {

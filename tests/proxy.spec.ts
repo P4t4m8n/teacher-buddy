@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { ERROR_MESSAGES } from "../constants/error.constant";
 import { redirectPath, TEACHER } from "./helpers";
 
 const FORGED_TOKEN = "forged.token.value";
@@ -16,7 +17,7 @@ test.describe("proxy: no session", () => {
     const response = await request.get("/api/students");
 
     expect(response.status()).toBe(401);
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.unauthorized });
   });
 
   test("lets the sign-in page and the auth API through", async ({ request }) => {

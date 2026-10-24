@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type APIResponse } from "@playwright/test";
+import { ERROR_MESSAGES } from "../constants/error.constant";
 import { DEMO_SEED, WRITE_SEED } from "../prisma/seed-data";
 import type { TStudent, TStudentClass } from "../types/student.type";
 import { getStudentList, signInAs, signToken, UNKNOWN_TEACHER_ID } from "./helpers";
@@ -42,7 +43,7 @@ test.describe("POST /api/students: authorization", () => {
     const response = await createStudent(request, body);
 
     expect(response.status()).toBe(401);
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.unauthorized });
   });
 
   test("checks the session before the body: 401 even for an invalid body", async ({ request }) => {
@@ -69,7 +70,7 @@ test.describe("POST /api/students: authorization", () => {
     });
 
     expect(response.status()).toBe(401);
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.unauthorized });
   });
 
   test("returns 401 again after logout", async ({ request }) => {
@@ -93,7 +94,7 @@ test.describe("POST /api/students: validation", () => {
 
     expect(response.status()).toBe(400);
     const body = await response.json();
-    expect(body.error).toBe("Validation error");
+    expect(body.error).toBe(ERROR_MESSAGES.validation);
     expect(Object.keys(body.fields).sort()).toEqual(["classId", "name", "phone"]);
     for (const messages of Object.values<string[]>(body.fields)) {
       expect(messages).toHaveLength(1);
@@ -123,7 +124,7 @@ test.describe("POST /api/students: validation", () => {
     });
 
     expect(response.status()).toBe(400);
-    expect((await response.json()).error).toBe("Invalid JSON body");
+    expect((await response.json()).error).toBe(ERROR_MESSAGES.invalidJson);
   });
 
   test("rejects an invalid phone and stores nothing", async ({ request }) => {
@@ -297,7 +298,7 @@ test.describe("POST /api/students: class not found", () => {
     });
 
     expect(response.status()).toBe(404);
-    expect(await response.json()).toEqual({ error: "Class not found" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.classNotFound });
     expect(await namesIn(request)).not.toContain(name);
   });
 
@@ -314,7 +315,7 @@ test.describe("POST /api/students: class not found", () => {
     const response = await createStudent(request, { name, phone: uniquePhone(), classId: demoClass.id });
 
     expect(response.status()).toBe(404);
-    expect(await response.json()).toEqual({ error: "Class not found" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.classNotFound });
     expect(await namesIn(request)).not.toContain(name);
     expect(await namesIn(demo)).not.toContain(name);
     await demo.dispose();
@@ -334,7 +335,7 @@ test.describe("POST /api/students: duplicates", () => {
     const response = await createStudent(request, body);
 
     expect(response.status()).toBe(409);
-    expect(await response.json()).toEqual({ error: "Student already exists" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.studentExists });
     expect((await namesIn(request)).filter((name) => name === body.name)).toHaveLength(1);
   });
 

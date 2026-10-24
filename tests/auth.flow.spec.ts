@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { ERROR_MESSAGES } from "../constants/error.constant";
 import { gotoHydrated, TEACHER } from "./helpers";
 
 const signInWithForm = async (page: Page): Promise<void> => {
@@ -70,7 +71,7 @@ test.describe("sign-in flow", () => {
       route.fulfill({
         status: 500,
         contentType: "application/json",
-        body: JSON.stringify({ error: "Internal server error" }),
+        body: JSON.stringify({ error: ERROR_MESSAGES.internal }),
       }),
     );
 
@@ -87,7 +88,7 @@ test.describe("sign-in flow", () => {
       route.fulfill({
         status: 500,
         contentType: "application/json",
-        body: JSON.stringify({ error: "Internal server error" }),
+        body: JSON.stringify({ error: ERROR_MESSAGES.internal }),
       }),
     );
 

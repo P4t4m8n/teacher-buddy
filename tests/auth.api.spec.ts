@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { ERROR_MESSAGES } from "../constants/error.constant";
 import { TEACHER } from "./helpers";
 
 const LOGIN_URL = "/api/auth/login";
@@ -37,7 +38,7 @@ test.describe("POST /api/auth/login", () => {
 
     expect(response.status()).toBe(400);
     const body = await response.json();
-    expect(body.error).toBe("Validation error");
+    expect(body.error).toBe(ERROR_MESSAGES.validation);
     expect(body.fields.name).toBeDefined();
     expect(body.fields.idNumber).toBeDefined();
     expect(response.headers()["set-cookie"]).toBeUndefined();
@@ -60,7 +61,7 @@ test.describe("POST /api/auth/login", () => {
     });
 
     expect(response.status()).toBe(400);
-    expect((await response.json()).error).toBe("Invalid JSON body");
+    expect((await response.json()).error).toBe(ERROR_MESSAGES.invalidJson);
   });
 
   test("returns the same 401 for a wrong ID number and an unknown name, with no cookie", async ({ request }) => {
@@ -73,7 +74,8 @@ test.describe("POST /api/auth/login", () => {
 
     expect(wrongId.status()).toBe(401);
     expect(unknownName.status()).toBe(401);
-    expect(await wrongId.json()).toEqual(await unknownName.json());
+    expect(await wrongId.json()).toEqual({ error: ERROR_MESSAGES.invalidCredentials });
+    expect(await unknownName.json()).toEqual({ error: ERROR_MESSAGES.invalidCredentials });
     expect(wrongId.headers()["set-cookie"]).toBeUndefined();
     expect(unknownName.headers()["set-cookie"]).toBeUndefined();
   });

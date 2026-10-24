@@ -3,10 +3,8 @@ import { verify, hash } from "@node-rs/argon2";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import {
-  SESSION_COOKIE,
-  INVALID_CREDENTIALS_MESSAGE,
-} from "@/constants/auth.constant";
+import { SESSION_COOKIE } from "@/constants/auth.constant";
+import { AppError } from "@/lib/AppError";
 import { prisma } from "@/lib/db";
 import type { TSessionTeacher, TSignInDto } from "@/types/auth.type";
 
@@ -33,7 +31,7 @@ const getCookieOptions = (): TCookieOptions => ({
 
 const getJwtSecret = (): Uint8Array => {
   const secret: string | undefined = process.env.JWT_SECRET;
-  if (!secret) throw new Error("JWT_SECRET is required");
+  if (!secret) throw AppError.internal("JWT_SECRET is required");
   return new TextEncoder().encode(secret);
 };
 
@@ -63,7 +61,7 @@ export const signIn = async (dto: TSignInDto): Promise<TSessionTeacher> => {
   const isValid: boolean = await verify(hashToVerify, dto.idNumber);
 
   // Same error for unknown name and wrong ID number.
-  if (!teacher || !isValid) throw new Error(INVALID_CREDENTIALS_MESSAGE);
+  if (!teacher || !isValid) throw AppError.invalidCredentials();
 
   const token: string = await createJWT(teacher.id);
   await createCookie(token);
@@ -104,4 +102,12 @@ export const getSessionTeacher = async (): Promise<TSessionTeacher | null> => {
     where: { id: parsedId.data },
     select: { id: true, name: true },
   });
+};
+
+// For route handlers: the signed-in teacher, or a 401 AppError. Pages use getSessionTeacher instead,
+// because they redirect rather than answer with an error.
+export const requireSessionTeacher = async (): Promise<TSessionTeacher> => {
+  const teacher: TSessionTeacher | null = await getSessionTeacher();
+  if (!teacher) throw AppError.unauthorized();
+  return teacher;
 };

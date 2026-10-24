@@ -119,6 +119,20 @@ Validation for `POST /api/students`: the name is trimmed, 2-60 characters, lette
 
 The teacher id always comes from the verified session, never from the request, so a teacher cannot read another teacher's students or add a student to another teacher's class.
 
+### Error responses
+
+Every error the API returns has the same shape, and its message is in Hebrew: `{ "error": "<Hebrew message>" }`, plus `"fields": { "<field>": ["<Hebrew message>"] }` for a `400` validation error.
+
+| Status | Meaning |
+|---|---|
+| `400` | The body is not valid JSON, or a field failed validation (with `fields`) |
+| `401` | No valid session, or wrong credentials on login |
+| `404` | The thing asked for does not exist (or belongs to another teacher) |
+| `409` | The thing already exists |
+| `500` | An unexpected failure. The client only gets a generic message; the details are logged on the server |
+
+In the code, services throw an `AppError` ([`lib/AppError.ts`](./lib/AppError.ts)) with a status and a Hebrew message, and every route handler's `catch` calls `handleRouteError` ([`lib/apiRoute.ts`](./lib/apiRoute.ts)). The Hebrew texts are all in [`constants/error.constant.ts`](./constants/error.constant.ts), and zod's built-in messages are switched to its Hebrew locale.
+
 ## Data model
 
 - **Teacher**: name (unique), password hash
@@ -141,8 +155,8 @@ hooks/               Client-side state and logic (useSignIn, useSignOut, useBott
 services/            Server services (auth.service.ts) and client API services
 schemas/             zod schemas
 types/               Shared TypeScript types
-constants/           Shared constants (demo teacher, auth paths, student action links)
-lib/db.ts            Prisma client
+constants/           Shared constants (demo teacher, auth paths, student action links, Hebrew error messages)
+lib/                 Prisma client (db.ts), AppError and the route helpers (apiRoute.ts)
 prisma/              Schema, migrations and seed
 proxy.ts             Route protection
 tests/               Playwright e2e tests

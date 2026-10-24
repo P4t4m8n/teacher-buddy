@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { ERROR_MESSAGES } from "../constants/error.constant";
 import { DEMO_SEED, OTHER_SEED, type TSeedTeacher } from "../prisma/seed-data";
 import { getStudentList, signInAs, signToken, UNKNOWN_TEACHER_ID } from "./helpers";
 
@@ -18,7 +19,7 @@ test.describe("GET /api/students: authorization", () => {
     const response = await request.get(STUDENTS_URL);
 
     expect(response.status()).toBe(401);
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.unauthorized });
   });
 
   test("returns 401 for a forged cookie", async ({ request }) => {
@@ -35,7 +36,7 @@ test.describe("GET /api/students: authorization", () => {
     const response = await request.get(STUDENTS_URL, { headers: { Cookie: `session=${token}` } });
 
     expect(response.status()).toBe(401);
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.unauthorized });
   });
 
   test("returns 401 again after logout", async ({ request }) => {

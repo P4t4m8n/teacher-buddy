@@ -6,6 +6,7 @@ import {
   SESSION_COOKIE,
   SESSION_EXPIRED_PATH,
 } from "@/constants/auth.constant";
+import { ERROR_MESSAGES } from "@/constants/error.constant";
 
 // session-expired must stay public: it is the way out for a cookie the proxy cannot tell is stale.
 const PUBLIC_API_PATHS: string[] = [
@@ -34,7 +35,7 @@ const rejectUnauthenticated = (
   token: string | undefined,
 ): NextResponse => {
   const response: NextResponse = request.nextUrl.pathname.startsWith("/api/")
-    ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    ? NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: 401 })
     : NextResponse.redirect(new URL(AUTH_PAGE, request.url));
 
   // Drop a forged or expired cookie so it cannot cause redirect loops.

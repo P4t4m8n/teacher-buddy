@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { CLASS_NOT_FOUND_MESSAGE, STUDENT_EXISTS_MESSAGE } from "@/constants/student.constant";
+import { AppError } from "@/lib/AppError";
 
 const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
@@ -18,6 +18,16 @@ vi.mock("@/lib/db", () => ({
 import { createStudent, getStudents } from "./student.service";
 
 const TEACHER_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
+
+// The thrown value must be an AppError with the right status and Hebrew message.
+const expectAppError = async (promise: Promise<unknown>, expected: AppError): Promise<void> => {
+  const error: unknown = await promise.then(
+    () => null,
+    (thrown: unknown) => thrown,
+  );
+  expect(error).toBeInstanceOf(AppError);
+  expect(error).toMatchObject({ status: expected.status, message: expected.message });
+};
 
 beforeEach(() => {
   mocks.findMany.mockReset();
@@ -105,10 +115,10 @@ describe("createStudent", () => {
     });
   });
 
-  it("throws class not found, and does nothing else, when the class is not the teacher's", async () => {
+  it("throws a 404 class not found AppError, and does nothing else, when the class is not the teacher's", async () => {
     mocks.classFindFirst.mockResolvedValue(null);
 
-    await expect(createStudent(TEACHER_ID, dto)).rejects.toThrow(CLASS_NOT_FOUND_MESSAGE);
+    await expectAppError(createStudent(TEACHER_ID, dto), AppError.classNotFound());
 
     expect(mocks.findMany).not.toHaveBeenCalled();
     expect(mocks.create).not.toHaveBeenCalled();
@@ -163,11 +173,11 @@ describe("createStudent", () => {
     });
   });
 
-  it("throws student exists, and creates nothing, for the same name and phone", async () => {
+  it("throws a 409 student exists AppError, and creates nothing, for the same name and phone", async () => {
     givenOwnClass();
     mocks.findMany.mockResolvedValue([{ phone: "050-1234567" }]);
 
-    await expect(createStudent(TEACHER_ID, dto)).rejects.toThrow(STUDENT_EXISTS_MESSAGE);
+    await expectAppError(createStudent(TEACHER_ID, dto), AppError.studentExists());
 
     expect(mocks.create).not.toHaveBeenCalled();
   });
@@ -176,7 +186,7 @@ describe("createStudent", () => {
     givenOwnClass();
     mocks.findMany.mockResolvedValue([{ phone: "0501234567" }]);
 
-    await expect(createStudent(TEACHER_ID, dto)).rejects.toThrow(STUDENT_EXISTS_MESSAGE);
+    await expectAppError(createStudent(TEACHER_ID, dto), AppError.studentExists());
     expect(mocks.create).not.toHaveBeenCalled();
   });
 

@@ -1,5 +1,5 @@
 import "server-only";
-import { CLASS_NOT_FOUND_MESSAGE, STUDENT_EXISTS_MESSAGE } from "@/constants/student.constant";
+import { AppError } from "@/lib/AppError";
 import { prisma } from "@/lib/db";
 import type { TCreateStudentDto, TStudent } from "@/types/student.type";
 
@@ -30,7 +30,7 @@ export const createStudent = async (
     where: { id: dto.classId, teacherId },
     select: { id: true },
   });
-  if (!studentClass) throw new Error(CLASS_NOT_FOUND_MESSAGE);
+  if (!studentClass) throw AppError.classNotFound();
 
  
   const sameName = await prisma.student.findMany({
@@ -40,7 +40,7 @@ export const createStudent = async (
   const isDuplicate: boolean = sameName.some(
     ({ phone }) => digitsOf(phone) === digitsOf(dto.phone),
   );
-  if (isDuplicate) throw new Error(STUDENT_EXISTS_MESSAGE);
+  if (isDuplicate) throw AppError.studentExists();
 
   // Fields are listed one by one so nothing else from the request can reach the database.
   return prisma.student.create({

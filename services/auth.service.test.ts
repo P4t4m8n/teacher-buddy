@@ -16,7 +16,18 @@ vi.mock("@/lib/db", () => ({
   prisma: { teacher: { findUnique: mocks.findUnique } },
 }));
 
-import { getSessionTeacher, signIn, signOut } from "./auth.service";
+import { AppError } from "@/lib/AppError";
+import { getSessionTeacher, requireSessionTeacher, signIn, signOut } from "./auth.service";
+
+// The thrown value must be an AppError with the right status and Hebrew message.
+const expectAppError = async (promise: Promise<unknown>, expected: AppError): Promise<void> => {
+  const error: unknown = await promise.then(
+    () => null,
+    (thrown: unknown) => thrown,
+  );
+  expect(error).toBeInstanceOf(AppError);
+  expect(error).toMatchObject({ status: expected.status, message: expected.message });
+};
 
 const ID_NUMBER = "123456789";
 let teacher: { id: string; name: string; passwordHash: string };
@@ -64,30 +75,33 @@ describe("signIn", () => {
     expect(payload.exp).toBeGreaterThan(Date.now() / 1000);
   });
 
-  it("rejects an unknown name without setting a cookie", async () => {
+  it("rejects an unknown name with a 401 AppError and sets no cookie", async () => {
     mocks.findUnique.mockResolvedValue(null);
 
-    await expect(signIn({ name: "לא קיים", idNumber: ID_NUMBER })).rejects.toThrow(
-      "Invalid credentials",
+    await expectAppError(
+      signIn({ name: "לא קיים", idNumber: ID_NUMBER }),
+      AppError.invalidCredentials(),
     );
     expect(mocks.cookieSet).not.toHaveBeenCalled();
   });
 
-  it("rejects a wrong ID number without setting a cookie", async () => {
+  it("rejects a wrong ID number with the same 401 AppError and sets no cookie", async () => {
     mocks.findUnique.mockResolvedValue(teacher);
 
-    await expect(signIn({ name: teacher.name, idNumber: "987654321" })).rejects.toThrow(
-      "Invalid credentials",
+    await expectAppError(
+      signIn({ name: teacher.name, idNumber: "987654321" }),
+      AppError.invalidCredentials(),
     );
     expect(mocks.cookieSet).not.toHaveBeenCalled();
   });
 
-  it("fails when JWT_SECRET is missing and sets no cookie", async () => {
+  it("fails with a 500 AppError when JWT_SECRET is missing and sets no cookie", async () => {
     vi.stubEnv("JWT_SECRET", "");
     mocks.findUnique.mockResolvedValue(teacher);
 
-    await expect(signIn({ name: teacher.name, idNumber: ID_NUMBER })).rejects.toThrow(
-      "JWT_SECRET is required",
+    await expectAppError(
+      signIn({ name: teacher.name, idNumber: ID_NUMBER }),
+      AppError.internal("JWT_SECRET is required"),
     );
     expect(mocks.cookieSet).not.toHaveBeenCalled();
   });
@@ -238,5 +252,40 @@ describe("getSessionTeacher", () => {
     vi.stubEnv("JWT_SECRET", "");
 
     await expect(getSessionTeacher()).rejects.toThrow("JWT_SECRET is required");
+  });
+
+  describe("requireSessionTeacher", () => {
+    it("returns the teacher for a valid session", async () => {
+      withCookie(await signToken({ teacherId: TEACHER_ID }));
+      mocks.findUnique.mockResolvedValue(sessionTeacher);
+
+      expect(await requireSessionTeacher()).toEqual(sessionTeacher);
+    });
+
+    it("throws a 401 AppError without a session cookie", async () => {
+      mocks.cookieGet.mockReturnValue(undefined);
+
+      await expectAppError(requireSessionTeacher(), AppError.unauthorized());
+    });
+
+    it("throws a 401 AppError for a forged token", async () => {
+      withCookie("forged.token.value");
+
+      await expectAppError(requireSessionTeacher(), AppError.unauthorized());
+    });
+
+    it("throws a 401 AppError when the teacher no longer exists", async () => {
+      withCookie(await signToken({ teacherId: TEACHER_ID }));
+      mocks.findUnique.mockResolvedValue(null);
+
+      await expectAppError(requireSessionTeacher(), AppError.unauthorized());
+    });
+
+    it("lets a missing JWT_SECRET through as the 500 config error, not as a 401", async () => {
+      withCookie("any.token.value");
+      vi.stubEnv("JWT_SECRET", "");
+
+      await expectAppError(requireSessionTeacher(), AppError.internal("JWT_SECRET is required"));
+    });
   });
 });
