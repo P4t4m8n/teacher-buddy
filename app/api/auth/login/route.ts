@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { signInSchema } from "@/schemas/auth.schema";
-import { INVALID_CREDENTIALS_MESSAGE, signIn } from "@/services/auth.service";
+import {  signIn } from "@/services/auth.service";
 import type { TSessionTeacher } from "@/types/auth.type";
+import { INVALID_CREDENTIALS_MESSAGE } from "@/constants/auth.constant";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {

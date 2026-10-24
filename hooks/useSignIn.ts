@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { ApiError } from "@/services/api.client.service";
 import { authClientService } from "@/services/auth.client.service";
 import { DASHBOARD_PAGE } from "@/constants/auth.constant";
 import { DEMO_TEACHER } from "@/constants/demo.constant";
 
 import type { TApiFieldErrors } from "@/types/api.type";
 import type { TSignInDto } from "@/types/auth.type";
+import ApiError from "@/services/ApiError.client";
 
 const INVALID_CREDENTIALS_TEXT = "שם או תעודת זהות שגויים";
 const GENERIC_ERROR_TEXT = "אירעה שגיאה, נסו שוב מאוחר יותר";
