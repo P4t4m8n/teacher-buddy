@@ -24,6 +24,13 @@ export type TCreateStudentResponse = {
   student: TStudent;
 };
 
+// An update replaces all three fields, so it has the same shape as a create.
+export type TUpdateStudentDto = TCreateStudentDto;
+
+export type TUpdateStudentResponse = {
+  student: TStudent;
+};
+
 export type TGetStudentResponse = {
   student: TStudent;
 };

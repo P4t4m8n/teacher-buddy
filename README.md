@@ -117,11 +117,12 @@ The tests that create students use two dedicated teachers (`נעמה שרון` a
 | `GET /api/students` | session | `200` with `{ students: [{ id, name, phone, class: { id, name } }] }`, sorted by name. Only the signed-in teacher's students; `401` otherwise |
 | `POST /api/students` | session | Body `{ name, phone, classId }`. `201` with `{ student }` (same shape as the list items). `400` with field errors, `401`, `404` if the class does not exist or is not the teacher's, `409` if the teacher already has a student with the same name and phone |
 | `GET /api/students/[id]` | session | `200` with `{ student: { id, name, phone, class: { id, name } } }`. `401`, or `404` if there is no such student, it belongs to another teacher, or the id is not a uuid (all three answer the same, so ids cannot be probed) |
+| `PUT /api/students/[id]` | session | Body `{ name, phone, classId }`, all three required (the same rules and phone format as `POST`). `200` with `{ student }`. `400` with field errors, `401`, `404` if the student is not found (same cases as `GET`) or the class does not exist or is not the teacher's, `409` if another of the teacher's students already has that name and phone. The student is checked before the class, and the student's assignments are kept |
 | `DELETE /api/students/[id]` | session | `200` with `{ id }`. Deletes the student and their assignments for good (the database cascades the delete). `401`, or `404` in the same cases as above |
 
 Validation for `POST /api/students`: the name is trimmed, 2-60 characters, letters, spaces, apostrophes and hyphens only. The phone is an Israeli number, trimmed, accepted with or without the hyphen (`050-1234567`, `0501234567`, `03-1234567` and `031234567` are all valid). It is saved in one format: `xxx-xxxxxxx` for 10 digits (`050-1234567`) and `xx-xxxxxxx` for 9-digit landlines (`03-1234567`), so the same phone is always the same text. A teacher cannot have two students with the same name and phone: the database has a unique index on `(teacherId, name, phone)`, so this also holds when two identical requests arrive at the same moment (one is created, the others get `409`). Two different teachers can each have a student with the same name and phone.
 
-The teacher id always comes from the verified session, never from the request, so a teacher cannot read, delete or add to another teacher's students or classes.
+The teacher id always comes from the verified session, never from the request, so a teacher cannot read, change, delete or add to another teacher's students or classes.
 
 ### Classes API
 
@@ -160,7 +161,7 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading); each row links to the student page and to edit, and has a delete button with a confirmation
   (root)/dashboard/students/[id]   Student details page (a missing student, another teacher's or a malformed id all show the same not-found page)
   api/auth/...       Auth endpoints
-  api/students       Students endpoints (list, create, and /[id]: details, delete)
+  api/students       Students endpoints (list, create, and /[id]: details, update, delete)
   api/classes        Classes endpoint
 components/          UI components, grouped by feature (auth, dashboard, students, ui)
 hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useDeleteStudent, useModal, useDisclosure)

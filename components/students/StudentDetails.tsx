@@ -17,7 +17,7 @@ export default function StudentDetails({ student }: TStudentDetailsProps) {
         >
           {student.name.charAt(0)}
         </span>
-        <h1 className="min-w-0 break-words text-2xl font-bold tracking-tight">{student.name}</h1>
+        <h1 className="min-w-0 wrap-break-word text-2xl font-bold tracking-tight">{student.name}</h1>
       </div>
 
       <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-3 text-sm">

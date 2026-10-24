@@ -3,7 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 
 vi.mock("server-only", () => ({}));
 
-import { isUniqueViolation } from "./prismaError";
+import { isRecordNotFound, isUniqueViolation } from "./prismaError";
 
 const prismaError = (code: string): Prisma.PrismaClientKnownRequestError =>
   new Prisma.PrismaClientKnownRequestError("database error", { code, clientVersion: "test" });
@@ -23,5 +23,23 @@ describe("isUniqueViolation", () => {
     ["undefined", undefined],
   ])("is false for %s", (_label, error) => {
     expect(isUniqueViolation(error)).toBe(false);
+  });
+});
+
+describe("isRecordNotFound", () => {
+  it("is true for the Prisma error of a record that does not exist (P2025)", () => {
+    expect(isRecordNotFound(prismaError("P2025"))).toBe(true);
+  });
+
+  it.each([
+    ["a unique constraint failure (P2002)", prismaError("P2002")],
+    ["a foreign key failure (P2003)", prismaError("P2003")],
+    ["a plain Error", new Error("P2025")],
+    ["an object that only looks like it", { code: "P2025", name: "PrismaClientKnownRequestError" }],
+    ["a string", "P2025"],
+    ["null", null],
+    ["undefined", undefined],
+  ])("is false for %s", (_label, error) => {
+    expect(isRecordNotFound(error)).toBe(false);
   });
 });

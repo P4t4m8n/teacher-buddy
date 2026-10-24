@@ -25,3 +25,6 @@ export const createStudentSchema = z.object({
     .transform(normalizePhone),
   classId: z.uuid("יש לבחור כיתה"),
 }) satisfies z.ZodType<TCreateStudentDto>;
+
+// An update replaces all three fields, so it follows the same rules as a create.
+export const updateStudentSchema = createStudentSchema;

@@ -46,6 +46,17 @@ export const getClassList = async (request: APIRequestContext): Promise<TClass[]
   return (await response.json()).classes;
 };
 
+// Creates a student with a unique name and phone, in the signed-in teacher's first class.
+// Only for the write teachers: the other teachers' lists are counted by other tests.
+export const createStudent = async (request: APIRequestContext): Promise<TStudent> => {
+  const [firstClass] = await getClassList(request);
+  const response = await request.post("/api/students", {
+    data: { name: uniqueName(), phone: uniquePhone(), classId: firstClass.id },
+  });
+  expect(response.status()).toBe(201);
+  return (await response.json()).student;
+};
+
 // Direct access to the test database, for what the API cannot do yet (like creating assignments).
 const withTestDb = async <T>(run: (client: Client) => Promise<T>): Promise<T> => {
   const url: string | undefined = process.env.DATABASE_URL_TEST;

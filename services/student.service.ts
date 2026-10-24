@@ -2,8 +2,8 @@ import "server-only";
 import { z } from "zod";
 import { AppError } from "@/lib/AppError";
 import { prisma } from "@/lib/db";
-import { isUniqueViolation } from "@/lib/prismaError";
-import type { TCreateStudentDto, TStudent } from "@/types/student.type";
+import { isRecordNotFound, isUniqueViolation } from "@/lib/prismaError";
+import type { TCreateStudentDto, TStudent, TUpdateStudentDto } from "@/types/student.type";
 
 const STUDENT_SELECT = {
   id: true,
@@ -70,6 +70,35 @@ export const createStudent = async (
     });
   } catch (error: unknown) {
     if (isUniqueViolation(error)) throw AppError.studentExists();
+    throw error;
+  }
+};
+
+// Replaces the student's name, phone and class. The student and the new class must both be the teacher's.
+export const updateStudent = async (
+  teacherId: string,
+  studentId: string,
+  dto: TUpdateStudentDto,
+): Promise<TStudent> => {
+  await getStudent(teacherId, studentId);
+
+  const studentClass = await prisma.class.findFirst({
+    where: { id: dto.classId, teacherId },
+    select: { id: true },
+  });
+  if (!studentClass) throw AppError.classNotFound();
+
+  try {
+    // The teacher is in the filter too, so another teacher's student is never touched.
+    return await prisma.student.update({
+      where: { id: studentId, teacherId },
+      data: { name: dto.name, phone: dto.phone, classId: dto.classId },
+      select: STUDENT_SELECT,
+    });
+  } catch (error: unknown) {
+    if (isUniqueViolation(error)) throw AppError.studentExists();
+    // The student was deleted between the check above and the update.
+    if (isRecordNotFound(error)) throw AppError.studentNotFound();
     throw error;
   }
 };

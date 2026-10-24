@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
   findFirst: vi.fn(),
   create: vi.fn(),
+  update: vi.fn(),
   deleteMany: vi.fn(),
   classFindFirst: vi.fn(),
 }));
@@ -17,13 +18,21 @@ vi.mock("@/lib/db", () => ({
       findMany: mocks.findMany,
       findFirst: mocks.findFirst,
       create: mocks.create,
+      update: mocks.update,
       deleteMany: mocks.deleteMany,
     },
     class: { findFirst: mocks.classFindFirst },
   },
 }));
 
-import { createStudent, deleteStudent, findStudent, getStudent, getStudents } from "./student.service";
+import {
+  createStudent,
+  deleteStudent,
+  findStudent,
+  getStudent,
+  getStudents,
+  updateStudent,
+} from "./student.service";
 
 const TEACHER_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
 const STUDENT_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f70";
@@ -42,6 +51,7 @@ beforeEach(() => {
   mocks.findMany.mockReset();
   mocks.findFirst.mockReset();
   mocks.create.mockReset();
+  mocks.update.mockReset();
   mocks.deleteMany.mockReset();
   mocks.classFindFirst.mockReset();
 });
@@ -282,6 +292,109 @@ describe("getStudent", () => {
     mocks.findFirst.mockRejectedValue(new Error("database down"));
 
     await expect(getStudent(TEACHER_ID, STUDENT_ID)).rejects.toThrow("database down");
+  });
+});
+
+describe("updateStudent", () => {
+  const CLASS_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f61";
+  const dto = { name: "נועה כהן", phone: "050-7654321", classId: CLASS_ID };
+  const existing = { id: STUDENT_ID, name: "נועה לוי", phone: "050-1234567", class: { id: "c0", name: "ח'1" } };
+  const updated = { id: STUDENT_ID, name: dto.name, phone: dto.phone, class: { id: CLASS_ID, name: "ח'2" } };
+
+  const prismaError = (code: string): Prisma.PrismaClientKnownRequestError =>
+    new Prisma.PrismaClientKnownRequestError("database error", { code, clientVersion: "test" });
+
+  const givenOwnStudentAndClass = (): void => {
+    mocks.findFirst.mockResolvedValue(existing);
+    mocks.classFindFirst.mockResolvedValue({ id: CLASS_ID });
+  };
+
+  it("returns the updated student", async () => {
+    givenOwnStudentAndClass();
+    mocks.update.mockResolvedValue(updated);
+
+    expect(await updateStudent(TEACHER_ID, STUDENT_ID, dto)).toEqual(updated);
+  });
+
+  it("updates with ONE statement that matches the id AND the teacher, and only the three fields", async () => {
+    givenOwnStudentAndClass();
+    mocks.update.mockResolvedValue(updated);
+
+    await updateStudent(TEACHER_ID, STUDENT_ID, dto);
+
+    expect(mocks.update).toHaveBeenCalledTimes(1);
+    const args = mocks.update.mock.calls[0][0];
+    expect(args.where).toEqual({ id: STUDENT_ID, teacherId: TEACHER_ID });
+    expect(args.data).toEqual({ name: dto.name, phone: dto.phone, classId: dto.classId });
+  });
+
+  it("looks the new class up by id AND teacher, so another teacher's class is not found", async () => {
+    givenOwnStudentAndClass();
+    mocks.update.mockResolvedValue(updated);
+
+    await updateStudent(TEACHER_ID, STUDENT_ID, dto);
+
+    expect(mocks.classFindFirst.mock.calls[0][0].where).toEqual({ id: CLASS_ID, teacherId: TEACHER_ID });
+  });
+
+  it("throws a 404 student not found AppError, without updating, when the student is not the teacher's", async () => {
+    mocks.findFirst.mockResolvedValue(null);
+
+    await expectAppError(updateStudent(TEACHER_ID, STUDENT_ID, dto), AppError.studentNotFound());
+
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it.each(NOT_UUIDS)("throws the same 404 for the id %j without touching the database", async (id) => {
+    await expectAppError(updateStudent(TEACHER_ID, id, dto), AppError.studentNotFound());
+
+    expect(mocks.findFirst).not.toHaveBeenCalled();
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("throws a 404 class not found AppError, without updating, when the class is not the teacher's", async () => {
+    mocks.findFirst.mockResolvedValue(existing);
+    mocks.classFindFirst.mockResolvedValue(null);
+
+    await expectAppError(updateStudent(TEACHER_ID, STUDENT_ID, dto), AppError.classNotFound());
+
+    expect(mocks.update).not.toHaveBeenCalled();
+  });
+
+  it("checks the student before the class", async () => {
+    mocks.findFirst.mockResolvedValue(null);
+    mocks.classFindFirst.mockResolvedValue(null);
+
+    await expectAppError(updateStudent(TEACHER_ID, STUDENT_ID, dto), AppError.studentNotFound());
+  });
+
+  it("maps a unique violation (another student has this name and phone) to a 409 AppError", async () => {
+    givenOwnStudentAndClass();
+    mocks.update.mockRejectedValue(prismaError("P2002"));
+
+    await expectAppError(updateStudent(TEACHER_ID, STUDENT_ID, dto), AppError.studentExists());
+  });
+
+  it("maps a record-not-found error (deleted in between) to a 404 student not found AppError", async () => {
+    givenOwnStudentAndClass();
+    mocks.update.mockRejectedValue(prismaError("P2025"));
+
+    await expectAppError(updateStudent(TEACHER_ID, STUDENT_ID, dto), AppError.studentNotFound());
+  });
+
+  it("lets other Prisma errors through unchanged", async () => {
+    givenOwnStudentAndClass();
+    const other = prismaError("P2024");
+    mocks.update.mockRejectedValue(other);
+
+    await expect(updateStudent(TEACHER_ID, STUDENT_ID, dto)).rejects.toBe(other);
+  });
+
+  it("lets database errors through for the route handler to handle", async () => {
+    givenOwnStudentAndClass();
+    mocks.update.mockRejectedValue(new Error("database down"));
+
+    await expect(updateStudent(TEACHER_ID, STUDENT_ID, dto)).rejects.toThrow("database down");
   });
 });
 

@@ -1,9 +1,9 @@
-import { expect, test, type APIRequestContext, type APIResponse } from "@playwright/test";
+import { expect, test, type APIRequestContext } from "@playwright/test";
 import { ERROR_MESSAGES } from "../constants/error.constant";
 import { DEMO_SEED, WRITE_OTHER_SEED, WRITE_SEED } from "../prisma/seed-data";
-import type { TStudent } from "../types/student.type";
 import {
   countAssignments,
+  createStudent,
   getClassList,
   getStudentList,
   insertAssignment,
@@ -19,15 +19,6 @@ const NOT_FOUND_BODY = { error: ERROR_MESSAGES.studentNotFound };
 const NOT_UUIDS: string[] = ["abc", "1", "null", "0198f0a2-7b3c", "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5fzz"];
 
 // These tests create and delete students, so they only use the write teachers (see helpers).
-const createStudent = async (request: APIRequestContext): Promise<TStudent> => {
-  const [studentClass] = await getClassList(request);
-  const response: APIResponse = await request.post("/api/students", {
-    data: { name: uniqueName(), phone: uniquePhone(), classId: studentClass.id },
-  });
-  expect(response.status()).toBe(201);
-  return (await response.json()).student;
-};
-
 const idsInList = async (request: APIRequestContext): Promise<string[]> =>
   (await getStudentList(request)).map(({ id }) => id);
 
