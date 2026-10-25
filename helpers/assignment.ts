@@ -2,9 +2,17 @@ import type {
   TAssignmentFormValues,
   TAssignmentStatus,
   TAssignmentStudent,
+  TFileKind,
   TStudentAssignment,
   TTeacherAssignment,
 } from "@/types/assignment.type";
+
+// How a file is shown, from its type: a PDF in a frame, an image as an image, anything else only by name.
+export const getFileKind = (mimeType: string): TFileKind => {
+  if (mimeType === "application/pdf") return "pdf";
+  if (mimeType.startsWith("image/")) return "image";
+  return "other";
+};
 
 // The status follows from the file and the grade, and is never chosen by hand:
 // no file is TODO, a file with no grade is SUBMITTED (it happens when the file is uploaded), and a grade

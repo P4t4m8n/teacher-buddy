@@ -56,3 +56,36 @@ export type TTeacherAssignment = {
   description: string;
   students: TAssignmentStudent[];
 };
+
+// A row of the assignments list: only what the list shows, so it does not carry the description or the students.
+export type TAssignmentListItem = {
+  id: string;
+  title: string;
+  // yyyy-mm-dd
+  dueDate: string;
+  studentCount: number;
+  // Students whose assignment was uploaded, checked or not.
+  submittedCount: number;
+};
+
+// What a request to create an assignment has.
+export type TCreateAssignmentDto = {
+  title: string;
+  // HTML from the rich text editor. The server cleans it before it is saved.
+  description: string;
+  // yyyy-mm-dd
+  dueDate: string;
+  studentIds: string[];
+};
+
+export type TGetAssignmentsResponse = {
+  assignments: TAssignmentListItem[];
+};
+
+export type TGetAssignmentResponse = {
+  assignment: TTeacherAssignment;
+};
+
+export type TCreateAssignmentResponse = {
+  assignment: TTeacherAssignment;
+};

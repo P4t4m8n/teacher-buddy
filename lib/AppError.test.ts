@@ -19,6 +19,7 @@ describe("AppError", () => {
     ["classNotFound", AppError.classNotFound(), 404, ERROR_MESSAGES.classNotFound],
     ["studentNotFound", AppError.studentNotFound(), 404, ERROR_MESSAGES.studentNotFound],
     ["studentExists", AppError.studentExists(), 409, ERROR_MESSAGES.studentExists],
+    ["assignmentNotFound", AppError.assignmentNotFound(), 404, ERROR_MESSAGES.assignmentNotFound],
   ])("%s has the right status and its Hebrew message", (_name, error, status, message) => {
     expect(error.status).toBe(status);
     expect(error.message).toBe(message);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TAssignmentStudent, TTeacherAssignment } from "@/types/assignment.type";
-import { canGrade, countSubmitted, deriveStatus, toFormValues, toStudentAssignment } from "./assignment";
+import { canGrade, countSubmitted, deriveStatus, getFileKind, toFormValues, toStudentAssignment } from "./assignment";
 
 const student = (overrides: Partial<TAssignmentStudent> = {}): TAssignmentStudent => ({
   studentId: "s1",
@@ -19,6 +19,23 @@ const assignment = (students: TAssignmentStudent[]): TTeacherAssignment => ({
   dueDate: "2026-12-15",
   description: "<p>תיאור</p>",
   students,
+});
+
+describe("getFileKind", () => {
+  it("shows a PDF in a frame", () => {
+    expect(getFileKind("application/pdf")).toBe("pdf");
+  });
+
+  it.each(["image/png", "image/jpeg", "image/webp", "image/svg+xml"])("shows %s as an image", (type) => {
+    expect(getFileKind(type)).toBe("image");
+  });
+
+  it.each(["text/plain", "application/zip", "application/octet-stream", "", "pdf", "application/PDF"])(
+    "shows %j only by its name",
+    (type) => {
+      expect(getFileKind(type)).toBe("other");
+    },
+  );
 });
 
 describe("deriveStatus", () => {

@@ -90,7 +90,7 @@ The tests that create students use two dedicated teachers (`נעמה שרון` a
 | Database | PostgreSQL with Prisma 7 (`@prisma/adapter-pg`) | Relational data (teacher, class, student, assignment), typed queries, versioned migrations |
 | Validation | zod | One schema validates request bodies and gives per-field error messages |
 | Authentication | JWT in an `httpOnly` cookie (`jose`), passwords hashed with Argon2 (`@node-rs/argon2`) | Stateless sessions, and the ID number (the "password") is never stored in plain text |
-| Rich text | Tiptap (`@tiptap/react`, `@tiptap/starter-kit`) | The assignment description is written in a rich text editor (bold, italic, headings, lists). Only those formats are enabled |
+| Rich text | Tiptap (`@tiptap/react`, `@tiptap/starter-kit`), `sanitize-html` on the server | The assignment description is written in a rich text editor (bold, italic, headings, lists). Only those formats are enabled, and the server cleans the saved HTML with the same allowlist |
 | Tests | Vitest (unit) and Playwright (API + UI e2e) | Fast unit tests for the services, real-browser tests for the full flows |
 
 ## How authentication works
@@ -123,7 +123,19 @@ The tests that create students use two dedicated teachers (`נעמה שרון` a
 
 Validation for `POST /api/students`: the name is trimmed, 2-60 characters, letters, spaces, apostrophes and hyphens only. The phone is an Israeli number, trimmed, accepted with or without the hyphen (`050-1234567`, `0501234567`, `03-1234567` and `031234567` are all valid). It is saved in one format: `xxx-xxxxxxx` for 10 digits (`050-1234567`) and `xx-xxxxxxx` for 9-digit landlines (`03-1234567`), so the same phone is always the same text. A teacher cannot have two students with the same name and phone: the database has a unique index on `(teacherId, name, phone)`, so this also holds when two identical requests arrive at the same moment (one is created, the others get `409`). Two different teachers can each have a student with the same name and phone.
 
-The teacher id always comes from the verified session, never from the request, so a teacher cannot read, change, delete or add to another teacher's students or classes.
+### Assignments API
+
+An assignment is given to one or more students. Each student has their own part of it: a status, the uploaded file and a grade (see "Data model").
+
+| Method and path | Auth | Description |
+|---|---|---|
+| `GET /api/assignments` | session | `200` with `{ assignments: [{ id, title, dueDate, studentCount, submittedCount }] }`, latest due date first. Only the signed-in teacher's assignments, without the description or the students (`submittedCount` is the students whose status is not `TODO`); `401` otherwise |
+| `POST /api/assignments` | session | Body `{ title, description?, dueDate, studentIds }`. `201` with `{ assignment }` (see below). `400` with field errors, `401`, `404` if any student does not exist or is not the teacher's (nothing is created) |
+| `GET /api/assignments/[id]` | session | `200` with `{ assignment: { id, title, dueDate, description, students: [{ studentId, name, className, status, submittedAt, grade, file }] } }`, students ordered by name. `file` is `null` or `{ name, kind, url }` (the bytes are never in this response). `401`, or `404` if there is no such assignment, it belongs to another teacher, or the id is not a uuid (all three answer the same) |
+
+Validation for `POST /api/assignments`: the title is trimmed, 2-100 characters, with at least one letter or digit. The description is optional (up to 20,000 characters) and is cleaned on the server before it is saved: only what the editor makes is kept (paragraphs, `h2`/`h3`, bold, italic, bullet and numbered lists, line breaks), with no attributes, so scripts, event handlers and links cannot be saved even if the request does not come from the editor. The due date is a real `yyyy-mm-dd` day between the years 2000 and 2100. `studentIds` has 1-500 uuids; a student chosen twice counts once. The assignment and its students are created in one statement. The status of every student starts as `TODO`, and is never taken from the request. `submittedAt` is the day of the upload in Israel time.
+
+The teacher id always comes from the verified session, never from the request, so a teacher cannot read, change, delete or add to another teacher's students or classes, or read another teacher's assignments.
 
 ### Classes API
 
@@ -190,7 +202,7 @@ services/            Server services (auth.service.ts) and client API services
 schemas/             zod schemas
 types/               Shared TypeScript types
 constants/           Shared constants (demo teacher, auth paths, student action links, Hebrew error messages)
-lib/                 Prisma client (db.ts), AppError and the route helpers (apiRoute.ts)
+lib/                 Prisma client (db.ts), AppError, the route helpers (apiRoute.ts) and the HTML cleaner (richText.ts)
 prisma/              Schema, migrations and seed
 proxy.ts             Route protection
 tests/               Playwright e2e tests

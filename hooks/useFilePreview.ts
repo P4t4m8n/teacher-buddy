@@ -1,13 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { TAssignmentFile, TFileKind } from "@/types/assignment.type";
-
-const kindOf = (mimeType: string): TFileKind => {
-  if (mimeType === "application/pdf") return "pdf";
-  if (mimeType.startsWith("image/")) return "image";
-  return "other";
-};
+import { getFileKind } from "@/helpers/assignment";
+import type { TAssignmentFile } from "@/types/assignment.type";
 
 // The file the user picked, ready to be shown before anything is uploaded. The browser makes a
 // temporary address for it, which is released when another file is picked or the component goes away.
@@ -27,7 +22,7 @@ export const useFilePreview = () => {
     if (urlRef.current) URL.revokeObjectURL(urlRef.current);
 
     urlRef.current = file ? URL.createObjectURL(file) : null;
-    setPreview(file && urlRef.current ? { name: file.name, kind: kindOf(file.type), url: urlRef.current } : null);
+    setPreview(file && urlRef.current ? { name: file.name, kind: getFileKind(file.type), url: urlRef.current } : null);
   };
 
   return { preview, handleChange };
