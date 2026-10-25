@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import StudentAssignments from "@/components/assignments/StudentAssignments";
 import StudentDetails from "@/components/students/StudentDetails";
+import { BackLink } from "@/components/ui/BackLink";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { NEW_ASSIGNMENT_PAGE, SAMPLE_STUDENT_ASSIGNMENTS } from "@/constants/assignment.constant";
 import { DASHBOARD_PAGE, SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
@@ -25,12 +25,7 @@ export default async function AuthenticatedStudentPage({ params }: TAuthenticate
 
   return (
     <div className="flex w-full max-w-3xl flex-col gap-6">
-      <Link
-        href={DASHBOARD_PAGE}
-        className="w-fit text-sm font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-      >
-        חזרה לרשימת התלמידים
-      </Link>
+      <BackLink href={DASHBOARD_PAGE}>חזרה לרשימת התלמידים</BackLink>
       <StudentDetails student={student} />
       <section aria-labelledby="assignments-heading" className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">

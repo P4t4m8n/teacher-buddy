@@ -53,8 +53,10 @@ const warmUpServer = async (baseURL: string): Promise<void> => {
     const editHref = await page.getByRole("link", { name: /^עריכה עבור/ }).first().getAttribute("href");
     for (const path of [
       "/dashboard/students/new",
+      "/dashboard/assignments",
       "/dashboard/assignments/new",
-      "/dashboard/assignments/0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60/edit",
+      "/dashboard/assignments/0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5a01",
+      "/dashboard/assignments/0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5a01/edit",
       detailsHref,
       editHref,
     ]) {

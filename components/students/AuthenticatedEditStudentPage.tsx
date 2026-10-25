@@ -1,7 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import StudentForm from "@/components/students/StudentForm";
 import FormPage from "@/components/ui/FormPage";
-import { SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
+import { DASHBOARD_PAGE, SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
 import { getSessionTeacher } from "@/services/auth.service";
 import { getClasses } from "@/services/class.service";
 import { findStudent } from "@/services/student.service";
@@ -26,7 +26,7 @@ export default async function AuthenticatedEditStudentPage({ params }: TAuthenti
   if (!student) notFound();
 
   return (
-    <FormPage title="עריכת תלמיד">
+    <FormPage title="עריכת תלמיד" backHref={DASHBOARD_PAGE} backLabel="חזרה לרשימת התלמידים">
       <StudentForm classes={classes} student={student} />
     </FormPage>
   );

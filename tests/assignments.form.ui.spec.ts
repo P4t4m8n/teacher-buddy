@@ -1,15 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { getSampleAssignment } from "../constants/assignment.constant";
-import { DEMO_SEED, OTHER_SEED } from "../prisma/seed-data";
-import { gotoHydrated, signInAs } from "./helpers";
+import { getSampleTeacherAssignments, SAMPLE_STUDENT_ASSIGNMENTS } from "../constants/assignment.constant";
+import { DEMO_SEED } from "../prisma/seed-data";
+import { getStudentList, gotoHydrated, signInAs } from "./helpers";
 
 // The pages only show a form for now (nothing is saved yet), so the demo teacher is safe to use.
+const LIST_URL = "/dashboard/assignments";
 const NEW_URL = "/dashboard/assignments/new";
-const EDIT_URL = "/dashboard/assignments/0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60/edit";
-const DEMO_STUDENT_NAMES: string[] = DEMO_SEED.classes.flatMap(({ name: className, students }) =>
-  students.map(({ name }) => `${name} (${className})`),
-);
-
+const SAMPLE_ID: string = SAMPLE_STUDENT_ASSIGNMENTS[0].id;
+const EDIT_URL = `/dashboard/assignments/${SAMPLE_ID}/edit`;
 const toolbar = (page: Page): Locator => page.getByRole("toolbar", { name: "עיצוב טקסט" });
 const editor = (page: Page): Locator => page.getByRole("textbox", { name: "תיאור המטלה" });
 const button = (page: Page, name: string): Locator => toolbar(page).getByRole("button", { name, exact: true });
@@ -30,30 +28,19 @@ const openPage = async (page: Page, url: string): Promise<void> => {
 };
 
 test.describe("assignment form: the new page", () => {
-  test("has the title, student, due date and description fields, with save and cancel", async ({ page }) => {
+  test("has the title, students, due date and description fields, with save and cancel", async ({ page }) => {
     await openPage(page, NEW_URL);
 
     await expect(page.getByRole("heading", { name: "מטלה חדשה" })).toBeVisible();
     await expect(page.getByLabel("שם המטלה")).toHaveValue("");
-    await expect(page.getByLabel("תלמיד")).toHaveValue("");
+    await expect(page.getByRole("group", { name: "תלמידים" })).toBeVisible();
     await expect(page.getByLabel("תאריך הגשה")).toHaveAttribute("type", "date");
     await expect(page.getByLabel("תאריך הגשה")).toHaveValue("");
     await expect(editor(page)).toBeVisible();
     await expect(page.getByRole("button", { name: "הוספה", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "ביטול" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "חזרה לרשימת התלמידים" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "חזרה לרשימת המטלות" })).toBeVisible();
     await expect(page.locator("header")).toContainText(DEMO_SEED.name);
-  });
-
-  test("the student picker has this teacher's students with their class, and nobody else's", async ({ page }) => {
-    await openPage(page, NEW_URL);
-
-    const options: string[] = await page.getByLabel("תלמיד").locator("option").allInnerTexts();
-    expect(options[0]).toBe("בחרו תלמיד");
-    expect(options.slice(1).sort()).toEqual([...DEMO_STUDENT_NAMES].sort());
-    for (const { students } of OTHER_SEED.classes) {
-      for (const { name } of students) await expect(page.getByLabel("תלמיד")).not.toContainText(name);
-    }
   });
 
   test("focuses the title field", async ({ page }) => {
@@ -62,12 +49,15 @@ test.describe("assignment form: the new page", () => {
     await expect(page.getByLabel("שם המטלה")).toBeFocused();
   });
 
-  test("the cancel link and the back link go to the list", async ({ page }) => {
+  test("the cancel link and the back link go to the assignments list", async ({ page }) => {
     await openPage(page, NEW_URL);
 
     await page.getByRole("link", { name: "ביטול" }).click();
+    await expect(page).toHaveURL(LIST_URL);
 
-    await expect(page).toHaveURL("/dashboard");
+    await gotoHydrated(page, NEW_URL);
+    await page.getByRole("link", { name: "חזרה לרשימת המטלות" }).click();
+    await expect(page).toHaveURL(LIST_URL);
   });
 
   test("a due date can be picked", async ({ page }) => {
@@ -248,18 +238,29 @@ test.describe("rich text editor", () => {
 });
 
 test.describe("assignment form: the edit page", () => {
-  test("is filled with the sample assignment, until the API exists", async ({ page }) => {
+  test("is filled with the assignment, which is a hardcoded sample until the API exists", async ({ page }) => {
     await openPage(page, EDIT_URL);
-    const sample = getSampleAssignment("");
+    const students = await getStudentList(page.request);
+    const sample = getSampleTeacherAssignments(students)[0];
 
     await expect(page.getByRole("heading", { name: "עריכת מטלה" })).toBeVisible();
     await expect(page.getByLabel("שם המטלה")).toHaveValue(sample.title);
     await expect(page.getByLabel("תאריך הגשה")).toHaveValue(sample.dueDate);
-    await expect(page.getByLabel("תלמיד").locator("option:checked")).toHaveText(
-      await page.getByLabel("תלמיד").locator("option").nth(1).innerText(),
-    );
+    for (const { name } of sample.students) {
+      await expect(page.getByRole("checkbox", { name, exact: true })).toBeChecked();
+    }
     await expect(page.getByRole("button", { name: "שמירה", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "הוספה", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "חזרה לרשימת המטלות" })).toBeVisible();
+  });
+
+  test("an assignment that does not exist shows the not-found page", async ({ page }) => {
+    await signInAs(page.request, DEMO_SEED);
+
+    await page.goto("/dashboard/assignments/0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60/edit");
+
+    await expect(page.getByRole("heading", { name: "המטלה לא נמצאה" })).toBeVisible();
+    await expect(page.getByLabel("שם המטלה")).toHaveCount(0);
   });
 
   test("shows the description with its formatting in the editor", async ({ page }) => {

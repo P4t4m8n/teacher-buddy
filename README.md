@@ -161,11 +161,13 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/auth        Sign-in page
   (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading); a link to add a student, and each row links to the student page and to edit, and has a delete button with a confirmation
   (root)/dashboard/students/new          Add-student page
-  (root)/dashboard/students/[id]         Student page: the details, and the student's assignments list (name, submitted date, grade). A click opens a modal with the assignment details, the description, and the checked file (PDF or image) with an upload field. Hardcoded sample data for now; nothing is saved yet. A missing student, another teacher's or a malformed id all show the same not-found page
+  (root)/dashboard/students/[id]         Student page: the details, and the student's assignments list (name, submitted date, grade). A click opens a modal with the assignment details, the description, the checked file (PDF or image) with an upload field, and the grade (0-100, empty until checked), saved together with a save button. Hardcoded sample data for now; nothing is saved yet. A missing student, another teacher's or a malformed id all show the same not-found page
   (root)/dashboard/students/[id]/edit    Edit-student page, filled from the database; shares one form (StudentForm) with the add page
-  (root)/dashboard/layout.tsx            The header and the page frame, shared by every dashboard page
-  (root)/dashboard/assignments/new       Add-assignment form with the rich text editor (the form is built, saving is not yet)
-  (root)/dashboard/assignments/[id]/edit Edit-assignment form, with a hardcoded sample for now (same form as the add page)
+  (root)/dashboard/layout.tsx            The header, the tab bar (students | assignments) and the page frame, shared by every dashboard page
+  (root)/dashboard/assignments           The teacher's assignments list (name, due date, number of students, how many submitted), with an add button
+  (root)/dashboard/assignments/new       Add-assignment form: title, students (a checklist grouped by class, with a shortcut per class), due date and the rich text description (the form is built, saving is not yet)
+  (root)/dashboard/assignments/[id]      Assignment page: its details, and its students with their status; a student's button opens the same modal, with the checked file, the grade and an upload field
+  (root)/dashboard/assignments/[id]/edit Edit-assignment form, the same form as the add page. Everything under assignments is hardcoded sample data until the API exists
   api/auth/...       Auth endpoints
   api/students       Students endpoints (list, create, and /[id]: details, update, delete)
   api/classes        Classes endpoint

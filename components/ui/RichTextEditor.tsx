@@ -30,17 +30,22 @@ const EXTENSIONS = [
   }),
 ];
 
-export const RichTextEditor = ({ label, name, defaultValue = "", errors }: TRichTextEditorProps) => {
+export const RichTextEditor = ({
+  label,
+  name,
+  defaultValue = "",
+  errors,
+}: TRichTextEditorProps) => {
   const labelId: string = useId();
   const [html, setHtml] = useState<string>(defaultValue);
 
   const editor = useEditor({
     extensions: EXTENSIONS,
     content: defaultValue,
-    // The editor needs the browser. Rendering it on the server too would not match what the browser
-    // renders, so it is created after the page loads.
+    // The editor needs the browser. so it is created after the page loads to prevent hydration issues.
     immediatelyRender: false,
-    onUpdate: ({ editor: current }) => setHtml(current.isEmpty ? "" : current.getHTML()),
+    onUpdate: ({ editor: current }) =>
+      setHtml(current.isEmpty ? "" : current.getHTML()),
     editorProps: {
       attributes: {
         role: "textbox",
@@ -67,7 +72,10 @@ export const RichTextEditor = ({ label, name, defaultValue = "", errors }: TRich
       </div>
       <input type="hidden" name={name} value={html} />
       {errors?.map((message: string) => (
-        <span key={message} className="text-xs font-normal text-red-600 dark:text-red-400">
+        <span
+          key={message}
+          className="text-xs font-normal text-red-600 dark:text-red-400"
+        >
           {message}
         </span>
       ))}

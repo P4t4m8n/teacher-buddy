@@ -1,9 +1,11 @@
 "use client";
 
 import AssignmentStatusBadge from "@/components/assignments/AssignmentStatusBadge";
+import { Button } from "@/components/ui/Button";
 import { FilePreview } from "@/components/ui/FilePreview";
+import { FormField } from "@/components/ui/FormField";
 import { LinkButton } from "@/components/ui/LinkButton";
-import { FILE_ACCEPT, getAssignmentEditPage } from "@/constants/assignment.constant";
+import { FILE_ACCEPT, getAssignmentEditPage, MAX_GRADE, MIN_GRADE } from "@/constants/assignment.constant";
 import { formatDate } from "@/helpers/date";
 import { useFilePreview } from "@/hooks/useFilePreview";
 import type { TAssignmentFile, TStudentAssignment } from "@/types/assignment.type";
@@ -19,6 +21,11 @@ export default function AssignmentDetails({ assignment }: TAssignmentDetailsProp
   // A file picked just now is shown instead of the one that was uploaded before.
   const shownFile: TAssignmentFile | null = preview ?? assignment.file;
 
+  // Nothing is saved yet: the assignments API does not exist.
+  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>): void => {
+    e.preventDefault();
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <dl className="grid grid-cols-[auto_1fr] items-center gap-x-6 gap-y-3 text-sm">
@@ -30,8 +37,6 @@ export default function AssignmentDetails({ assignment }: TAssignmentDetailsProp
         <dd>{formatDate(assignment.dueDate)}</dd>
         <dt className={LABEL_CLASSES}>הוגשה בתאריך</dt>
         <dd>{assignment.submittedAt ? formatDate(assignment.submittedAt) : "טרם הוגשה"}</dd>
-        <dt className={LABEL_CLASSES}>ציון</dt>
-        <dd>{assignment.grade ?? "טרם נבדקה"}</dd>
       </dl>
 
       <section aria-labelledby="assignment-description" className="flex flex-col gap-2">
@@ -42,29 +47,48 @@ export default function AssignmentDetails({ assignment }: TAssignmentDetailsProp
         <div className="rich-text text-sm" dangerouslySetInnerHTML={{ __html: assignment.description }} />
       </section>
 
-      <section aria-labelledby="assignment-file" className="flex flex-col gap-3">
-        <h3 id="assignment-file" className="text-sm font-semibold">
-          הקובץ שנבדק
-        </h3>
-        {shownFile ? (
-          <FilePreview file={shownFile} />
-        ) : (
-          <p className="text-sm text-slate-500 dark:text-slate-400">עדיין לא הועלה קובץ</p>
-        )}
-        <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
-          {shownFile ? "החלפת קובץ" : "העלאת קובץ"}
-          <input
-            type="file"
-            accept={FILE_ACCEPT}
-            onChange={handleChange}
-            className="text-sm font-normal file:me-3 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-slate-700 file:hover:cursor-pointer hover:file:bg-slate-50 dark:file:border-slate-700 dark:file:bg-slate-900 dark:file:text-slate-200"
-          />
-        </label>
-      </section>
+      {/* The file and the grade are saved together. The server checks both and sends the error messages. */}
+      <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
+        <section aria-labelledby="assignment-file" className="flex flex-col gap-3">
+          <h3 id="assignment-file" className="text-sm font-semibold">
+            הקובץ שנבדק
+          </h3>
+          {shownFile ? (
+            <FilePreview file={shownFile} />
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-400">עדיין לא הועלה קובץ</p>
+          )}
+          <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
+            {shownFile ? "החלפת קובץ" : "העלאת קובץ"}
+            <input
+              type="file"
+              name="file"
+              accept={FILE_ACCEPT}
+              onChange={handleChange}
+              className="text-sm font-normal file:me-3 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-slate-700 file:hover:cursor-pointer hover:file:bg-slate-50 dark:file:border-slate-700 dark:file:bg-slate-900 dark:file:text-slate-200"
+            />
+          </label>
+        </section>
 
-      <div className="flex justify-end">
-        <LinkButton href={getAssignmentEditPage(assignment.id)}>עריכת המטלה</LinkButton>
-      </div>
+        {/* Empty while the assignment was not checked yet. */}
+        <FormField
+          label="ציון"
+          name="grade"
+          type="number"
+          inputMode="numeric"
+          min={MIN_GRADE}
+          max={MAX_GRADE}
+          step={1}
+          placeholder={`${MIN_GRADE} - ${MAX_GRADE}`}
+          autoComplete="off"
+          defaultValue={assignment.grade ?? ""}
+        />
+
+        <div className="flex items-center justify-between gap-3">
+          <LinkButton href={getAssignmentEditPage(assignment.id)}>עריכת המטלה</LinkButton>
+          <Button type="submit">שמירה</Button>
+        </div>
+      </form>
     </div>
   );
 }

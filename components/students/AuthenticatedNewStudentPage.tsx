@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import StudentForm from "@/components/students/StudentForm";
 import FormPage from "@/components/ui/FormPage";
-import { SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
+import { DASHBOARD_PAGE, SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
 import { getSessionTeacher } from "@/services/auth.service";
 import { getClasses } from "@/services/class.service";
 import type { TSessionTeacher } from "@/types/auth.type";
@@ -15,7 +15,7 @@ export default async function AuthenticatedNewStudentPage() {
   const classes: TClass[] = await getClasses(teacher.id);
 
   return (
-    <FormPage title="הוספת תלמיד">
+    <FormPage title="הוספת תלמיד" backHref={DASHBOARD_PAGE} backLabel="חזרה לרשימת התלמידים">
       <StudentForm classes={classes} />
     </FormPage>
   );

@@ -6,7 +6,6 @@ import { BrandLogo } from "../ui/BrandLogo";
 import LogoutButton from "../auth/LogoutButton";
 
 export default async function DashboardHeader() {
-  // The proxy only checked the token's signature and expiry. This also checks the teacher still exists.
   const teacher: TSessionTeacher | null = await getSessionTeacher();
   if (!teacher) redirect(SESSION_EXPIRED_PATH);
 

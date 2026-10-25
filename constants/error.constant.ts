@@ -9,6 +9,7 @@ export const ERROR_MESSAGES = {
   invalidJson: "גוף הבקשה אינו תקין",
   classNotFound: "הכיתה לא נמצאה",
   studentNotFound: "התלמיד לא נמצא",
+  assignmentNotFound: "המטלה לא נמצאה",
   studentExists: "תלמיד בשם הזה ועם אותו מספר טלפון כבר קיים",
   internal: "אירעה שגיאה בשרת, נסו שוב מאוחר יותר",
   // Only used by the client, when the request never got an answer from the server.

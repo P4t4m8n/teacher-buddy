@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { FILE_ACCEPT, SAMPLE_STUDENT_ASSIGNMENTS } from "../constants/assignment.constant";
+import { FILE_ACCEPT, MAX_GRADE, MIN_GRADE, SAMPLE_STUDENT_ASSIGNMENTS } from "../constants/assignment.constant";
 import { formatDate } from "../helpers/date";
 import { DEMO_SEED } from "../prisma/seed-data";
 import type { TStudentAssignment } from "../types/assignment.type";
@@ -93,26 +93,27 @@ test.describe("student assignments: the modal", () => {
     await expect(page.locator("tbody tr")).toHaveCount(SAMPLE_STUDENT_ASSIGNMENTS.length);
   });
 
-  test("shows the status, the dates and the grade of a graded assignment", async ({ page }) => {
+  test("shows the status and the dates of a graded assignment, and its grade in the grade field", async ({ page }) => {
     const dialog = await open(page, GRADED);
 
     const values = dialog.locator("dd");
+    await expect(values).toHaveCount(3);
     await expect(values.nth(0)).toHaveText("הוגשה");
     await expect(values.nth(1)).toHaveText(formatDate(GRADED.dueDate));
     await expect(values.nth(2)).toHaveText(formatDate(GRADED.submittedAt!));
-    await expect(values.nth(3)).toHaveText(String(GRADED.grade));
+    await expect(dialog.getByLabel("ציון")).toHaveValue(String(GRADED.grade));
   });
 
-  test("says when it was not graded yet, or not submitted", async ({ page }) => {
+  test("says when it was not submitted, and leaves the grade empty when it was not graded yet", async ({ page }) => {
     const ungraded = await open(page, UNGRADED);
-    await expect(ungraded.locator("dd").nth(3)).toHaveText("טרם נבדקה");
+    await expect(ungraded.getByLabel("ציון")).toHaveValue("");
     await page.keyboard.press("Escape");
     await expect(ungraded).toBeHidden();
 
     const todo = await open(page, TODO);
     await expect(todo.locator("dd").nth(0)).toHaveText("לביצוע");
     await expect(todo.locator("dd").nth(2)).toHaveText("טרם הוגשה");
-    await expect(todo.locator("dd").nth(3)).toHaveText("טרם נבדקה");
+    await expect(todo.getByLabel("ציון")).toHaveValue("");
   });
 
   test("shows the description with its formatting, as formatted text and not as markup", async ({ page }) => {
@@ -168,12 +169,12 @@ test.describe("student assignments: the modal", () => {
 
   test("each row opens its own assignment", async ({ page }) => {
     const first = await open(page, GRADED);
-    await expect(first.locator("dd").nth(3)).toHaveText(String(GRADED.grade));
+    await expect(first.getByLabel("ציון")).toHaveValue(String(GRADED.grade));
     await first.getByRole("button", { name: "סגירה" }).click();
 
     const second = await open(page, LATE);
 
-    await expect(second.locator("dd").nth(3)).toHaveText(String(LATE.grade));
+    await expect(second.getByLabel("ציון")).toHaveValue(String(LATE.grade));
     await expect(second).not.toContainText(GRADED.title);
   });
 
@@ -305,6 +306,109 @@ test.describe("student assignments: the file", () => {
   });
 });
 
+test.describe("student assignments: the grade", () => {
+  test.beforeEach(async ({ page }) => {
+    await openStudentPage(page);
+  });
+
+  test("is a number field from 0 to 100, in whole numbers, with a hint", async ({ page }) => {
+    const grade = (await open(page, TODO)).getByLabel("ציון");
+
+    await expect(grade).toHaveAttribute("type", "number");
+    await expect(grade).toHaveAttribute("min", String(MIN_GRADE));
+    await expect(grade).toHaveAttribute("max", String(MAX_GRADE));
+    await expect(grade).toHaveAttribute("step", "1");
+    await expect(grade).toHaveAttribute("inputmode", "numeric");
+    await expect(grade).toHaveAttribute("placeholder", `${MIN_GRADE} - ${MAX_GRADE}`);
+  });
+
+  test("a grade can be typed, changed and cleared", async ({ page }) => {
+    const grade = (await open(page, TODO)).getByLabel("ציון");
+
+    await grade.fill("77");
+    await expect(grade).toHaveValue("77");
+    await grade.fill("100");
+    await expect(grade).toHaveValue("100");
+    await grade.fill("");
+    await expect(grade).toHaveValue("");
+  });
+
+  test("an existing grade can be updated", async ({ page }) => {
+    const grade = (await open(page, GRADED)).getByLabel("ציון");
+    await expect(grade).toHaveValue(String(GRADED.grade));
+
+    await grade.fill("95");
+
+    await expect(grade).toHaveValue("95");
+  });
+
+  test("the keyboard reaches the grade after the file, and the save button after the grade", async ({ page }) => {
+    const dialog = await open(page, TODO);
+
+    await fileInput(dialog).focus();
+    await page.keyboard.press("Tab");
+    await expect(dialog.getByLabel("ציון")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(dialog.getByRole("link", { name: "עריכת המטלה" })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(dialog.getByRole("button", { name: "שמירה" })).toBeFocused();
+  });
+
+  test("the file and the grade are in one form, with a save button", async ({ page }) => {
+    const dialog = await open(page, GRADED);
+    const form = dialog.locator("form");
+
+    await expect(form.getByLabel("ציון")).toBeVisible();
+    await expect(form.locator('input[type="file"]')).toBeVisible();
+    await expect(form.getByRole("button", { name: "שמירה", exact: true })).toHaveAttribute("type", "submit");
+    await expect(form).toHaveAttribute("novalidate", "");
+  });
+
+  test("saving does nothing yet: it sends no request, and the modal and the typed grade stay", async ({ page }) => {
+    const requests: string[] = [];
+    page.on("request", (request) => {
+      if (request.method() !== "GET") requests.push(`${request.method()} ${request.url()}`);
+    });
+    const dialog = await open(page, TODO);
+    await dialog.getByLabel("ציון").fill("88");
+
+    await dialog.getByRole("button", { name: "שמירה", exact: true }).click();
+
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByLabel("ציון")).toHaveValue("88");
+    await expect(page).toHaveURL(/\/dashboard\/students\/[0-9a-f-]{36}$/);
+    expect(requests).toEqual([]);
+  });
+
+  test("a value out of range does not raise the browser's own message: the server will answer", async ({ page }) => {
+    const dialog = await open(page, TODO);
+    await dialog.getByLabel("ציון").fill("150");
+
+    await dialog.getByRole("button", { name: "שמירה", exact: true }).click();
+
+    await expect(dialog.getByLabel("ציון")).toHaveValue("150");
+    await expect(dialog.getByLabel("ציון")).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  test("a typed grade is forgotten when the modal closes, and another assignment has its own", async ({ page }) => {
+    const first = await open(page, TODO);
+    await first.getByLabel("ציון").fill("55");
+    await page.keyboard.press("Escape");
+
+    const second = await open(page, GRADED);
+    await expect(second.getByLabel("ציון")).toHaveValue(String(GRADED.grade));
+    await page.keyboard.press("Escape");
+
+    const again = await open(page, TODO);
+    await expect(again.getByLabel("ציון")).toHaveValue("");
+  });
+
+  test("the grade shows in the list once it exists, and an empty grade shows a dash", async ({ page }) => {
+    await expect(row(page, GRADED).locator("td").nth(2)).toHaveText(String(GRADED.grade));
+    await expect(row(page, UNGRADED).locator("td").nth(2)).toHaveText("-");
+  });
+});
+
 test.describe("student assignments: narrow screen", () => {
   test.use({ viewport: { width: 390, height: 780 } });
 
@@ -321,5 +425,20 @@ test.describe("student assignments: narrow screen", () => {
     const link = dialog.getByRole("link", { name: "עריכת המטלה" });
     await link.scrollIntoViewIfNeeded();
     await expect(link).toBeInViewport();
+  });
+
+  test("the grade and the save button can be reached and used", async ({ page }) => {
+    await openStudentPage(page);
+    const dialog = await open(page, TODO);
+
+    const grade = dialog.getByLabel("ציון");
+    await grade.scrollIntoViewIfNeeded();
+    await grade.fill("90");
+    const save = dialog.getByRole("button", { name: "שמירה", exact: true });
+    await save.scrollIntoViewIfNeeded();
+    await expect(save).toBeInViewport();
+    const box = await save.boundingBox();
+    expect(box!.x).toBeGreaterThanOrEqual(0);
+    expect(box!.x + box!.width).toBeLessThanOrEqual(390);
   });
 });

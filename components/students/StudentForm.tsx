@@ -11,7 +11,6 @@ import type { TStudent } from "@/types/student.type";
 
 type TStudentFormProps = {
   classes: TClass[];
-  // With a student the form edits that student. Without one it adds a new student.
   student?: TStudent;
 };
 

@@ -1,7 +1,8 @@
 // What the assignment form edits. The description is HTML from the rich text editor.
 export type TAssignmentFormValues = {
   title: string;
-  studentId: string;
+  // The students the assignment is given to.
+  studentIds: string[];
   // yyyy-mm-dd, the format of a date input.
   dueDate: string;
   description: string;
@@ -31,4 +32,27 @@ export type TStudentAssignment = {
   // HTML from the rich text editor.
   description: string;
   file: TAssignmentFile | null;
+};
+
+// One student's part of an assignment: the status, and the checked file once the teacher uploads it.
+export type TAssignmentStudent = {
+  studentId: string;
+  name: string;
+  className: string;
+  status: TAssignmentStatus;
+  // yyyy-mm-dd, empty until the teacher uploads the checked file.
+  submittedAt: string | null;
+  grade: number | null;
+  file: TAssignmentFile | null;
+};
+
+// An assignment as the teacher sees it: given to one or more students.
+export type TTeacherAssignment = {
+  id: string;
+  title: string;
+  // yyyy-mm-dd
+  dueDate: string;
+  // HTML from the rich text editor.
+  description: string;
+  students: TAssignmentStudent[];
 };

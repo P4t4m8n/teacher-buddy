@@ -24,7 +24,9 @@ export const useStudentForm = ({ studentId }: TUseStudentFormOptions) => {
     setFieldErrors({});
   };
 
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>): Promise<void> => {
+  const handleSubmit = async (
+    e: React.SubmitEvent<HTMLFormElement>,
+  ): Promise<void> => {
     e.preventDefault();
 
     const form = new FormData(e.currentTarget);
