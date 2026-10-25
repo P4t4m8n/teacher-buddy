@@ -8,6 +8,14 @@ import type { TApiErrorBody } from "@/types/api.type";
 // zod's own messages (wrong type, missing field) become Hebrew too.
 z.config(z.locales.he());
 
+const validate = <T>(schema: z.ZodType<T>, input: unknown): T => {
+  const parsed = schema.safeParse(input);
+  if (!parsed.success) {
+    throw AppError.validation(z.flattenError(parsed.error).fieldErrors as Record<string, string[]>);
+  }
+  return parsed.data;
+};
+
 // Reads the JSON body and validates it. Throws an AppError, so the route needs no error code of its own:
 // a body that is not JSON is a 400, and so is a body that fails the schema (with the field errors).
 export const parseBody = async <T>(req: NextRequest, schema: z.ZodType<T>): Promise<T> => {
@@ -18,11 +26,22 @@ export const parseBody = async <T>(req: NextRequest, schema: z.ZodType<T>): Prom
     throw AppError.invalidJson();
   }
 
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) {
-    throw AppError.validation(z.flattenError(parsed.error).fieldErrors as Record<string, string[]>);
+  return validate(schema, body);
+};
+
+// The same for a form with a file. The size the request says it has is checked first, so a body that is far
+// too big is refused (413) before it is read. A body that is not a form is a 400, like one that fails the schema.
+export const parseFormData = async <T>(req: NextRequest, schema: z.ZodType<T>, maxBytes: number): Promise<T> => {
+  if (Number(req.headers.get("content-length")) > maxBytes) throw AppError.fileTooLarge();
+
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    throw AppError.invalidFormData();
   }
-  return parsed.data;
+
+  return validate(schema, Object.fromEntries(form));
 };
 
 // The catch block of every route handler. An AppError below 500 is an expected error, so its

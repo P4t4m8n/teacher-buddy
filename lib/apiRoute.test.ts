@@ -6,9 +6,12 @@ import { AppError } from "./AppError";
 
 vi.mock("server-only", () => ({}));
 
-import { handleRouteError, parseBody } from "./apiRoute";
+import { handleRouteError, parseBody, parseFormData } from "./apiRoute";
 
 const HEBREW_LETTER = /[\u05D0-\u05EA]/;
+
+const formRequest = (form: FormData, headers: Record<string, string> = {}): NextRequest =>
+  new NextRequest("http://localhost/api/test", { method: "PUT", body: form, headers });
 
 const requestWith = (body: string): NextRequest =>
   new NextRequest("http://localhost/api/test", {
@@ -81,6 +84,74 @@ describe("parseBody", () => {
       const error = await caught(parseBody(requestWith(body), schema));
       expect(error, body).toMatchObject({ status: 400, message: ERROR_MESSAGES.validation });
     }
+  });
+});
+
+describe("parseFormData", () => {
+  const formSchema = z.object({ file: z.instanceof(File, { error: "יש לבחור קובץ" }) });
+  const withFile = (name: string = "a.pdf"): FormData => {
+    const form = new FormData();
+    form.set("file", new File(["%PDF-1"], name, { type: "application/pdf" }));
+    return form;
+  };
+
+  it("returns the file of the form", async () => {
+    const result = await parseFormData(formRequest(withFile("עבודה.pdf")), formSchema, 1000);
+
+    expect(result.file).toBeInstanceOf(File);
+    expect(result.file.name).toBe("עבודה.pdf");
+    expect(await result.file.text()).toBe("%PDF-1");
+  });
+
+  it("ignores the other fields of the form", async () => {
+    const form = withFile();
+    form.set("teacherId", "x");
+
+    expect(Object.keys(await parseFormData(formRequest(form), formSchema, 1000))).toEqual(["file"]);
+  });
+
+  const textOnly = (): FormData => {
+    const form = new FormData();
+    form.set("file", "text");
+    return form;
+  };
+
+  it.each([
+    ["there is no file", () => new FormData()],
+    ["the field is only text", textOnly],
+  ])("is a 400 with the field error when %s", async (_label, makeForm) => {
+    const error = await caught(parseFormData(formRequest(makeForm()), formSchema, 1000));
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(error).toMatchObject({ status: 400, message: ERROR_MESSAGES.validation, fields: { file: ["יש לבחור קובץ"] } });
+  });
+
+  it("is a 413 when the request says it is bigger than the limit, without reading it", async () => {
+    const request = formRequest(withFile(), { "content-length": "1001" });
+    const read = vi.spyOn(request, "formData");
+
+    const error = await caught(parseFormData(request, formSchema, 1000));
+
+    expect(error).toMatchObject({ status: 413, message: ERROR_MESSAGES.fileTooLarge });
+    expect(read).not.toHaveBeenCalled();
+  });
+
+  it("accepts a request exactly at the limit", async () => {
+    const request = formRequest(withFile(), { "content-length": "1000" });
+
+    await expect(parseFormData(request, formSchema, 1000)).resolves.toBeDefined();
+  });
+
+  it("is a 400 when the body is not a form", async () => {
+    const request = new NextRequest("http://localhost/api/test", {
+      method: "PUT",
+      headers: { "Content-Type": "multipart/form-data; boundary=x" },
+      body: "this is not multipart",
+    });
+
+    const error = await caught(parseFormData(request, formSchema, 1000));
+
+    expect(error).toMatchObject({ status: 400, message: ERROR_MESSAGES.invalidFormData });
   });
 });
 

@@ -30,6 +30,14 @@ export class AppError extends Error {
     return new AppError(ERROR_MESSAGES.invalidJson, 400);
   }
 
+  static invalidFormData(): AppError {
+    return new AppError(ERROR_MESSAGES.invalidFormData, 400);
+  }
+
+  static fileTooLarge(): AppError {
+    return new AppError(ERROR_MESSAGES.fileTooLarge, 413);
+  }
+
   static classNotFound(): AppError {
     return new AppError(ERROR_MESSAGES.classNotFound, 404);
   }

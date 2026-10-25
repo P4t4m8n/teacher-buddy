@@ -100,3 +100,7 @@ export type TUpdateAssignmentResponse = {
 export type TDeleteAssignmentResponse = {
   id: string;
 };
+
+export type TUploadSubmissionResponse = {
+  student: TAssignmentStudent;
+};

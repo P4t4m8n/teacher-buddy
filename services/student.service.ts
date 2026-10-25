@@ -1,8 +1,8 @@
 import "server-only";
-import { z } from "zod";
 import { AppError } from "@/lib/AppError";
 import { prisma } from "@/lib/db";
 import { isRecordNotFound, isUniqueViolation } from "@/lib/prismaError";
+import { isUuid } from "@/lib/uuid";
 import type { TCreateStudentDto, TStudent, TUpdateStudentDto } from "@/types/student.type";
 
 const STUDENT_SELECT = {
@@ -11,10 +11,6 @@ const STUDENT_SELECT = {
   phone: true,
   class: { select: { id: true, name: true } },
 } as const;
-
-// An id that is not a uuid cannot match any student. Checking first answers "not found" instead of
-// letting the database fail on the malformed value.
-const isUuid = (value: string): boolean => z.uuid().safeParse(value).success;
 
 export const getStudents = async (teacherId: string): Promise<TStudent[]> => {
   return prisma.student.findMany({

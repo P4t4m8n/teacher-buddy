@@ -1,22 +1,22 @@
 import "server-only";
-import { z } from "zod";
 import { AppError } from "@/lib/AppError";
 import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { isForeignKeyViolation } from "@/lib/prismaError";
-import { getFileKind } from "@/helpers/assignment";
-import { toIsoDate, toIsraelIsoDate } from "@/helpers/date";
+import { isUuid } from "@/lib/uuid";
+import { toIsoDate } from "@/helpers/date";
+import {
+  ASSIGNMENT_PART_SELECT,
+  toAssignmentStudent,
+  type TAssignmentPartRow,
+} from "@/services/assignment.mapper";
 import type {
-  TAssignmentFile,
   TAssignmentListItem,
-  TAssignmentStatus,
-  TAssignmentStudent,
   TCreateAssignmentDto,
   TTeacherAssignment,
   TUpdateAssignmentDto,
 } from "@/types/assignment.type";
 
-// The bytes of the file are never selected here, only what is needed to show it and link to it.
 const ASSIGNMENT_SELECT = {
   id: true,
   title: true,
@@ -24,14 +24,7 @@ const ASSIGNMENT_SELECT = {
   dueDate: true,
   students: {
     orderBy: [{ student: { name: "asc" } }, { studentId: "asc" }],
-    select: {
-      studentId: true,
-      status: true,
-      grade: true,
-      submittedAt: true,
-      student: { select: { name: true, class: { select: { name: true } } } },
-      file: { select: { name: true, mimeType: true } },
-    },
+    select: ASSIGNMENT_PART_SELECT,
   },
 } satisfies Prisma.AssignmentSelect;
 
@@ -40,53 +33,18 @@ type TAssignmentRow = {
   title: string;
   description: string;
   dueDate: Date;
-  students: {
-    studentId: string;
-    status: TAssignmentStatus;
-    grade: number | null;
-    submittedAt: Date | null;
-    student: { name: string; class: { name: string } };
-    file: { name: string; mimeType: string } | null;
-  }[];
+  students: TAssignmentPartRow[];
 };
-
-// An id that is not a uuid cannot match any assignment. Checking first answers "not found" instead of
-// letting the database fail on the malformed value.
-const isUuid = (value: string): boolean => z.uuid().safeParse(value).success;
 
 // A date column is saved as the start of that day in UTC, which is how it is read back (toIsoDate).
 const toDbDate = (isoDate: string): Date => new Date(`${isoDate}T00:00:00.000Z`);
-
-const toFile = (
-  assignmentId: string,
-  studentId: string,
-  file: TAssignmentRow["students"][number]["file"],
-): TAssignmentFile | null => {
-  if (!file) return null;
-
-  return {
-    name: file.name,
-    kind: getFileKind(file.mimeType),
-    url: `/api/assignments/${assignmentId}/students/${studentId}/file`,
-  };
-};
 
 const toAssignment = (row: TAssignmentRow): TTeacherAssignment => ({
   id: row.id,
   title: row.title,
   dueDate: toIsoDate(row.dueDate),
   description: row.description,
-  students: row.students.map(
-    (part: TAssignmentRow["students"][number]): TAssignmentStudent => ({
-      studentId: part.studentId,
-      name: part.student.name,
-      className: part.student.class.name,
-      status: part.status,
-      submittedAt: part.submittedAt ? toIsraelIsoDate(part.submittedAt) : null,
-      grade: part.grade,
-      file: toFile(row.id, part.studentId, part.file),
-    }),
-  ),
+  students: row.students.map((part: TAssignmentPartRow) => toAssignmentStudent(row.id, part)),
 });
 
 // The newest due date first. The id is the last tie-break, so the order never changes between requests.
