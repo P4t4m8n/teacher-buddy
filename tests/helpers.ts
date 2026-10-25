@@ -105,6 +105,26 @@ export const countAssignments = (studentId: string): Promise<number> =>
     return result.rows[0].count as number;
   });
 
+// The student's part of an assignment, uploaded and maybe graded, as the file endpoint will save it later.
+export const submitPart = (
+  assignmentId: string,
+  studentId: string,
+  { submittedAt, grade, mimeType }: { submittedAt: string; grade: number | null; mimeType: string },
+): Promise<void> =>
+  withTestDb(async (client) => {
+    const part = await client.query(
+      `update "AssignmentStudent" set status = $3::"AssignmentStatus", grade = $4, "submittedAt" = ($5::timestamptz at time zone 'UTC')
+       where "assignmentId" = $1::uuid and "studentId" = $2::uuid returning id`,
+      [assignmentId, studentId, grade === null ? "SUBMITTED" : "CHECKED", grade, submittedAt],
+    );
+    const bytes: Buffer = Buffer.from("%PDF-1.4 test");
+    await client.query(
+      `insert into "SubmissionFile" (id, "assignmentStudentId", name, "mimeType", size, data)
+       values (gen_random_uuid(), $1::uuid, 'עבודה.pdf', $2, $3, $4)`,
+      [part.rows[0].id, mimeType, bytes.length, bytes],
+    );
+  });
+
 // Random values for tests that create data in the shared test database, so parallel tests and
 // repeated runs never collide.
 export const randomLetters = (length: number): string =>

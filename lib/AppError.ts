@@ -46,6 +46,10 @@ export class AppError extends Error {
     return new AppError(ERROR_MESSAGES.assignmentNotFound, 404);
   }
 
+  static assignmentStudentSubmitted(): AppError {
+    return new AppError(ERROR_MESSAGES.assignmentStudentSubmitted, 409);
+  }
+
   // For failures the client cannot fix, like a missing config value. `detail` is for the log only:
   // handleRouteError never sends the message of a 5xx error to the client.
   static internal(detail: string): AppError {

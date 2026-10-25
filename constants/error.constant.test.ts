@@ -8,6 +8,7 @@ describe("ERROR_MESSAGES", () => {
   it("has a message for every kind of error the user can see", () => {
     expect(Object.keys(ERROR_MESSAGES).sort()).toEqual([
       "assignmentNotFound",
+      "assignmentStudentSubmitted",
       "classNotFound",
       "internal",
       "invalidCredentials",

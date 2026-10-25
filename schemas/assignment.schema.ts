@@ -35,3 +35,7 @@ export const createAssignmentSchema = z.object({
     .max(MAX_STUDENTS, { error: `ניתן לבחור עד ${MAX_STUDENTS} תלמידים`, abort: true })
     .transform((ids: string[]) => [...new Set(ids)]),
 }) satisfies z.ZodType<TCreateAssignmentDto>;
+
+// An update replaces all four fields, so it follows the same rules as a create.
+export const updateAssignmentSchema = createAssignmentSchema;
+

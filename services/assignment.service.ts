@@ -13,6 +13,7 @@ import type {
   TAssignmentStudent,
   TCreateAssignmentDto,
   TTeacherAssignment,
+  TUpdateAssignmentDto,
 } from "@/types/assignment.type";
 
 // The bytes of the file are never selected here, only what is needed to show it and link to it.
@@ -52,6 +53,9 @@ type TAssignmentRow = {
 // An id that is not a uuid cannot match any assignment. Checking first answers "not found" instead of
 // letting the database fail on the malformed value.
 const isUuid = (value: string): boolean => z.uuid().safeParse(value).success;
+
+// A date column is saved as the start of that day in UTC, which is how it is read back (toIsoDate).
+const toDbDate = (isoDate: string): Date => new Date(`${isoDate}T00:00:00.000Z`);
 
 const toFile = (
   assignmentId: string,
@@ -151,7 +155,7 @@ export const createAssignment = async (
         teacherId,
         title: dto.title,
         description: dto.description,
-        dueDate: new Date(`${dto.dueDate}T00:00:00.000Z`),
+        dueDate: toDbDate(dto.dueDate),
         students: { create: dto.studentIds.map((studentId: string) => ({ studentId })) },
       },
       select: ASSIGNMENT_SELECT,
@@ -162,4 +166,57 @@ export const createAssignment = async (
     if (isForeignKeyViolation(error)) throw AppError.studentNotFound();
     throw error;
   }
+};
+
+// Replaces the title, description, due date and the students. A student who stays keeps their file, grade
+// and status, a new student starts as TODO, and a student who is removed loses their part, which is only
+// allowed while they have not submitted (the part would take the file and the grade with it).
+// It is all one transaction, so a refused update changes nothing.
+export const updateAssignment = async (
+  teacherId: string,
+  assignmentId: string,
+  dto: TUpdateAssignmentDto,
+): Promise<TTeacherAssignment> => {
+  if (!isUuid(assignmentId)) throw AppError.assignmentNotFound();
+
+  try {
+    const row = await prisma.$transaction(async (tx) => {
+      // The teacher is in the filter, so another teacher's assignment is never touched.
+      const { count } = await tx.assignment.updateMany({
+        where: { id: assignmentId, teacherId },
+        data: { title: dto.title, description: dto.description, dueDate: toDbDate(dto.dueDate) },
+      });
+      if (count === 0) throw AppError.assignmentNotFound();
+
+      const ownedCount: number = await tx.student.count({ where: { id: { in: dto.studentIds }, teacherId } });
+      if (ownedCount !== dto.studentIds.length) throw AppError.studentNotFound();
+
+      // Only parts that are still TODO are deleted. Any part of a removed student that is left was submitted,
+      // also if it was submitted a moment ago, so the check cannot miss a file that arrived in between.
+      const removed = { assignmentId, studentId: { notIn: dto.studentIds } };
+      await tx.assignmentStudent.deleteMany({ where: { ...removed, status: "TODO" } });
+      if ((await tx.assignmentStudent.count({ where: removed })) > 0) throw AppError.assignmentStudentSubmitted();
+
+      await tx.assignmentStudent.createMany({
+        data: dto.studentIds.map((studentId: string) => ({ assignmentId, studentId })),
+        skipDuplicates: true,
+      });
+
+      return tx.assignment.findUniqueOrThrow({ where: { id: assignmentId }, select: ASSIGNMENT_SELECT });
+    });
+    return toAssignment(row);
+  } catch (error: unknown) {
+    // A student was deleted while the update ran.
+    if (isForeignKeyViolation(error)) throw AppError.studentNotFound();
+    throw error;
+  }
+};
+
+// The students' parts and their files are deleted with the assignment: the database cascades the delete.
+export const deleteAssignment = async (teacherId: string, assignmentId: string): Promise<void> => {
+  if (!isUuid(assignmentId)) throw AppError.assignmentNotFound();
+
+  // One statement that matches the id AND the teacher, so another teacher's assignment is never touched.
+  const { count } = await prisma.assignment.deleteMany({ where: { id: assignmentId, teacherId } });
+  if (count === 0) throw AppError.assignmentNotFound();
 };

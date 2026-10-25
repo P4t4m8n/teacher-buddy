@@ -10,6 +10,7 @@ export const ERROR_MESSAGES = {
   classNotFound: "הכיתה לא נמצאה",
   studentNotFound: "התלמיד לא נמצא",
   assignmentNotFound: "המטלה לא נמצאה",
+  assignmentStudentSubmitted: "לא ניתן להסיר מהמטלה תלמיד שכבר הגיש אותה",
   studentExists: "תלמיד בשם הזה ועם אותו מספר טלפון כבר קיים",
   internal: "אירעה שגיאה בשרת, נסו שוב מאוחר יותר",
   // Only used by the client, when the request never got an answer from the server.

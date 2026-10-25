@@ -3,7 +3,15 @@ import { ERROR_MESSAGES } from "../constants/error.constant";
 import { WRITE_OTHER_SEED, WRITE_SEED } from "../prisma/seed-data";
 import type { TAssignmentListItem, TTeacherAssignment } from "../types/assignment.type";
 import type { TStudent } from "../types/student.type";
-import { getStudentList, randomLetters, signInAs, signToken, UNKNOWN_TEACHER_ID, withTestDb } from "./helpers";
+import {
+  getStudentList,
+  randomLetters,
+  signInAs,
+  signToken,
+  submitPart,
+  UNKNOWN_TEACHER_ID,
+  withTestDb,
+} from "./helpers";
 
 const ASSIGNMENTS_URL = "/api/assignments";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -42,26 +50,6 @@ const writeStudents = async (request: APIRequestContext): Promise<TStudent[]> =>
   await signInAs(request, WRITE_SEED);
   return getStudentList(request);
 };
-
-// The student's part of an assignment, uploaded and maybe graded, as the file endpoint will save it later.
-const submit = (
-  assignmentId: string,
-  studentId: string,
-  { submittedAt, grade, mimeType }: { submittedAt: string; grade: number | null; mimeType: string },
-): Promise<void> =>
-  withTestDb(async (client) => {
-    const part = await client.query(
-      `update "AssignmentStudent" set status = $3::"AssignmentStatus", grade = $4, "submittedAt" = ($5::timestamptz at time zone 'UTC')
-       where "assignmentId" = $1::uuid and "studentId" = $2::uuid returning id`,
-      [assignmentId, studentId, grade === null ? "SUBMITTED" : "CHECKED", grade, submittedAt],
-    );
-    const bytes: Buffer = Buffer.from("%PDF-1.4 test");
-    await client.query(
-      `insert into "SubmissionFile" (id, "assignmentStudentId", name, "mimeType", size, data)
-       values (gen_random_uuid(), $1::uuid, 'עבודה.pdf', $2, $3, $4)`,
-      [part.rows[0].id, mimeType, bytes.length, bytes],
-    );
-  });
 
 const readStoredDescription = (assignmentId: string): Promise<string> =>
   withTestDb(async (client) => {
@@ -301,8 +289,8 @@ test.describe("GET /api/assignments", () => {
   test("returns the assignments with the number of students and of submitted ones", async ({ request }) => {
     const students = await writeStudents(request);
     const created = await create(request, students.map(({ id }) => id));
-    await submit(created.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: null, mimeType: "application/pdf" });
-    await submit(created.id, students[1].id, { submittedAt: "2030-06-02T10:00:00Z", grade: 80, mimeType: "application/pdf" });
+    await submitPart(created.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: null, mimeType: "application/pdf" });
+    await submitPart(created.id, students[1].id, { submittedAt: "2030-06-02T10:00:00Z", grade: 80, mimeType: "application/pdf" });
 
     const item = (await list(request)).find(({ id }) => id === created.id);
 
@@ -318,7 +306,7 @@ test.describe("GET /api/assignments", () => {
   test("does not count a student who has not submitted", async ({ request }) => {
     const students = await writeStudents(request);
     const created = await create(request, students.map(({ id }) => id));
-    await submit(created.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: null, mimeType: "application/pdf" });
+    await submitPart(created.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: null, mimeType: "application/pdf" });
 
     const item = (await list(request)).find(({ id }) => id === created.id);
 
@@ -389,7 +377,7 @@ test.describe("GET /api/assignments/[id]", () => {
   test("gives the uploaded file of a student as a link, never its bytes", async ({ request }) => {
     const students = await writeStudents(request);
     const created = await create(request, [students[0].id]);
-    await submit(created.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: 95, mimeType: "application/pdf" });
+    await submitPart(created.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: 95, mimeType: "application/pdf" });
 
     const response = await request.get(`${ASSIGNMENTS_URL}/${created.id}`);
 
@@ -410,7 +398,7 @@ test.describe("GET /api/assignments/[id]", () => {
   test("gives an image the kind image", async ({ request }) => {
     const students = await writeStudents(request);
     const created = await create(request, [students[0].id]);
-    await submit(created.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: null, mimeType: "image/png" });
+    await submitPart(created.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: null, mimeType: "image/png" });
 
     const { assignment } = await (await request.get(`${ASSIGNMENTS_URL}/${created.id}`)).json();
 
@@ -420,7 +408,7 @@ test.describe("GET /api/assignments/[id]", () => {
   test("keeps a grade of 0", async ({ request }) => {
     const students = await writeStudents(request);
     const created = await create(request, [students[0].id]);
-    await submit(created.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: 0, mimeType: "application/pdf" });
+    await submitPart(created.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: 0, mimeType: "application/pdf" });
 
     const { assignment } = await (await request.get(`${ASSIGNMENTS_URL}/${created.id}`)).json();
 
@@ -430,7 +418,7 @@ test.describe("GET /api/assignments/[id]", () => {
   test("shows the day of the upload in Israel: 22:30 UTC in winter is already the next day", async ({ request }) => {
     const students = await writeStudents(request);
     const created = await create(request, [students[0].id]);
-    await submit(created.id, students[0].id, { submittedAt: "2030-12-14T22:30:00Z", grade: null, mimeType: "application/pdf" });
+    await submitPart(created.id, students[0].id, { submittedAt: "2030-12-14T22:30:00Z", grade: null, mimeType: "application/pdf" });
 
     const { assignment } = await (await request.get(`${ASSIGNMENTS_URL}/${created.id}`)).json();
 

@@ -78,6 +78,9 @@ export type TCreateAssignmentDto = {
   studentIds: string[];
 };
 
+// An update replaces the title, description, due date and students, so it has the same shape as a create.
+export type TUpdateAssignmentDto = TCreateAssignmentDto;
+
 export type TGetAssignmentsResponse = {
   assignments: TAssignmentListItem[];
 };
@@ -88,4 +91,12 @@ export type TGetAssignmentResponse = {
 
 export type TCreateAssignmentResponse = {
   assignment: TTeacherAssignment;
+};
+
+export type TUpdateAssignmentResponse = {
+  assignment: TTeacherAssignment;
+};
+
+export type TDeleteAssignmentResponse = {
+  id: string;
 };

@@ -7,17 +7,47 @@ const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
   create: vi.fn(),
   studentCount: vi.fn(),
+  updateMany: vi.fn(),
+  deleteMany: vi.fn(),
+  findUniqueOrThrow: vi.fn(),
+  partDeleteMany: vi.fn(),
+  partCount: vi.fn(),
+  partCreateMany: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    assignment: { findMany: mocks.findMany, findFirst: mocks.findFirst, create: mocks.create },
+vi.mock("@/lib/db", () => {
+  const tx = {
+    assignment: { updateMany: mocks.updateMany, findUniqueOrThrow: mocks.findUniqueOrThrow },
     student: { count: mocks.studentCount },
-  },
-}));
+    assignmentStudent: {
+      deleteMany: mocks.partDeleteMany,
+      count: mocks.partCount,
+      createMany: mocks.partCreateMany,
+    },
+  };
+  return {
+    prisma: {
+      assignment: {
+        findMany: mocks.findMany,
+        findFirst: mocks.findFirst,
+        create: mocks.create,
+        deleteMany: mocks.deleteMany,
+      },
+      student: { count: mocks.studentCount },
+      $transaction: (run: (client: typeof tx) => Promise<unknown>) => run(tx),
+    },
+  };
+});
 
-import { createAssignment, findAssignment, getAssignment, getAssignments } from "./assignment.service";
+import {
+  createAssignment,
+  deleteAssignment,
+  findAssignment,
+  getAssignment,
+  getAssignments,
+  updateAssignment,
+} from "./assignment.service";
 
 const TEACHER_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
 const ASSIGNMENT_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f90";
@@ -308,5 +338,151 @@ describe("createAssignment", () => {
     mocks.create.mockRejectedValue(failure);
 
     await expect(createAssignment(TEACHER_ID, dto)).rejects.toBe(failure);
+  });
+});
+
+describe("updateAssignment", () => {
+  const dto = {
+    title: "חיבור חדש",
+    description: "<p>חדש</p>",
+    dueDate: "2027-01-20",
+    studentIds: [STUDENT_A, STUDENT_B],
+  };
+
+  // The state of the database as the update sees it: the assignment is found, the students are the
+  // teacher's, nothing is left of a removed student, and the assignment is read back at the end.
+  const happyPath = (): void => {
+    mocks.updateMany.mockResolvedValue({ count: 1 });
+    mocks.studentCount.mockResolvedValue(2);
+    mocks.partDeleteMany.mockResolvedValue({ count: 0 });
+    mocks.partCount.mockResolvedValue(0);
+    mocks.partCreateMany.mockResolvedValue({ count: 0 });
+    mocks.findUniqueOrThrow.mockResolvedValue(row({ title: "חיבור חדש" }));
+  };
+
+  it.each(["abc", "", "' OR 1=1 --"])("is a 404 for %j, without touching the database", async (id) => {
+    await expectAppError(updateAssignment(TEACHER_ID, id, dto), AppError.assignmentNotFound());
+
+    expect(mocks.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("changes only the assignment of this teacher", async () => {
+    happyPath();
+
+    await updateAssignment(TEACHER_ID, ASSIGNMENT_ID, dto);
+
+    expect(mocks.updateMany).toHaveBeenCalledWith({
+      where: { id: ASSIGNMENT_ID, teacherId: TEACHER_ID },
+      data: { title: "חיבור חדש", description: "<p>חדש</p>", dueDate: new Date("2027-01-20T00:00:00.000Z") },
+    });
+  });
+
+  it("is a 404 when there is no such assignment, and checks nothing else", async () => {
+    mocks.updateMany.mockResolvedValue({ count: 0 });
+
+    await expectAppError(updateAssignment(TEACHER_ID, ASSIGNMENT_ID, dto), AppError.assignmentNotFound());
+
+    expect(mocks.studentCount).not.toHaveBeenCalled();
+    expect(mocks.partDeleteMany).not.toHaveBeenCalled();
+  });
+
+  it("is a 404 when a student is not the teacher's, and changes nothing about the students", async () => {
+    happyPath();
+    mocks.studentCount.mockResolvedValue(1);
+
+    await expectAppError(updateAssignment(TEACHER_ID, ASSIGNMENT_ID, dto), AppError.studentNotFound());
+
+    expect(mocks.studentCount).toHaveBeenCalledWith({
+      where: { id: { in: [STUDENT_A, STUDENT_B] }, teacherId: TEACHER_ID },
+    });
+    expect(mocks.partDeleteMany).not.toHaveBeenCalled();
+    expect(mocks.partCreateMany).not.toHaveBeenCalled();
+  });
+
+  it("removes only the parts of removed students that are still TODO", async () => {
+    happyPath();
+
+    await updateAssignment(TEACHER_ID, ASSIGNMENT_ID, dto);
+
+    expect(mocks.partDeleteMany).toHaveBeenCalledWith({
+      where: { assignmentId: ASSIGNMENT_ID, studentId: { notIn: [STUDENT_A, STUDENT_B] }, status: "TODO" },
+    });
+  });
+
+  it("is a 409 when a removed student has submitted: what is left after the delete is a submitted part", async () => {
+    happyPath();
+    mocks.partCount.mockResolvedValue(1);
+
+    await expectAppError(updateAssignment(TEACHER_ID, ASSIGNMENT_ID, dto), AppError.assignmentStudentSubmitted());
+
+    expect(mocks.partCount).toHaveBeenCalledWith({
+      where: { assignmentId: ASSIGNMENT_ID, studentId: { notIn: [STUDENT_A, STUDENT_B] } },
+    });
+    expect(mocks.partCreateMany).not.toHaveBeenCalled();
+    expect(mocks.findUniqueOrThrow).not.toHaveBeenCalled();
+  });
+
+  it("adds the new students, and skips the ones that are already in", async () => {
+    happyPath();
+
+    await updateAssignment(TEACHER_ID, ASSIGNMENT_ID, dto);
+
+    expect(mocks.partCreateMany).toHaveBeenCalledWith({
+      data: [
+        { assignmentId: ASSIGNMENT_ID, studentId: STUDENT_A },
+        { assignmentId: ASSIGNMENT_ID, studentId: STUDENT_B },
+      ],
+      skipDuplicates: true,
+    });
+  });
+
+  it("gives back the assignment as the client reads it", async () => {
+    happyPath();
+
+    expect(await updateAssignment(TEACHER_ID, ASSIGNMENT_ID, dto)).toMatchObject({
+      id: ASSIGNMENT_ID,
+      title: "חיבור חדש",
+      dueDate: "2026-12-15",
+    });
+    expect(mocks.findUniqueOrThrow).toHaveBeenCalledWith(expect.objectContaining({ where: { id: ASSIGNMENT_ID } }));
+  });
+
+  it("is a 404 when a student was deleted while it ran", async () => {
+    happyPath();
+    mocks.partCreateMany.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("fk", { code: "P2003", clientVersion: "x" }),
+    );
+
+    await expectAppError(updateAssignment(TEACHER_ID, ASSIGNMENT_ID, dto), AppError.studentNotFound());
+  });
+
+  it("does not hide other database errors", async () => {
+    happyPath();
+    const failure = new Error("connection lost");
+    mocks.partCreateMany.mockRejectedValue(failure);
+
+    await expect(updateAssignment(TEACHER_ID, ASSIGNMENT_ID, dto)).rejects.toBe(failure);
+  });
+});
+
+describe("deleteAssignment", () => {
+  it("deletes only the assignment of this teacher", async () => {
+    mocks.deleteMany.mockResolvedValue({ count: 1 });
+
+    await deleteAssignment(TEACHER_ID, ASSIGNMENT_ID);
+
+    expect(mocks.deleteMany).toHaveBeenCalledWith({ where: { id: ASSIGNMENT_ID, teacherId: TEACHER_ID } });
+  });
+
+  it("is a 404 when nothing was deleted", async () => {
+    mocks.deleteMany.mockResolvedValue({ count: 0 });
+
+    await expectAppError(deleteAssignment(TEACHER_ID, ASSIGNMENT_ID), AppError.assignmentNotFound());
+  });
+
+  it.each(["abc", "", "' OR 1=1 --"])("is a 404 for %j, without touching the database", async (id) => {
+    await expectAppError(deleteAssignment(TEACHER_ID, id), AppError.assignmentNotFound());
+
+    expect(mocks.deleteMany).not.toHaveBeenCalled();
   });
 });
