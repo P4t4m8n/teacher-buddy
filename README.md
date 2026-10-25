@@ -161,7 +161,7 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/auth        Sign-in page
   (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading); a link to add a student, and each row links to the student page and to edit, and has a delete button with a confirmation
   (root)/dashboard/students/new          Add-student page
-  (root)/dashboard/students/[id]         Student details page (a missing student, another teacher's or a malformed id all show the same not-found page)
+  (root)/dashboard/students/[id]         Student page: the details, and the student's assignments list (name, submitted date, grade). A click opens a modal with the assignment details, the description, and the checked file (PDF or image) with an upload field. Hardcoded sample data for now; nothing is saved yet. A missing student, another teacher's or a malformed id all show the same not-found page
   (root)/dashboard/students/[id]/edit    Edit-student page, filled from the database; shares one form (StudentForm) with the add page
   (root)/dashboard/layout.tsx            The header and the page frame, shared by every dashboard page
   (root)/dashboard/assignments/new       Add-assignment form with the rich text editor (the form is built, saving is not yet)
@@ -170,7 +170,8 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   api/students       Students endpoints (list, create, and /[id]: details, update, delete)
   api/classes        Classes endpoint
 components/          UI components, grouped by feature (auth, dashboard, students, assignments, ui)
-hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useDeleteStudent, useModal, useDisclosure)
+helpers/             Small pure helpers (button styles, date format)
+hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useDeleteStudent, useFilePreview, useModal, useDisclosure)
 services/            Server services (auth.service.ts) and client API services
 schemas/             zod schemas
 types/               Shared TypeScript types

@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import StudentAssignments from "@/components/assignments/StudentAssignments";
 import StudentDetails from "@/components/students/StudentDetails";
+import { LinkButton } from "@/components/ui/LinkButton";
+import { NEW_ASSIGNMENT_PAGE, SAMPLE_STUDENT_ASSIGNMENTS } from "@/constants/assignment.constant";
 import { DASHBOARD_PAGE, SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
 import { getSessionTeacher } from "@/services/auth.service";
 import { findStudent } from "@/services/student.service";
@@ -29,6 +32,18 @@ export default async function AuthenticatedStudentPage({ params }: TAuthenticate
         חזרה לרשימת התלמידים
       </Link>
       <StudentDetails student={student} />
+      <section aria-labelledby="assignments-heading" className="flex flex-col gap-4">
+        <div className="flex items-center justify-between gap-4">
+          <h2 id="assignments-heading" className="text-lg font-semibold">
+            מטלות
+          </h2>
+          <LinkButton href={NEW_ASSIGNMENT_PAGE} variant="primary" size="sm">
+            מטלה חדשה
+          </LinkButton>
+        </div>
+        {/* Hardcoded sample until the assignments API exists: every student shows the same list. */}
+        <StudentAssignments assignments={SAMPLE_STUDENT_ASSIGNMENTS} />
+      </section>
     </div>
   );
 }

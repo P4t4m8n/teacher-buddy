@@ -5,13 +5,18 @@ import { useModal } from "@/hooks/useModal";
 
 type TModalProps = {
   isOpen: boolean;
-  // Called when the modal asks to close (the close button or Escape). The parent owns isOpen.
   onClose: () => void;
   title: string;
+  size?: "md" | "lg";
   children: React.ReactNode;
 };
 
-export const Modal = ({ isOpen, onClose, title, children }: TModalProps) => {
+const SIZE_CLASSES: Record<NonNullable<TModalProps["size"]>, string> = {
+  md: "max-w-md",
+  lg: "max-w-2xl",
+};
+
+export const Modal = ({ isOpen, onClose, title, size = "md", children }: TModalProps) => {
   const { dialogRef } = useModal(isOpen);
   const titleId: string = useId();
 
@@ -21,7 +26,7 @@ export const Modal = ({ isOpen, onClose, title, children }: TModalProps) => {
       ref={dialogRef}
       aria-labelledby={titleId}
       onClose={onClose}
-      className="modal m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100"
+      className={`modal m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] ${SIZE_CLASSES[size]} overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100`}
     >
       {/* The content only exists while it is open, so every opening starts with a fresh form. */}
       {isOpen && (
