@@ -51,7 +51,13 @@ const warmUpServer = async (baseURL: string): Promise<void> => {
     await page.keyboard.press("Escape");
     const detailsHref = await page.getByRole("link", { name: /^פרטים עבור/ }).first().getAttribute("href");
     const editHref = await page.getByRole("link", { name: /^עריכה עבור/ }).first().getAttribute("href");
-    for (const path of ["/dashboard/students/new", detailsHref, editHref]) {
+    for (const path of [
+      "/dashboard/students/new",
+      "/dashboard/assignments/new",
+      "/dashboard/assignments/0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60/edit",
+      detailsHref,
+      editHref,
+    ]) {
       if (path) await page.goto(path);
     }
     for (const path of ["/api/auth/me", "/api/students", "/api/classes", "/api/auth/session-expired"]) {

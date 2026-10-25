@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { DASHBOARD_PAGE } from "@/constants/auth.constant";
 
-type TStudentFormPageProps = {
+type TFormPageProps = {
   title: string;
   children: React.ReactNode;
 };
 
 // The frame of the add and edit pages: a back link, the title and the form in a card.
-export default function StudentFormPage({ title, children }: TStudentFormPageProps) {
+export default function FormPage({ title, children }: TFormPageProps) {
   return (
     <div className="flex w-full max-w-xl flex-col gap-6">
       <Link

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import StudentForm from "@/components/students/StudentForm";
-import StudentFormPage from "@/components/students/StudentFormPage";
+import FormPage from "@/components/ui/FormPage";
 import { SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
 import { getSessionTeacher } from "@/services/auth.service";
 import { getClasses } from "@/services/class.service";
@@ -15,8 +15,8 @@ export default async function AuthenticatedNewStudentPage() {
   const classes: TClass[] = await getClasses(teacher.id);
 
   return (
-    <StudentFormPage title="הוספת תלמיד">
+    <FormPage title="הוספת תלמיד">
       <StudentForm classes={classes} />
-    </StudentFormPage>
+    </FormPage>
   );
 }

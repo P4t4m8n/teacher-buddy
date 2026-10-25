@@ -30,6 +30,40 @@ body:has(dialog[open]) {
   overflow: hidden;
 }
 
+/* The text of the rich text editor, and later the same text when it is only shown. Tailwind removes the
+   default look of headings and lists, so it is put back here. */
+.rich-text > * + * {
+  margin-top: 0.75rem;
+}
+
+.rich-text h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.rich-text h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.rich-text ul {
+  list-style: disc;
+  padding-inline-start: 1.5rem;
+}
+
+.rich-text ol {
+  list-style: decimal;
+  padding-inline-start: 1.5rem;
+}
+
+.rich-text strong {
+  font-weight: 700;
+}
+
+.rich-text em {
+  font-style: italic;
+}
+
 @keyframes modal-in {
   from {
     opacity: 0;

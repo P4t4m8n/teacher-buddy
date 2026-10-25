@@ -90,6 +90,7 @@ The tests that create students use two dedicated teachers (`נעמה שרון` a
 | Database | PostgreSQL with Prisma 7 (`@prisma/adapter-pg`) | Relational data (teacher, class, student, assignment), typed queries, versioned migrations |
 | Validation | zod | One schema validates request bodies and gives per-field error messages |
 | Authentication | JWT in an `httpOnly` cookie (`jose`), passwords hashed with Argon2 (`@node-rs/argon2`) | Stateless sessions, and the ID number (the "password") is never stored in plain text |
+| Rich text | Tiptap (`@tiptap/react`, `@tiptap/starter-kit`) | The assignment description is written in a rich text editor (bold, italic, headings, lists). Only those formats are enabled |
 | Tests | Vitest (unit) and Playwright (API + UI e2e) | Fast unit tests for the services, real-browser tests for the full flows |
 
 ## How authentication works
@@ -163,10 +164,12 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/dashboard/students/[id]         Student details page (a missing student, another teacher's or a malformed id all show the same not-found page)
   (root)/dashboard/students/[id]/edit    Edit-student page, filled from the database; shares one form (StudentForm) with the add page
   (root)/dashboard/layout.tsx            The header and the page frame, shared by every dashboard page
+  (root)/dashboard/assignments/new       Add-assignment form with the rich text editor (the form is built, saving is not yet)
+  (root)/dashboard/assignments/[id]/edit Edit-assignment form, with a hardcoded sample for now (same form as the add page)
   api/auth/...       Auth endpoints
   api/students       Students endpoints (list, create, and /[id]: details, update, delete)
   api/classes        Classes endpoint
-components/          UI components, grouped by feature (auth, dashboard, students, ui)
+components/          UI components, grouped by feature (auth, dashboard, students, assignments, ui)
 hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useDeleteStudent, useModal, useDisclosure)
 services/            Server services (auth.service.ts) and client API services
 schemas/             zod schemas
