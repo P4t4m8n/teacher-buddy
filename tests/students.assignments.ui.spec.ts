@@ -98,7 +98,7 @@ test.describe("student assignments: the modal", () => {
 
     const values = dialog.locator("dd");
     await expect(values).toHaveCount(3);
-    await expect(values.nth(0)).toHaveText("הוגשה");
+    await expect(values.nth(0)).toHaveText("נבדקה");
     await expect(values.nth(1)).toHaveText(formatDate(GRADED.dueDate));
     await expect(values.nth(2)).toHaveText(formatDate(GRADED.submittedAt!));
     await expect(dialog.getByLabel("ציון")).toHaveValue(String(GRADED.grade));
@@ -106,6 +106,7 @@ test.describe("student assignments: the modal", () => {
 
   test("says when it was not submitted, and leaves the grade empty when it was not graded yet", async ({ page }) => {
     const ungraded = await open(page, UNGRADED);
+    await expect(ungraded.locator("dd").nth(0)).toHaveText("הוגשה");
     await expect(ungraded.getByLabel("ציון")).toHaveValue("");
     await page.keyboard.press("Escape");
     await expect(ungraded).toBeHidden();
@@ -323,7 +324,7 @@ test.describe("student assignments: the grade", () => {
   });
 
   test("a grade can be typed, changed and cleared", async ({ page }) => {
-    const grade = (await open(page, TODO)).getByLabel("ציון");
+    const grade = (await open(page, UNGRADED)).getByLabel("ציון");
 
     await grade.fill("77");
     await expect(grade).toHaveValue("77");
@@ -342,16 +343,71 @@ test.describe("student assignments: the grade", () => {
     await expect(grade).toHaveValue("95");
   });
 
-  test("the keyboard reaches the grade after the file, and the save button after the grade", async ({ page }) => {
-    const dialog = await open(page, TODO);
+  test("an assignment that was uploaded can be graded: the grade field is open, with no warning", async ({ page }) => {
+    for (const assignment of [GRADED, UNGRADED]) {
+      const dialog = await open(page, assignment);
 
-    await fileInput(dialog).focus();
+      await expect(dialog.getByLabel("ציון")).toBeEnabled();
+      await expect(dialog.getByText("ניתן להזין ציון רק אחרי העלאת המטלה")).toHaveCount(0);
+      await page.keyboard.press("Escape");
+      await expect(dialog).toBeHidden();
+    }
+  });
+
+  test("an assignment that was not uploaded cannot be graded: the grade field is closed, and says why", async ({
+    page,
+  }) => {
+    const dialog = await open(page, TODO);
+    const grade = dialog.getByLabel("ציון");
+
+    await expect(grade).toBeDisabled();
+    await expect(grade).toHaveAccessibleDescription("ניתן להזין ציון רק אחרי העלאת המטלה");
+    await expect(dialog.getByText("ניתן להזין ציון רק אחרי העלאת המטלה")).toBeVisible();
+    await expect(grade).toHaveCSS("cursor", "not-allowed");
+  });
+
+  test("choosing a file opens the grade field, and removing the file closes it again", async ({ page }) => {
+    const dialog = await open(page, TODO);
+    await expect(dialog.getByLabel("ציון")).toBeDisabled();
+
+    await fileInput(dialog).setInputFiles({ name: "scan.png", mimeType: "image/png", buffer: PNG });
+    await expect(dialog.getByLabel("ציון")).toBeEnabled();
+    await expect(dialog.getByText("ניתן להזין ציון רק אחרי העלאת המטלה")).toHaveCount(0);
+    await dialog.getByLabel("ציון").fill("80");
+    await expect(dialog.getByLabel("ציון")).toHaveValue("80");
+
+    await fileInput(dialog).setInputFiles([]);
+    await expect(dialog.getByLabel("ציון")).toBeDisabled();
+    await expect(dialog.getByText("ניתן להזין ציון רק אחרי העלאת המטלה")).toBeVisible();
+  });
+
+  test("a disabled grade is not sent with the form", async ({ page }) => {
+    const dialog = await open(page, TODO);
+    const sent: string[] = await dialog.locator("form").evaluate((form: HTMLFormElement) => [...new FormData(form).keys()]);
+
+    expect(sent).not.toContain("grade");
+
+    await fileInput(dialog).setInputFiles({ name: "scan.png", mimeType: "image/png", buffer: PNG });
+    const sentWithFile: string[] = await dialog.locator("form").evaluate((form: HTMLFormElement) => [...new FormData(form).keys()]);
+    expect(sentWithFile).toContain("grade");
+    expect(sentWithFile).toContain("file");
+  });
+
+  test("the keyboard skips a closed grade field, and reaches an open one after the file", async ({ page }) => {
+    const closed = await open(page, TODO);
+    await fileInput(closed).focus();
     await page.keyboard.press("Tab");
-    await expect(dialog.getByLabel("ציון")).toBeFocused();
+    await expect(closed.getByRole("link", { name: "עריכת המטלה" })).toBeFocused();
+    await page.keyboard.press("Escape");
+
+    const open_ = await open(page, UNGRADED);
+    await fileInput(open_).focus();
     await page.keyboard.press("Tab");
-    await expect(dialog.getByRole("link", { name: "עריכת המטלה" })).toBeFocused();
+    await expect(open_.getByLabel("ציון")).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(dialog.getByRole("button", { name: "שמירה" })).toBeFocused();
+    await expect(open_.getByRole("link", { name: "עריכת המטלה" })).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(open_.getByRole("button", { name: "שמירה" })).toBeFocused();
   });
 
   test("the file and the grade are in one form, with a save button", async ({ page }) => {
@@ -369,7 +425,7 @@ test.describe("student assignments: the grade", () => {
     page.on("request", (request) => {
       if (request.method() !== "GET") requests.push(`${request.method()} ${request.url()}`);
     });
-    const dialog = await open(page, TODO);
+    const dialog = await open(page, UNGRADED);
     await dialog.getByLabel("ציון").fill("88");
 
     await dialog.getByRole("button", { name: "שמירה", exact: true }).click();
@@ -381,7 +437,7 @@ test.describe("student assignments: the grade", () => {
   });
 
   test("a value out of range does not raise the browser's own message: the server will answer", async ({ page }) => {
-    const dialog = await open(page, TODO);
+    const dialog = await open(page, UNGRADED);
     await dialog.getByLabel("ציון").fill("150");
 
     await dialog.getByRole("button", { name: "שמירה", exact: true }).click();
@@ -391,7 +447,7 @@ test.describe("student assignments: the grade", () => {
   });
 
   test("a typed grade is forgotten when the modal closes, and another assignment has its own", async ({ page }) => {
-    const first = await open(page, TODO);
+    const first = await open(page, UNGRADED);
     await first.getByLabel("ציון").fill("55");
     await page.keyboard.press("Escape");
 
@@ -399,7 +455,7 @@ test.describe("student assignments: the grade", () => {
     await expect(second.getByLabel("ציון")).toHaveValue(String(GRADED.grade));
     await page.keyboard.press("Escape");
 
-    const again = await open(page, TODO);
+    const again = await open(page, UNGRADED);
     await expect(again.getByLabel("ציון")).toHaveValue("");
   });
 
@@ -429,7 +485,7 @@ test.describe("student assignments: narrow screen", () => {
 
   test("the grade and the save button can be reached and used", async ({ page }) => {
     await openStudentPage(page);
-    const dialog = await open(page, TODO);
+    const dialog = await open(page, UNGRADED);
 
     const grade = dialog.getByLabel("ציון");
     await grade.scrollIntoViewIfNeeded();

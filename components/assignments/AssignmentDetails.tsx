@@ -7,6 +7,7 @@ import { FormField } from "@/components/ui/FormField";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { FILE_ACCEPT, getAssignmentEditPage, MAX_GRADE, MIN_GRADE } from "@/constants/assignment.constant";
 import { formatDate } from "@/helpers/date";
+import { canGrade } from "@/helpers/assignment";
 import { useFilePreview } from "@/hooks/useFilePreview";
 import type { TAssignmentFile, TStudentAssignment } from "@/types/assignment.type";
 
@@ -70,7 +71,8 @@ export default function AssignmentDetails({ assignment }: TAssignmentDetailsProp
           </label>
         </section>
 
-        {/* Empty while the assignment was not checked yet. */}
+        {/* A grade is only possible for an assignment that was uploaded, so the field waits for a file
+            (the saved one, or one just picked: both are sent together). */}
         <FormField
           label="ציון"
           name="grade"
@@ -81,6 +83,8 @@ export default function AssignmentDetails({ assignment }: TAssignmentDetailsProp
           step={1}
           placeholder={`${MIN_GRADE} - ${MAX_GRADE}`}
           autoComplete="off"
+          disabled={!canGrade(shownFile !== null)}
+          hint={canGrade(shownFile !== null) ? undefined : "ניתן להזין ציון רק אחרי העלאת המטלה"}
           defaultValue={assignment.grade ?? ""}
         />
 

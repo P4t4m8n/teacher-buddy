@@ -58,7 +58,7 @@ export const createStudent = async (request: APIRequestContext): Promise<TStuden
 };
 
 // Direct access to the test database, for what the API cannot do yet (like creating assignments).
-const withTestDb = async <T>(run: (client: Client) => Promise<T>): Promise<T> => {
+export const withTestDb = async <T>(run: (client: Client) => Promise<T>): Promise<T> => {
   const url: string | undefined = process.env.DATABASE_URL_TEST;
   if (!url) throw new Error("DATABASE_URL_TEST is required to run this test");
 
@@ -71,18 +71,35 @@ const withTestDb = async <T>(run: (client: Client) => Promise<T>): Promise<T> =>
   }
 };
 
-export const insertAssignment = (studentId: string): Promise<unknown> =>
-  withTestDb((client) =>
-    client.query(
-      `insert into "Assignment" (id, title, "dueDate", status, "studentId")
-       values (gen_random_uuid(), 'מטלת בדיקה', now(), 'TODO'::"AssignmentStatus", $1)`,
-      [studentId],
-    ),
-  );
+export type TInsertedAssignment = {
+  assignmentId: string;
+  // The student's part of the assignment: the row that has the status, the grade and the file.
+  assignmentStudentId: string;
+};
 
+// Gives a new assignment (of the student's teacher) to the student, as TODO.
+export const insertAssignment = (studentId: string): Promise<TInsertedAssignment> =>
+  withTestDb(async (client) => {
+    const assignment = await client.query(
+      `insert into "Assignment" (id, title, description, "dueDate", "teacherId")
+       select gen_random_uuid(), 'מטלת בדיקה', '<p>בדיקה</p>', current_date, "teacherId"
+       from "Student" where id = $1::uuid
+       returning id`,
+      [studentId],
+    );
+    const assignmentId: string = assignment.rows[0].id;
+    const part = await client.query(
+      `insert into "AssignmentStudent" (id, "assignmentId", "studentId")
+       values (gen_random_uuid(), $1::uuid, $2::uuid) returning id`,
+      [assignmentId, studentId],
+    );
+    return { assignmentId, assignmentStudentId: part.rows[0].id };
+  });
+
+// How many assignments the student has.
 export const countAssignments = (studentId: string): Promise<number> =>
   withTestDb(async (client) => {
-    const result = await client.query('select count(*)::int as count from "Assignment" where "studentId" = $1', [
+    const result = await client.query('select count(*)::int as count from "AssignmentStudent" where "studentId" = $1', [
       studentId,
     ]);
     return result.rows[0].count as number;

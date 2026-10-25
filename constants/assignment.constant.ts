@@ -1,3 +1,4 @@
+import { deriveStatus } from "@/helpers/assignment";
 import type {
   TAssignmentFile,
   TAssignmentStatus,
@@ -10,6 +11,7 @@ import type { TStudent } from "@/types/student.type";
 export const ASSIGNMENT_STATUS_LABELS: Record<TAssignmentStatus, string> = {
   TODO: "לביצוע",
   SUBMITTED: "הוגשה",
+  CHECKED: "נבדקה",
 };
 
 // What the file picker offers. The server checks the real type of the file again.
@@ -62,10 +64,10 @@ const SAMPLE_ASSIGNMENTS: TSampleAssignment[] = [
 ];
 
 // A student's part of a sample assignment. "student" is a place in the teacher's student list, so the
-// sample uses real students and its links work.
+// sample uses real students and its links work. There is no status: it follows from the submitted date and
+// the grade (see deriveStatus), so a sample can never break the rules.
 type TSampleEntry = {
   student: number;
-  status: TAssignmentStatus;
   submittedAt?: string;
   grade?: number;
 };
@@ -73,35 +75,35 @@ type TSampleEntry = {
 // One list per assignment in SAMPLE_ASSIGNMENTS. The first student has all of the first four.
 const SAMPLE_ENTRIES: TSampleEntry[][] = [
   [
-    { student: 0, status: "SUBMITTED", submittedAt: "2026-12-10", grade: 92 },
-    { student: 1, status: "SUBMITTED", submittedAt: "2026-12-12", grade: 88 },
-    { student: 2, status: "TODO" },
+    { student: 0, submittedAt: "2026-12-10", grade: 92 },
+    { student: 1, submittedAt: "2026-12-12", grade: 88 },
+    { student: 2 },
   ],
   [
-    { student: 0, status: "SUBMITTED", submittedAt: "2026-11-22", grade: 85 },
-    { student: 3, status: "SUBMITTED", submittedAt: "2026-11-19", grade: 95 },
+    { student: 0, submittedAt: "2026-11-22", grade: 85 },
+    { student: 3, submittedAt: "2026-11-19", grade: 95 },
   ],
-  [
-    { student: 0, status: "SUBMITTED", submittedAt: "2026-10-29" },
-    { student: 4, status: "TODO" },
-  ],
-  [
-    { student: 0, status: "TODO" },
-    { student: 1, status: "TODO" },
-    { student: 2, status: "TODO" },
-    { student: 3, status: "TODO" },
-    { student: 4, status: "TODO" },
-  ],
+  [{ student: 0, submittedAt: "2026-10-29" }, { student: 4 }],
+  [{ student: 0 }, { student: 1 }, { student: 2 }, { student: 3 }, { student: 4 }],
 ];
+
+// What one student's part of a sample assignment has, besides who the student is.
+const toSampleProgress = (entry: TSampleEntry) => {
+  const submittedAt: string | null = entry.submittedAt ?? null;
+  const grade: number | null = entry.grade ?? null;
+  return {
+    status: deriveStatus(submittedAt !== null, grade),
+    submittedAt,
+    grade,
+    file: submittedAt !== null ? SAMPLE_FILE : null,
+  };
+};
 
 const toSampleStudent = (student: TStudent, entry: TSampleEntry): TAssignmentStudent => ({
   studentId: student.id,
   name: student.name,
   className: student.class.name,
-  status: entry.status,
-  submittedAt: entry.submittedAt ?? null,
-  grade: entry.grade ?? null,
-  file: entry.status === "SUBMITTED" ? SAMPLE_FILE : null,
+  ...toSampleProgress(entry),
 });
 
 // The teacher's assignments, given to the first students of the teacher's list.
@@ -118,16 +120,6 @@ export const getSampleTeacherAssignments = (students: TStudent[]): TTeacherAssig
 export const SAMPLE_STUDENT_ASSIGNMENTS: TStudentAssignment[] = SAMPLE_ASSIGNMENTS.flatMap(
   (assignment: TSampleAssignment, index: number) => {
     const entry: TSampleEntry | undefined = SAMPLE_ENTRIES[index].find(({ student }) => student === 0);
-    if (!entry) return [];
-
-    return [
-      {
-        ...assignment,
-        status: entry.status,
-        submittedAt: entry.submittedAt ?? null,
-        grade: entry.grade ?? null,
-        file: entry.status === "SUBMITTED" ? SAMPLE_FILE : null,
-      },
-    ];
+    return entry ? [{ ...assignment, ...toSampleProgress(entry) }] : [];
   },
 );

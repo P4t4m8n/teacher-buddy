@@ -7,17 +7,21 @@ datasource db {
   provider = "postgresql"
 }
 
+// The state of one student's part of an assignment, which follows from the file and the grade:
+// TODO has no file, SUBMITTED has a file and no grade, CHECKED has a file and a grade.
 enum AssignmentStatus {
   TODO
   SUBMITTED
+  CHECKED
 }
 
 model Teacher {
-  id           String    @id @default(uuid(7)) @db.Uuid
-  name         String    @unique
+  id           String       @id @default(uuid(7)) @db.Uuid
+  name         String       @unique
   passwordHash String
   classes      Class[]
   students     Student[]
+  assignments  Assignment[]
 }
 
 model Class {
@@ -31,30 +35,62 @@ model Class {
 }
 
 model Student {
-  id          String       @id @default(uuid(7)) @db.Uuid
+  id          String              @id @default(uuid(7)) @db.Uuid
   name        String
   phone       String
-  teacherId   String       @db.Uuid
-  teacher     Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  classId     String       @db.Uuid
-  class       Class        @relation(fields: [classId], references: [id], onDelete: Restrict)
-  assignments Assignment[]
-  createdAt   DateTime     @default(now())
+  teacherId   String              @db.Uuid
+  teacher     Teacher             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  classId     String              @db.Uuid
+  class       Class               @relation(fields: [classId], references: [id], onDelete: Restrict)
+  assignments AssignmentStudent[]
+  createdAt   DateTime            @default(now())
 
   @@unique([teacherId, name, phone])
   @@index([teacherId])
   @@index([classId])
 }
 
+// An assignment the teacher created. It is given to one or more students (AssignmentStudent).
 model Assignment {
-  id        String           @id @default(uuid(7)) @db.Uuid
-  title     String
-  dueDate   DateTime
-  status    AssignmentStatus @default(TODO)
-  grade     Int?
-  studentId String           @db.Uuid
-  student   Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
-  createdAt DateTime         @default(now())
+  id          String              @id @default(uuid(7)) @db.Uuid
+  title       String
+  // HTML from the rich text editor, cleaned when it is saved.
+  description String
+  dueDate     DateTime            @db.Date
+  teacherId   String              @db.Uuid
+  teacher     Teacher             @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  students    AssignmentStudent[]
+  createdAt   DateTime            @default(now())
 
+  @@index([teacherId])
+}
+
+// One student's part of an assignment. Besides the checks Prisma knows, the migration adds two to the
+// table: the grade is from 0 to 100, and the status matches the other columns (TODO when there is no
+// submittedAt, CHECKED when there is a grade). A grade therefore always has a submission.
+model AssignmentStudent {
+  id           String           @id @default(uuid(7)) @db.Uuid
+  assignmentId String           @db.Uuid
+  assignment   Assignment       @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  studentId    String           @db.Uuid
+  student      Student          @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  status       AssignmentStatus @default(TODO)
+  grade        Int?
+  // When the checked assignment was uploaded. Empty while the status is TODO.
+  submittedAt  DateTime?
+  file         SubmissionFile?
+
+  @@unique([assignmentId, studentId])
   @@index([studentId])
+}
+
+// The uploaded file (a PDF or an image), kept in its own table so that lists never load the bytes.
+model SubmissionFile {
+  id                  String            @id @default(uuid(7)) @db.Uuid
+  assignmentStudentId String            @unique @db.Uuid
+  assignmentStudent   AssignmentStudent @relation(fields: [assignmentStudentId], references: [id], onDelete: Cascade)
+  name                String
+  mimeType            String
+  size                Int
+  data                Bytes
 }

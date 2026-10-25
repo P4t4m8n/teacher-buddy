@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TAssignmentStudent, TTeacherAssignment } from "@/types/assignment.type";
-import { countSubmitted, toFormValues, toStudentAssignment } from "./assignment";
+import { canGrade, countSubmitted, deriveStatus, toFormValues, toStudentAssignment } from "./assignment";
 
 const student = (overrides: Partial<TAssignmentStudent> = {}): TAssignmentStudent => ({
   studentId: "s1",
@@ -21,12 +21,42 @@ const assignment = (students: TAssignmentStudent[]): TTeacherAssignment => ({
   students,
 });
 
+describe("deriveStatus", () => {
+  it("is TODO while there is no file", () => {
+    expect(deriveStatus(false, null)).toBe("TODO");
+  });
+
+  it("is SUBMITTED once there is a file and no grade yet", () => {
+    expect(deriveStatus(true, null)).toBe("SUBMITTED");
+  });
+
+  it("is CHECKED once there is a file and a grade", () => {
+    expect(deriveStatus(true, 90)).toBe("CHECKED");
+  });
+
+  it("counts a grade of zero as a grade", () => {
+    expect(deriveStatus(true, 0)).toBe("CHECKED");
+  });
+
+  it("has no state for a grade without a file: it is TODO, and the grade is not allowed", () => {
+    expect(deriveStatus(false, 90)).toBe("TODO");
+    expect(canGrade(false)).toBe(false);
+  });
+});
+
+describe("canGrade", () => {
+  it("is possible only when a file was uploaded", () => {
+    expect(canGrade(true)).toBe(true);
+    expect(canGrade(false)).toBe(false);
+  });
+});
+
 describe("countSubmitted", () => {
-  it("counts the students who submitted", () => {
+  it("counts the students whose assignment was uploaded, checked or not", () => {
     const given = assignment([
       student({ studentId: "s1", status: "SUBMITTED" }),
       student({ studentId: "s2", status: "TODO" }),
-      student({ studentId: "s3", status: "SUBMITTED" }),
+      student({ studentId: "s3", status: "CHECKED" }),
     ]);
 
     expect(countSubmitted(given)).toBe(2);

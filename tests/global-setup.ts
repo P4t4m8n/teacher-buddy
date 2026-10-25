@@ -23,6 +23,11 @@ const resetWriteTeachers = async (): Promise<void> => {
   await client.connect();
   try {
     for (const seed of WRITE_TEACHERS) {
+      // The assignments of the write teachers go too (with their students' parts and files), so tests
+      // that create assignments leave nothing behind.
+      await client.query(`delete from "Assignment" where "teacherId" in (select id from "Teacher" where name = $1)`, [
+        seed.name,
+      ]);
       await client.query(
         `delete from "Student"
          where "teacherId" in (select id from "Teacher" where name = $1)

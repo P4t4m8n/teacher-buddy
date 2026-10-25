@@ -150,9 +150,21 @@ In the code, services throw an `AppError` ([`lib/AppError.ts`](./lib/AppError.ts
 - **Teacher**: name (unique), password hash
 - **Class**: name, belongs to a teacher (unique per teacher)
 - **Student**: name, phone, belongs to a teacher and to a class. Unique per teacher by name and phone
-- **Assignment**: title, due date, status (`TODO` / `SUBMITTED`), optional grade (empty until graded), belongs to a student
+- **Assignment**: title, description (HTML from the rich text editor), due date (a date, no time), belongs to a teacher. It is given to one or more students
+- **AssignmentStudent** (one student's part of an assignment): status, optional grade, when it was submitted, and the uploaded file. Unique per assignment and student
+- **SubmissionFile**: the uploaded PDF or image, stored in the database as binary (`bytea`) in its own table, so lists never load the bytes
 
-All ids are UUID v7. A class that still has students cannot be deleted.
+**Status of a student's assignment** is never chosen by hand, it follows from the file and the grade:
+
+| Status | Hebrew | When |
+|---|---|---|
+| `TODO` | לביצוע | nothing was uploaded yet |
+| `SUBMITTED` | הוגשה | the teacher uploaded the student's assignment (this happens automatically) |
+| `CHECKED` | נבדקה | the teacher saved a grade (0-100) |
+
+A grade needs an uploaded assignment. The database enforces this with two checks that the migration adds (`AssignmentStudent_status_matches` and `AssignmentStudent_grade_range`), so the rows stay consistent even if code forgets a rule. They are tested directly in `tests/assignments.schema.spec.ts`.
+
+All ids are UUID v7. A class that still has students cannot be deleted. Deleting a student deletes that student's parts of assignments and their files (the assignment itself stays).
 
 ## Project structure
 

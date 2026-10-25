@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { getSampleTeacherAssignments } from "../constants/assignment.constant";
+import { ASSIGNMENT_STATUS_LABELS, getSampleTeacherAssignments } from "../constants/assignment.constant";
 import { countSubmitted } from "../helpers/assignment";
 import { formatDate } from "../helpers/date";
 import { DEMO_SEED } from "../prisma/seed-data";
@@ -23,12 +23,14 @@ const PNG = Buffer.from(
 
 let assignments: TTeacherAssignment[];
 let first: TTeacherAssignment;
+let third: TTeacherAssignment;
 let last: TTeacherAssignment;
 
 test.beforeEach(async ({ page }) => {
   await signInAs(page.request, DEMO_SEED);
   assignments = getSampleTeacherAssignments(await getStudentList(page.request));
   [first] = assignments;
+  third = assignments[2];
   last = assignments[assignments.length - 1];
 });
 
@@ -92,18 +94,34 @@ test.describe("assignment page: the students", () => {
       const cells = studentRow(page, student).locator("td");
       await expect(cells.nth(0)).toContainText(student.name);
       await expect(cells.nth(1)).toHaveText(student.className);
-      await expect(cells.nth(2)).toHaveText(student.status === "SUBMITTED" ? "הוגשה" : "לביצוע");
+      await expect(cells.nth(2)).toHaveText(ASSIGNMENT_STATUS_LABELS[student.status]);
       await expect(cells.nth(3)).toHaveText(student.submittedAt ? formatDate(student.submittedAt) : "-");
       await expect(cells.nth(4)).toHaveText(student.grade === null ? "-" : String(student.grade));
     }
   });
 
-  test("shows both a submitted student and one who did not submit", async ({ page }) => {
+  test("shows the status of every student: checked ones and one who did not submit", async ({ page }) => {
     const statuses = new Set(first.students.map(({ status }) => status));
 
-    expect(statuses).toEqual(new Set(["SUBMITTED", "TODO"]));
-    await expect(page.getByText("הוגשה", { exact: true })).toHaveCount(2);
+    expect(statuses).toEqual(new Set(["CHECKED", "TODO"]));
+    await expect(page.getByText("נבדקה", { exact: true })).toHaveCount(2);
     await expect(page.getByText("לביצוע", { exact: true })).toHaveCount(1);
+    await expect(page.getByText("הוגשה", { exact: true })).toHaveCount(0);
+  });
+
+  test("a student who submitted and was not checked yet shows the submitted status and no grade", async ({
+    page,
+  }) => {
+    await gotoHydrated(page, pageOf(third));
+    const waiting = third.students.find(({ status }) => status === "SUBMITTED")!;
+
+    const cells = studentRow(page, waiting).locator("td");
+    await expect(cells.nth(2)).toHaveText("הוגשה");
+    await expect(cells.nth(3)).toHaveText(formatDate(waiting.submittedAt!));
+    await expect(cells.nth(4)).toHaveText("-");
+    await expect(page.getByRole("region", { name: "פרטי המטלה" }).locator("dd").nth(2)).toHaveText(
+      `${countSubmitted(third)} מתוך ${third.students.length}`,
+    );
   });
 
   test("the name of a student is a link to the student's page", async ({ page }) => {
@@ -129,7 +147,7 @@ test.describe("assignment page: a student's details", () => {
     await expect(dialog).toBeVisible();
     const values = dialog.locator("dd");
     await expect(values).toHaveCount(3);
-    await expect(values.nth(0)).toHaveText("הוגשה");
+    await expect(values.nth(0)).toHaveText(ASSIGNMENT_STATUS_LABELS[student.status]);
     await expect(values.nth(1)).toHaveText(formatDate(first.dueDate));
     await expect(values.nth(2)).toHaveText(formatDate(student.submittedAt!));
     await expect(dialog.getByLabel("ציון")).toHaveValue(String(student.grade));
@@ -147,7 +165,7 @@ test.describe("assignment page: a student's details", () => {
     await expect(page.getByRole("dialog").getByLabel("החלפת קובץ")).toBeVisible();
   });
 
-  test("a student who did not submit has no file, and the file can be added", async ({ page }) => {
+  test("a student who did not submit has no file and cannot be graded, until the file is added", async ({ page }) => {
     await gotoHydrated(page, pageOf(first));
     const waiting = first.students.find(({ status }) => status === "TODO")!;
 
@@ -156,8 +174,23 @@ test.describe("assignment page: a student's details", () => {
     const dialog = page.getByRole("dialog");
     await expect(dialog.locator("dd").nth(2)).toHaveText("טרם הוגשה");
     await expect(dialog.getByText("עדיין לא הועלה קובץ")).toBeVisible();
+    await expect(dialog.getByLabel("ציון")).toBeDisabled();
+    await expect(dialog.getByText("ניתן להזין ציון רק אחרי העלאת המטלה")).toBeVisible();
     await fileInput(dialog).setInputFiles({ name: "scan.png", mimeType: "image/png", buffer: PNG });
     await expect(dialog.getByRole("img", { name: "scan.png" })).toHaveAttribute("src", /^blob:/);
+    await expect(dialog.getByLabel("ציון")).toBeEnabled();
+  });
+
+  test("a student who submitted and was not checked can be graded", async ({ page }) => {
+    await gotoHydrated(page, pageOf(third));
+    const waiting = third.students.find(({ status }) => status === "SUBMITTED")!;
+
+    await studentRow(page, waiting).getByRole("button", { name: `פרטים עבור ${waiting.name}` }).click();
+
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.locator("dd").nth(0)).toHaveText("הוגשה");
+    await expect(dialog.getByLabel("ציון")).toBeEnabled();
+    await expect(dialog.getByLabel("ציון")).toHaveValue("");
   });
 
   test("each student's button opens that student's modal, and Escape closes it", async ({ page }) => {
@@ -198,6 +231,7 @@ test.describe("assignment page: other assignments", () => {
       `0 מתוך ${last.students.length}`,
     );
     await expect(page.getByText("הוגשה", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("נבדקה", { exact: true })).toHaveCount(0);
   });
 });
 

@@ -8,7 +8,7 @@ export type TAssignmentFormValues = {
   description: string;
 };
 
-export type TAssignmentStatus = "TODO" | "SUBMITTED";
+export type TAssignmentStatus = "TODO" | "SUBMITTED" | "CHECKED";
 
 // How a file is shown: a PDF in a frame, an image as an image, anything else only by its name.
 export type TFileKind = "pdf" | "image" | "other";
