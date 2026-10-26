@@ -265,6 +265,15 @@ When the teacher edits an assignment and unchecks a student who already uploaded
 - **Removing a student from an assignment who already submitted** is allowed after a confirmation (see below). Without it the server answers `409`, so a file and a grade are never lost by accident.
 - **Uploaded files are saved in the database** (up to 4 MB each) to keep the project to one service. A real version would use object storage.
 
+## Architecture diagrams
+
+All in [`docs/`](./docs), as images (click one for the zoomable SVG), with the Mermaid source under each in a collapsed part:
+
+- [`docs/architecture.md`](./docs/architecture.md): **the app flow** (screens and navigation), the layers, the data model, the status of a student's part, and the **feature flows** (sign-in, lists, forms, files and grades, delete).
+- [`docs/component-tree.md`](./docs/component-tree.md): **the component and file hierarchy of every page**: the page, the components it shows, their hooks, the client service, the API route it calls and the server services. Generated from the real imports.
+- [`docs/file-usage.md`](./docs/file-usage.md): for every source file, what it uses and who uses it. Generated from the real imports.
+
+After the code changes, regenerate the last two and redraw the images: `npx tsx scripts/generate-architecture.ts` and then `npx tsx scripts/render-diagrams.ts` (it uses the Chromium that Playwright installed for the tests, and installs Mermaid once into the temp folder, not into the project).
 ## Project structure
 
 ```
