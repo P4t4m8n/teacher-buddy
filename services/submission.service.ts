@@ -59,7 +59,11 @@ export const gradeSubmission = async (
     data: { grade, status: deriveStatus(hasFile, grade) },
     select: ASSIGNMENT_PART_SELECT,
   });
-  return toAssignmentStudent(assignmentId, row);
+  // The student can be deleted while the row is read (the part goes with it): the part is gone.
+  const savedPart = toAssignmentStudent(assignmentId, row);
+  if (!savedPart) throw AppError.assignmentNotFound();
+
+  return savedPart;
 };
 
 // Saves the checked assignment the teacher uploads for one student. The first file makes the part SUBMITTED.
@@ -103,6 +107,10 @@ export const uploadSubmission = async (
       where: { id: part.id },
       select: ASSIGNMENT_PART_SELECT,
     });
-    return toAssignmentStudent(assignmentId, row);
+    // The student can be deleted while the row is read (the part goes with it): the part is gone.
+    const savedPart = toAssignmentStudent(assignmentId, row);
+    if (!savedPart) throw AppError.assignmentNotFound();
+
+    return savedPart;
   });
 };

@@ -19,7 +19,9 @@ export type TAssignmentPartRow = {
   status: TAssignmentStatus;
   grade: number | null;
   submittedAt: Date | null;
-  student: { name: string; class: { name: string } };
+  // The database says a part always has a student, but the relation is read after the part. A student who is
+  // deleted in between (the part goes with it) comes back as null, so the row is treated as gone.
+  student: { name: string; class: { name: string } } | null;
   file: { name: string; mimeType: string } | null;
 };
 
@@ -36,12 +38,21 @@ export const toAssignmentFile = (
   return { name: file.name, kind: getFileKind(file.mimeType), url: getFileUrl(assignmentId, studentId) };
 };
 
-export const toAssignmentStudent = (assignmentId: string, part: TAssignmentPartRow): TAssignmentStudent => ({
-  studentId: part.studentId,
-  name: part.student.name,
-  className: part.student.class.name,
-  status: part.status,
-  submittedAt: part.submittedAt ? toIsraelIsoDate(part.submittedAt) : null,
-  grade: part.grade,
-  file: toAssignmentFile(assignmentId, part.studentId, part.file),
-});
+// Null for a part whose student was deleted while it was read.
+export const toAssignmentStudent = (assignmentId: string, part: TAssignmentPartRow): TAssignmentStudent | null => {
+  if (!part.student) return null;
+
+  return {
+    studentId: part.studentId,
+    name: part.student.name,
+    className: part.student.class.name,
+    status: part.status,
+    submittedAt: part.submittedAt ? toIsraelIsoDate(part.submittedAt) : null,
+    grade: part.grade,
+    file: toAssignmentFile(assignmentId, part.studentId, part.file),
+  };
+};
+
+// The parts of an assignment, without the ones whose student was deleted while they were read.
+export const toAssignmentStudents = (assignmentId: string, parts: TAssignmentPartRow[]): TAssignmentStudent[] =>
+  parts.flatMap((part: TAssignmentPartRow) => toAssignmentStudent(assignmentId, part) ?? []);

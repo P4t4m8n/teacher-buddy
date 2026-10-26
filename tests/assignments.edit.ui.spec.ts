@@ -11,6 +11,7 @@ import {
   getSeededStudentList,
   gotoHydrated,
   randomLetters,
+  removeViaApi,
   signInAs,
   submitPart,
 } from "./helpers";
@@ -428,7 +429,7 @@ test.describe("edit assignment: errors from the server", () => {
 
   test("when the assignment was deleted meanwhile, shows the message and stays on the page", async ({ page }) => {
     const { assignment } = await openEditPage(page);
-    expect((await page.request.delete(`/api/assignments/${assignment.id}`)).status()).toBe(200);
+    await removeViaApi(page.request, `/api/assignments/${assignment.id}`);
 
     await save(page);
 
@@ -442,7 +443,7 @@ test.describe("edit assignment: errors from the server", () => {
     await page.reload();
     await expect(page.getByRole("toolbar", { name: "עיצוב טקסט" })).toBeVisible();
     await studentBox(page, temporary.name).check();
-    expect((await page.request.delete(`/api/students/${temporary.id}`)).status()).toBe(200);
+    await removeViaApi(page.request, `/api/students/${temporary.id}`);
     const title = uniqueTitle();
     await titleField(page).fill(title);
 

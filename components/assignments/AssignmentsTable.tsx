@@ -1,4 +1,5 @@
 import Link from "next/link";
+import DeleteAssignmentButton from "@/components/assignments/DeleteAssignmentButton";
 import {
   getAssignmentEditPage,
   getAssignmentPage,
@@ -115,6 +116,7 @@ const AssignmentRow = ({ assignment }: { assignment: TAssignmentListItem }) => {
           >
             עריכה
           </LinkButton>
+          <DeleteAssignmentButton assignment={assignment} />
         </div>
       </td>
     </tr>

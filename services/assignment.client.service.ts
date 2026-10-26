@@ -2,6 +2,7 @@ import { apiClientService } from "@/services/api.client.service";
 import type {
   TCreateAssignmentDto,
   TCreateAssignmentResponse,
+  TDeleteAssignmentResponse,
   TUpdateAssignmentDto,
   TUpdateAssignmentResponse,
 } from "@/types/assignment.type";
@@ -19,7 +20,12 @@ const updateAssignment = (assignmentId: string, dto: TUpdateAssignmentDto): Prom
   );
 };
 
+const deleteAssignment = (assignmentId: string): Promise<TDeleteAssignmentResponse> => {
+  return apiClientService.delete<TDeleteAssignmentResponse>(`${ASSIGNMENTS_ENDPOINT}/${assignmentId}`);
+};
+
 export const assignmentClientService = {
   createAssignment,
   updateAssignment,
+  deleteAssignment,
 };

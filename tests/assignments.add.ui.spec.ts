@@ -10,6 +10,7 @@ import {
   getStudentList,
   gotoHydrated,
   randomLetters,
+  removeViaApi,
   signInAs,
 } from "./helpers";
 
@@ -414,7 +415,7 @@ test.describe("add assignment: errors from the server", () => {
     await expect(page.getByRole("toolbar", { name: "עיצוב טקסט" })).toBeVisible();
     const values = validValues();
     await fillForm(page, { ...values, students: [FIRST_STUDENT, temporary.name] });
-    expect((await page.request.delete(`/api/students/${temporary.id}`)).status()).toBe(200);
+    await removeViaApi(page.request, `/api/students/${temporary.id}`);
 
     await add(page);
 

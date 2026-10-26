@@ -192,6 +192,13 @@ describe("uploadSubmission", () => {
     expect(mocks.findUniqueOrThrow.mock.calls[0][0].select.file).toEqual({ select: { name: true, mimeType: true } });
   });
 
+  it("is a 404 when the student was deleted while the saved part was read, instead of a crash", async () => {
+    found();
+    mocks.findUniqueOrThrow.mockResolvedValue(partRow({ student: null }));
+
+    await expectAppError(uploadSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, pdf()), AppError.assignmentNotFound());
+  });
+
   it("does not hide database errors", async () => {
     found();
     const failure = new Error("connection lost");
@@ -343,6 +350,13 @@ describe("gradeSubmission", () => {
       file: { name: "עבודה.pdf", kind: "pdf", url: `/api/assignments/${ASSIGNMENT_ID}/students/${STUDENT_ID}/file` },
     });
     expect(mocks.partUpdate.mock.calls[0][0].select.file).toEqual({ select: { name: true, mimeType: true } });
+  });
+
+  it("is a 404 when the student was deleted while the saved grade was read: the part is gone", async () => {
+    mocks.partFindFirst.mockResolvedValue(withFile);
+    mocks.partUpdate.mockResolvedValue(partRow({ student: null }));
+
+    await expectAppError(gradeSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, 90), AppError.assignmentNotFound());
   });
 
   it("does not hide database errors", async () => {

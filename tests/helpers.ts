@@ -33,6 +33,20 @@ const getWithRetry = async (request: APIRequestContext, url: string): Promise<AP
   }
 };
 
+// Deletes something through the API for a test that needs it to be gone (a "deleted meanwhile" case, done while
+// a page is open). It can meet the closed connection described above too. A delete cannot be sent again
+// blindly: when the first one did arrive, the second one is a 404. Either answer means that it is gone.
+export const removeViaApi = async (request: APIRequestContext, url: string): Promise<void> => {
+  let status: number;
+  try {
+    status = (await request.delete(url)).status();
+  } catch (error: unknown) {
+    if (!String(error).includes("ECONNRESET")) throw error;
+    status = (await request.delete(url)).status();
+  }
+  expect([200, 404]).toContain(status);
+};
+
 // The student list of the signed-in teacher.
 export const getStudentList = async (request: APIRequestContext): Promise<TStudent[]> => {
   const response = await getWithRetry(request, "/api/students");

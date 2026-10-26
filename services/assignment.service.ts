@@ -8,7 +8,7 @@ import { toIsoDate, toIsraelIsoDate } from "@/helpers/date";
 import {
   ASSIGNMENT_PART_SELECT,
   toAssignmentFile,
-  toAssignmentStudent,
+  toAssignmentStudents,
   type TAssignmentPartRow,
 } from "@/services/assignment.mapper";
 import type {
@@ -46,7 +46,7 @@ const toAssignment = (row: TAssignmentRow): TTeacherAssignment => ({
   title: row.title,
   dueDate: toIsoDate(row.dueDate),
   description: row.description,
-  students: row.students.map((part: TAssignmentPartRow) => toAssignmentStudent(row.id, part)),
+  students: toAssignmentStudents(row.id, row.students),
 });
 
 // The newest due date first. The id is the last tie-break, so the order never changes between requests.
@@ -118,19 +118,26 @@ export const getStudentAssignments = async (teacherId: string, studentId: string
     orderBy: [{ assignment: { dueDate: "desc" } }, { assignment: { createdAt: "desc" } }, { assignmentId: "asc" }],
   });
 
-  return rows.map(
-    (row): TStudentAssignment => ({
-      id: row.assignmentId,
-      studentId,
-      title: row.assignment.title,
-      dueDate: toIsoDate(row.assignment.dueDate),
-      status: row.status,
-      submittedAt: row.submittedAt ? toIsraelIsoDate(row.submittedAt) : null,
-      grade: row.grade,
-      description: row.assignment.description,
-      file: toAssignmentFile(row.assignmentId, studentId, row.file),
-    }),
-  );
+  // The assignment is read after the row of the student. One that is deleted in between (the row goes with it)
+  // comes back as null, although the database says it is always there, so it is left out of the list.
+  return rows.flatMap((row): TStudentAssignment[] => {
+    const assignment: (typeof row)["assignment"] | null = row.assignment;
+    if (!assignment) return [];
+
+    return [
+      {
+        id: row.assignmentId,
+        studentId,
+        title: assignment.title,
+        dueDate: toIsoDate(assignment.dueDate),
+        status: row.status,
+        submittedAt: row.submittedAt ? toIsraelIsoDate(row.submittedAt) : null,
+        grade: row.grade,
+        description: assignment.description,
+        file: toAssignmentFile(row.assignmentId, studentId, row.file),
+      },
+    ];
+  });
 };
 
 export const createAssignment = async (

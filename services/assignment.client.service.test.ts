@@ -26,6 +26,48 @@ afterEach(() => {
   fetchMock.mockReset();
 });
 
+describe("assignmentClientService.deleteAssignment", () => {
+  const assignmentId = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f90";
+
+  it("sends DELETE to the endpoint of this assignment, with the session cookie and no body", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: assignmentId }, 200));
+
+    await assignmentClientService.deleteAssignment(assignmentId);
+
+    const [url, options] = fetchMock.mock.calls[0];
+    expect(url).toBe(`/api/assignments/${assignmentId}`);
+    expect(options).toMatchObject({ method: "DELETE", credentials: "include" });
+    expect(options.body).toBeUndefined();
+  });
+
+  it("returns the id from the response", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ id: assignmentId }, 200));
+
+    expect(await assignmentClientService.deleteAssignment(assignmentId)).toEqual({ id: assignmentId });
+  });
+
+  it.each([
+    ["an assignment that is not found", 404, ERROR_MESSAGES.assignmentNotFound],
+    ["an expired session", 401, ERROR_MESSAGES.unauthorized],
+    ["a server error", 500, ERROR_MESSAGES.internal],
+  ])("throws the server's Hebrew message for %s", async (_label, status, message) => {
+    fetchMock.mockResolvedValue(jsonResponse({ error: message }, status));
+
+    const error = await caught(assignmentClientService.deleteAssignment(assignmentId));
+
+    expect(error).toBeInstanceOf(ApiError);
+    expect(error).toMatchObject({ status, message });
+  });
+
+  it("throws the network message when there is no connection", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+
+    const error = await caught(assignmentClientService.deleteAssignment(assignmentId));
+
+    expect(error).toMatchObject({ status: 0, message: ERROR_MESSAGES.network });
+  });
+});
+
 describe("assignmentClientService.updateAssignment", () => {
   const assignmentId = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f90";
 

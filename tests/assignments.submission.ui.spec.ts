@@ -4,7 +4,7 @@ import { formatDate } from "../helpers/date";
 import { WRITE_SEED } from "../prisma/seed-data";
 import type { TAssignmentStudent, TTeacherAssignment } from "../types/assignment.type";
 import type { TStudent } from "../types/student.type";
-import { getAssignmentById, getSeededStudentList, gotoHydrated, randomLetters, signInAs, withTestDb } from "./helpers";
+import { getAssignmentById, getSeededStudentList, gotoHydrated, randomLetters, removeViaApi, signInAs, withTestDb } from "./helpers";
 
 // These tests save files and grades, so they only use a write teacher and only change assignments they created
 // themselves (see helpers). The global setup removes what they create before a run.
@@ -560,7 +560,7 @@ test.describe("student modal on the assignment page: while saving and errors fro
     await openAssignmentPage(page, fixture);
     const dialog = await openFromAssignmentPage(page, fixture, fixture.students[0]);
     await gradeField(dialog).fill("90");
-    expect((await page.request.delete(`/api/assignments/${fixture.assignment.id}`)).status()).toBe(200);
+    await removeViaApi(page.request, `/api/assignments/${fixture.assignment.id}`);
 
     await saveButton(dialog).click();
 

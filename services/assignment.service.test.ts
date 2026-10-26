@@ -247,6 +247,20 @@ describe("findAssignment", () => {
     expect((await findAssignment(TEACHER_ID, ASSIGNMENT_ID))?.students[0].grade).toBe(0);
   });
 
+  it("leaves out a student who was deleted while the assignment was read, and keeps the others", async () => {
+    mocks.findFirst.mockResolvedValue(row({ students: [part({ student: null }), part({ studentId: STUDENT_B })] }));
+
+    const assignment = await findAssignment(TEACHER_ID, ASSIGNMENT_ID);
+
+    expect(assignment?.students.map((student) => student.studentId)).toEqual([STUDENT_B]);
+  });
+
+  it("gives an assignment with no students when all of them were deleted while it was read", async () => {
+    mocks.findFirst.mockResolvedValue(row({ students: [part({ student: null })] }));
+
+    expect((await findAssignment(TEACHER_ID, ASSIGNMENT_ID))?.students).toEqual([]);
+  });
+
   it("gives every student of the assignment", async () => {
     mocks.findFirst.mockResolvedValue(row({ students: [part(), part({ studentId: STUDENT_B })] }));
 
@@ -366,6 +380,21 @@ describe("getStudentAssignments", () => {
     ]);
 
     expect((await getStudentAssignments(TEACHER_ID, STUDENT_A)).map(({ id }) => id)).toEqual(["b", "a"]);
+  });
+
+  it("leaves out an assignment that was deleted while the list was read, and keeps the others", async () => {
+    mocks.partFindMany.mockResolvedValue([
+      studentRow({ assignmentId: "gone", assignment: null }),
+      studentRow({ assignmentId: "kept" }),
+    ]);
+
+    expect((await getStudentAssignments(TEACHER_ID, STUDENT_A)).map(({ id }) => id)).toEqual(["kept"]);
+  });
+
+  it("gives an empty list when every assignment was deleted while the list was read", async () => {
+    mocks.partFindMany.mockResolvedValue([studentRow({ assignment: null })]);
+
+    expect(await getStudentAssignments(TEACHER_ID, STUDENT_A)).toEqual([]);
   });
 
   it("does not hide database errors", async () => {
