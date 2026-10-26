@@ -16,7 +16,7 @@ Built as a home assignment; the UI is in Hebrew (RTL) and follows the system lig
 The sign-in page also has a **"כניסה עם מורה לדוגמה"** button that signs in with this teacher in one click.
 There is no registration flow, as the assignment allows. The teachers are created by the seed script (`npm run db:seed`).
 
-The seed also creates demo classes and students in Hebrew (4 classes and 10 students for `דנה כהן`). It adds a second teacher, `יוסי מזרחי` (ID number `111222333`) with one class and two students, so you can check that a teacher only sees their own students. A third teacher, `נעמה שרון` (ID number `444555666`), and a fourth, `רונית אביב` (ID number `777888999`), exist for the automated tests that create data, so those tests never change the demo teachers' data. The seed data is in [`prisma/seed-data.ts`](./prisma/seed-data.ts).
+The seed also creates demo classes and students in Hebrew (4 classes and 10 students for `דנה כהן`), and 4 demo assignments for her with every status (not submitted, submitted, checked with a grade). Each submitted part has a small sample PDF, so the file can be opened and previewed, and a part never has a status that its file and grade do not allow. It adds a second teacher, `יוסי מזרחי` (ID number `111222333`) with one class, two students and one assignment, so you can check that a teacher only sees their own data. A third teacher, `נעמה שרון` (ID number `444555666`), and a fourth, `רונית אביב` (ID number `777888999`), exist for the automated tests that create data, so those tests never change the demo teachers' data. The seed data is in [`prisma/seed-data.ts`](./prisma/seed-data.ts).
 
 ## Requirements
 
@@ -62,7 +62,7 @@ For a production build: `npm run build` and then `npm start`.
 |---|---|
 | `npm run db:setup` | Applies the migrations and seeds the demo data |
 | `npm run db:migrate` | Applies existing migrations only (`prisma migrate deploy`) |
-| `npm run db:seed` | Creates the demo teachers, classes and students (safe to re-run: a teacher who already has data is skipped) |
+| `npm run db:seed` | Creates the demo teachers, classes, students and assignments (safe to re-run: classes are skipped for a teacher who already has some, and assignments for a teacher who already has some, so a database from before the assignments get them too) |
 | `npx prisma migrate dev --name <name>` | After editing `prisma/schema.prisma`: creates and applies a new migration |
 
 ## Tests
@@ -196,13 +196,13 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/auth        Sign-in page
   (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading); a link to add a student, and each row links to the student page and to edit, and has a delete button with a confirmation
   (root)/dashboard/students/new          Add-student page
-  (root)/dashboard/students/[id]         Student page: the details, and the student's assignments list (name, submitted date, grade). A click opens a modal with the assignment details, the description, the checked file (PDF or image) with an upload field, and the grade (0-100, empty until checked), saved together with a save button. Hardcoded sample data for now; nothing is saved yet. A missing student, another teacher's or a malformed id all show the same not-found page
+  (root)/dashboard/students/[id]         Student page: the details, and the student's assignments list from the database (name, submitted date, grade; latest due date first). A click opens a modal with the assignment details, the description, the checked file (a PDF in a frame, or an image) with an upload field, and the grade (0-100, empty until checked), saved together with a save button (the modal does not save yet). A missing student, another teacher's or a malformed id all show the same not-found page
   (root)/dashboard/students/[id]/edit    Edit-student page, filled from the database; shares one form (StudentForm) with the add page
   (root)/dashboard/layout.tsx            The header, the tab bar (students | assignments) and the page frame, shared by every dashboard page
-  (root)/dashboard/assignments           The teacher's assignments list (name, due date, number of students, how many submitted), with an add button
+  (root)/dashboard/assignments           The teacher's assignments list from the database (name, due date, number of students, how many submitted), latest due date first, with an add button
   (root)/dashboard/assignments/new       Add-assignment form: title, students (a checklist grouped by class, with a shortcut per class), due date and the rich text description (the form is built, saving is not yet)
-  (root)/dashboard/assignments/[id]      Assignment page: its details, and its students with their status; a student's button opens the same modal, with the checked file, the grade and an upload field
-  (root)/dashboard/assignments/[id]/edit Edit-assignment form, the same form as the add page. Everything under assignments is hardcoded sample data until the API exists
+  (root)/dashboard/assignments/[id]      Assignment page from the database: its details, and its students with their status; a student's button opens the same modal, with the checked file (a PDF in a frame, or an image), the grade and an upload field (the modal does not save yet). A missing assignment, another teacher's or a malformed id all show the same not-found page
+  (root)/dashboard/assignments/[id]/edit Edit-assignment form, the same form as the add page, filled from the database (saving is not yet). The same not-found page for a missing, foreign or malformed id.
   api/auth/...       Auth endpoints
   api/students       Students endpoints (list, create, and /[id]: details, update, delete)
   api/classes        Classes endpoint

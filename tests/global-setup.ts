@@ -56,18 +56,23 @@ const warmUpServer = async (baseURL: string): Promise<void> => {
     await page.keyboard.press("Escape");
     const detailsHref = await page.getByRole("link", { name: /^פרטים עבור/ }).first().getAttribute("href");
     const editHref = await page.getByRole("link", { name: /^עריכה עבור/ }).first().getAttribute("href");
+    // The pages of the first assignment (a real one, so they are the pages that tests open, not "not found").
+    const assignments: { id: string }[] = (await (await page.request.get("/api/assignments")).json()).assignments ?? [];
+    const assignmentPages: string[] = assignments.slice(0, 1).flatMap(({ id }) => [
+      `/dashboard/assignments/${id}`,
+      `/dashboard/assignments/${id}/edit`,
+    ]);
     for (const path of [
       "/dashboard/students/new",
       "/dashboard/assignments",
       "/dashboard/assignments/new",
-      "/dashboard/assignments/0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5a01",
-      "/dashboard/assignments/0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5a01/edit",
+      ...assignmentPages,
       detailsHref,
       editHref,
     ]) {
       if (path) await page.goto(path);
     }
-    for (const path of ["/api/auth/me", "/api/students", "/api/classes", "/api/auth/session-expired"]) {
+    for (const path of ["/api/auth/me", "/api/students", "/api/classes", "/api/assignments", "/api/auth/session-expired"]) {
       await page.request.get(path, { maxRedirects: 0 });
     }
     await page.request.post("/api/auth/logout");

@@ -1,10 +1,10 @@
 import AssignmentsTable from "@/components/assignments/AssignmentsTable";
 import { LinkButton } from "@/components/ui/LinkButton";
 import { NEW_ASSIGNMENT_PAGE } from "@/constants/assignment.constant";
-import type { TTeacherAssignment } from "@/types/assignment.type";
+import type { TAssignmentListItem } from "@/types/assignment.type";
 
 type TAssignmentsIndexProps = {
-  assignments: TTeacherAssignment[];
+  assignments: TAssignmentListItem[];
 };
 
 export default function AssignmentsIndex({ assignments }: TAssignmentsIndexProps) {

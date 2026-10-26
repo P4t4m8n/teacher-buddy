@@ -4,15 +4,17 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { isForeignKeyViolation } from "@/lib/prismaError";
 import { isUuid } from "@/lib/uuid";
-import { toIsoDate } from "@/helpers/date";
+import { toIsoDate, toIsraelIsoDate } from "@/helpers/date";
 import {
   ASSIGNMENT_PART_SELECT,
+  toAssignmentFile,
   toAssignmentStudent,
   type TAssignmentPartRow,
 } from "@/services/assignment.mapper";
 import type {
   TAssignmentListItem,
   TCreateAssignmentDto,
+  TStudentAssignment,
   TTeacherAssignment,
   TUpdateAssignmentDto,
 } from "@/types/assignment.type";
@@ -95,6 +97,39 @@ export const getAssignment = async (teacherId: string, assignmentId: string): Pr
   if (!assignment) throw AppError.assignmentNotFound();
 
   return assignment;
+};
+
+// One student's assignments, in the shape of the student page, the newest due date first (the id is the last
+// tie-break, so the order never changes between requests). Only the teacher's assignments are read, so a
+// student of another teacher, one that does not exist and an id that is not a uuid all give an empty list.
+export const getStudentAssignments = async (teacherId: string, studentId: string): Promise<TStudentAssignment[]> => {
+  if (!isUuid(studentId)) return [];
+
+  const rows = await prisma.assignmentStudent.findMany({
+    where: { studentId, assignment: { teacherId } },
+    select: {
+      assignmentId: true,
+      status: true,
+      grade: true,
+      submittedAt: true,
+      file: { select: { name: true, mimeType: true } },
+      assignment: { select: { title: true, description: true, dueDate: true } },
+    },
+    orderBy: [{ assignment: { dueDate: "desc" } }, { assignment: { createdAt: "desc" } }, { assignmentId: "asc" }],
+  });
+
+  return rows.map(
+    (row): TStudentAssignment => ({
+      id: row.assignmentId,
+      title: row.assignment.title,
+      dueDate: toIsoDate(row.assignment.dueDate),
+      status: row.status,
+      submittedAt: row.submittedAt ? toIsraelIsoDate(row.submittedAt) : null,
+      grade: row.grade,
+      description: row.assignment.description,
+      file: toAssignmentFile(row.assignmentId, studentId, row.file),
+    }),
+  );
 };
 
 export const createAssignment = async (

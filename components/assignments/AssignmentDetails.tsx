@@ -44,7 +44,7 @@ export default function AssignmentDetails({ assignment }: TAssignmentDetailsProp
         <h3 id="assignment-description" className="text-sm font-semibold">
           תיאור המטלה
         </h3>
-        {/* Hardcoded HTML for now. When it comes from the database it must be cleaned when it is saved. */}
+        {/* The description was cleaned on the server when it was saved (sanitizeRichText). */}
         <div className="rich-text text-sm" dangerouslySetInnerHTML={{ __html: assignment.description }} />
       </section>
 

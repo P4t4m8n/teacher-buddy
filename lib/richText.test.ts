@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { SAMPLE_STUDENT_ASSIGNMENTS } from "@/constants/assignment.constant";
+import { DEMO_SEED, OTHER_SEED } from "../prisma/seed-data";
 
 vi.mock("server-only", () => ({}));
 
@@ -28,8 +28,8 @@ describe("sanitizeRichText: what the editor makes is kept", () => {
     expect(sanitizeRichText(html)).toBe(html);
   });
 
-  it("keeps every description of the sample data, which was written like the editor writes", () => {
-    for (const { description } of SAMPLE_STUDENT_ASSIGNMENTS) {
+  it("keeps every description of the seed data, which was written like the editor writes", () => {
+    for (const { description } of [...(DEMO_SEED.assignments ?? []), ...(OTHER_SEED.assignments ?? [])]) {
       expect(sanitizeRichText(description)).toBe(description);
     }
   });

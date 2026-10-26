@@ -1,13 +1,14 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { getSampleTeacherAssignments, SAMPLE_STUDENT_ASSIGNMENTS } from "../constants/assignment.constant";
-import { DEMO_SEED } from "../prisma/seed-data";
-import { getStudentList, gotoHydrated, signInAs } from "./helpers";
+import { DEMO_SEED, OTHER_SEED } from "../prisma/seed-data";
+import type { TTeacherAssignment } from "../types/assignment.type";
+import { findByTitle, getAssignmentsWithStudents, gotoHydrated, signInAs } from "./helpers";
 
 // The pages only show a form for now (nothing is saved yet), so the demo teacher is safe to use.
 const LIST_URL = "/dashboard/assignments";
 const NEW_URL = "/dashboard/assignments/new";
-const SAMPLE_ID: string = SAMPLE_STUDENT_ASSIGNMENTS[0].id;
-const EDIT_URL = `/dashboard/assignments/${SAMPLE_ID}/edit`;
+// The assignment of the seed that the edit page tests open.
+const EDITED_TITLE = "עבודה על המהפכה התעשייתית";
+const editUrlOf = ({ id }: TTeacherAssignment): string => `/dashboard/assignments/${id}/edit`;
 const toolbar = (page: Page): Locator => page.getByRole("toolbar", { name: "עיצוב טקסט" });
 const editor = (page: Page): Locator => page.getByRole("textbox", { name: "תיאור המטלה" });
 const button = (page: Page, name: string): Locator => toolbar(page).getByRole("button", { name, exact: true });
@@ -25,6 +26,20 @@ const openPage = async (page: Page, url: string): Promise<void> => {
   await gotoHydrated(page, url);
   // The editor is created after the page loads, so its toolbar shows up a moment later.
   await expect(toolbar(page)).toBeVisible();
+};
+
+// The assignment of the seed, read through the API with the demo teacher signed in.
+const loadEdited = async (page: Page): Promise<TTeacherAssignment> => {
+  await signInAs(page.request, DEMO_SEED);
+  return findByTitle(await getAssignmentsWithStudents(page.request), EDITED_TITLE);
+};
+
+// Opens the edit page of that assignment, and gives the assignment so the test can compare with it.
+const openEdit = async (page: Page): Promise<TTeacherAssignment> => {
+  const assignment: TTeacherAssignment = await loadEdited(page);
+  await gotoHydrated(page, editUrlOf(assignment));
+  await expect(toolbar(page)).toBeVisible();
+  return assignment;
 };
 
 test.describe("assignment form: the new page", () => {
@@ -238,10 +253,8 @@ test.describe("rich text editor", () => {
 });
 
 test.describe("assignment form: the edit page", () => {
-  test("is filled with the assignment, which is a hardcoded sample until the API exists", async ({ page }) => {
-    await openPage(page, EDIT_URL);
-    const students = await getStudentList(page.request);
-    const sample = getSampleTeacherAssignments(students)[0];
+  test("is filled with the assignment from the database", async ({ page }) => {
+    const sample: TTeacherAssignment = await openEdit(page);
 
     await expect(page.getByRole("heading", { name: "עריכת מטלה" })).toBeVisible();
     await expect(page.getByLabel("שם המטלה")).toHaveValue(sample.title);
@@ -263,8 +276,28 @@ test.describe("assignment form: the edit page", () => {
     await expect(page.getByLabel("שם המטלה")).toHaveCount(0);
   });
 
+  test("an assignment of another teacher shows the same not-found page, with no form", async ({ page }) => {
+    await signInAs(page.request, OTHER_SEED);
+    const [theirs] = await getAssignmentsWithStudents(page.request);
+    await signInAs(page.request, DEMO_SEED);
+
+    await page.goto(editUrlOf(theirs));
+
+    await expect(page.getByRole("heading", { name: "המטלה לא נמצאה" })).toBeVisible();
+    await expect(page.getByLabel("שם המטלה")).toHaveCount(0);
+    await expect(page.getByText(theirs.title)).toHaveCount(0);
+  });
+
+  test("an id that is not a uuid shows the same not-found page", async ({ page }) => {
+    await signInAs(page.request, DEMO_SEED);
+
+    await page.goto("/dashboard/assignments/not-a-uuid/edit");
+
+    await expect(page.getByRole("heading", { name: "המטלה לא נמצאה" })).toBeVisible();
+  });
+
   test("shows the description with its formatting in the editor", async ({ page }) => {
-    await openPage(page, EDIT_URL);
+    await openEdit(page);
 
     await expect(editor(page).locator("h2")).toHaveText("הנחיות");
     await expect(editor(page).locator("strong")).toHaveText("עבודה");
@@ -274,7 +307,7 @@ test.describe("assignment form: the edit page", () => {
   });
 
   test("the toolbar shows the formatting at the cursor", async ({ page }) => {
-    await openPage(page, EDIT_URL);
+    await openEdit(page);
 
     await editor(page).locator("strong").click();
     await expect(button(page, "מודגש")).toHaveAttribute("aria-pressed", "true");
@@ -288,7 +321,7 @@ test.describe("assignment form: the edit page", () => {
   });
 
   test("the existing text can be edited, and the form value follows", async ({ page }) => {
-    await openPage(page, EDIT_URL);
+    await openEdit(page);
 
     await editor(page).locator("li").last().click();
     await page.keyboard.press("End");
@@ -299,7 +332,10 @@ test.describe("assignment form: the edit page", () => {
   });
 
   test("without a session it goes to the sign-in page", async ({ page }) => {
-    await page.goto(EDIT_URL);
+    const assignment: TTeacherAssignment = await loadEdited(page);
+    await page.context().clearCookies();
+
+    await page.goto(editUrlOf(assignment));
 
     await expect(page).toHaveURL(/\/auth$/);
   });

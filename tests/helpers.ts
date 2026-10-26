@@ -3,6 +3,7 @@ import { SignJWT } from "jose";
 import { Client } from "pg";
 import { DEMO_TEACHER } from "../constants/demo.constant";
 import type { TSeedTeacher } from "../prisma/seed-data";
+import type { TAssignmentListItem, TTeacherAssignment } from "../types/assignment.type";
 import type { TClass } from "../types/class.type";
 import type { TStudent } from "../types/student.type";
 
@@ -37,6 +38,30 @@ export const getStudentList = async (request: APIRequestContext): Promise<TStude
   const response = await getWithRetry(request, "/api/students");
   expect(response.status()).toBe(200);
   return (await response.json()).students;
+};
+
+// The assignment list of the signed-in teacher: what the list page shows, in the order it shows it.
+export const getAssignmentList = async (request: APIRequestContext): Promise<TAssignmentListItem[]> => {
+  const response = await getWithRetry(request, "/api/assignments");
+  expect(response.status()).toBe(200);
+  return (await response.json()).assignments;
+};
+
+// Every assignment of the signed-in teacher with its students, in the order of the list.
+export const getAssignmentsWithStudents = async (request: APIRequestContext): Promise<TTeacherAssignment[]> =>
+  Promise.all(
+    (await getAssignmentList(request)).map(async ({ id }: TAssignmentListItem): Promise<TTeacherAssignment> => {
+      const response = await getWithRetry(request, `/api/assignments/${id}`);
+      expect(response.status()).toBe(200);
+      return (await response.json()).assignment;
+    }),
+  );
+
+// One of the seeded assignments, by its title (the seed gives every title once per teacher).
+export const findByTitle = (assignments: TTeacherAssignment[], title: string): TTeacherAssignment => {
+  const found: TTeacherAssignment | undefined = assignments.find((assignment) => assignment.title === title);
+  if (!found) throw new Error(`The seeded assignment "${title}" is missing: reseed the test database`);
+  return found;
 };
 
 // The class list of the signed-in teacher.

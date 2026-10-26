@@ -1,13 +1,20 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { FILE_ACCEPT, MAX_GRADE, MIN_GRADE, SAMPLE_STUDENT_ASSIGNMENTS } from "../constants/assignment.constant";
+import { FILE_ACCEPT, MAX_GRADE, MIN_GRADE } from "../constants/assignment.constant";
 import { formatDate } from "../helpers/date";
-import { DEMO_SEED } from "../prisma/seed-data";
+import { DEMO_SEED, OTHER_SEED } from "../prisma/seed-data";
 import type { TStudentAssignment } from "../types/assignment.type";
-import { getStudentList, gotoHydrated, signInAs } from "./helpers";
+import { getAssignmentsWithStudents, getStudentList, gotoHydrated, signInAs } from "./helpers";
 
-// The list is hardcoded for now (nothing is saved), so the page is only read and the demo teacher is safe.
+// The list is what the seed gave to the first student of the demo teacher, so the page is only read and
+// the demo teacher is safe. Nothing is saved from the modal yet.
 const STUDENT = DEMO_SEED.classes[0].students[0];
-const [GRADED, LATE, UNGRADED, TODO] = SAMPLE_STUDENT_ASSIGNMENTS;
+
+// The student's assignments, read from the API of the assignments (a different way than the page reads them).
+let ASSIGNMENTS: TStudentAssignment[];
+let GRADED: TStudentAssignment;
+let LATE: TStudentAssignment;
+let UNGRADED: TStudentAssignment;
+let TODO: TStudentAssignment;
 
 const PNG = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -19,6 +26,19 @@ const openStudentPage = async (page: Page): Promise<void> => {
   await signInAs(page.request, DEMO_SEED);
   const student = (await getStudentList(page.request)).find(({ name }) => name === STUDENT.name);
   expect(student).toBeDefined();
+
+  ASSIGNMENTS = (await getAssignmentsWithStudents(page.request)).flatMap((assignment) => {
+    const part = assignment.students.find(({ studentId }) => studentId === student!.id);
+    if (!part) return [];
+    const { id, title, dueDate, description } = assignment;
+    return [{ id, title, dueDate, description, status: part.status, submittedAt: part.submittedAt, grade: part.grade, file: part.file }];
+  });
+  const byTitle = (title: string): TStudentAssignment => ASSIGNMENTS.find((assignment) => assignment.title === title)!;
+  GRADED = byTitle("עבודה על המהפכה התעשייתית");
+  LATE = byTitle("חיבור: המסע שלי");
+  UNGRADED = byTitle("סיכום הספר");
+  TODO = byTitle("תרגילי חשבון - פרק 4");
+
   await gotoHydrated(page, `/dashboard/students/${student!.id}`);
 };
 
@@ -54,9 +74,9 @@ test.describe("student assignments: the list", () => {
   });
 
   test("shows one row per assignment, with the name, the submitted date and the grade", async ({ page }) => {
-    await expect(page.locator("tbody tr")).toHaveCount(SAMPLE_STUDENT_ASSIGNMENTS.length);
+    await expect(page.locator("tbody tr")).toHaveCount(ASSIGNMENTS.length);
 
-    for (const assignment of SAMPLE_STUDENT_ASSIGNMENTS) {
+    for (const assignment of ASSIGNMENTS) {
       const cells = row(page, assignment).locator("td");
       await expect(cells.nth(0)).toHaveText(assignment.title);
       await expect(cells.nth(1)).toHaveText(
@@ -90,7 +110,7 @@ test.describe("student assignments: the modal", () => {
 
     await expect(dialog.getByRole("heading", { name: GRADED.title, level: 2 })).toBeVisible();
     await expect(page.getByRole("heading", { name: STUDENT.name, level: 1 })).toBeAttached();
-    await expect(page.locator("tbody tr")).toHaveCount(SAMPLE_STUDENT_ASSIGNMENTS.length);
+    await expect(page.locator("tbody tr")).toHaveCount(ASSIGNMENTS.length);
   });
 
   test("shows the status and the dates of a graded assignment, and its grade in the grade field", async ({ page }) => {
@@ -194,13 +214,24 @@ test.describe("student assignments: the file", () => {
     await openStudentPage(page);
   });
 
-  test("an uploaded file is shown as an image that loads, with a button to replace it", async ({ page }) => {
+  test("an uploaded PDF is shown in a frame from the file endpoint, with a button to replace it", async ({ page }) => {
     const dialog = await open(page, GRADED);
 
-    const image = dialog.getByRole("img", { name: GRADED.file!.name });
-    await expect(image).toHaveAttribute("src", GRADED.file!.url);
-    await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBeGreaterThan(0);
+    expect(GRADED.file).toMatchObject({ name: "עבודה.pdf", kind: "pdf" });
+    const frame = dialog.locator(`iframe[title="${GRADED.file!.name}"]`);
+    await expect(frame).toHaveAttribute("src", GRADED.file!.url);
+    await expect(dialog.getByRole("img")).toHaveCount(0);
     await expect(dialog.getByLabel("החלפת קובץ")).toBeVisible();
+  });
+
+  test("the file that the frame shows is the student's own file, and is a PDF", async ({ page }) => {
+    expect(GRADED.file!.url).toMatch(/^\/api\/assignments\/[0-9a-f-]{36}\/students\/[0-9a-f-]{36}\/file$/);
+
+    const response = await page.request.get(GRADED.file!.url);
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toBe("application/pdf");
+    expect((await response.body()).subarray(0, 5).toString()).toBe("%PDF-");
   });
 
   test("with no file it says so, and offers an upload", async ({ page }) => {
@@ -227,7 +258,7 @@ test.describe("student assignments: the file", () => {
     const image = dialog.getByRole("img", { name: "מטלה-חדשה.png" });
     await expect(image).toHaveAttribute("src", /^blob:/);
     await expect.poll(() => image.evaluate((element: HTMLImageElement) => element.naturalWidth)).toBe(1);
-    await expect(dialog.getByRole("img", { name: GRADED.file!.name })).toHaveCount(0);
+    await expect(dialog.locator(`iframe[title="${GRADED.file!.name}"]`)).toHaveCount(0);
   });
 
   test("a picked image is shown when there was no file before, and the label changes", async ({ page }) => {
@@ -270,7 +301,7 @@ test.describe("student assignments: the file", () => {
     await expect(dialog.getByRole("img", { name: "one.png" })).toHaveCount(0);
 
     await fileInput(dialog).setInputFiles([]);
-    await expect(dialog.getByRole("img", { name: GRADED.file!.name })).toBeVisible();
+    await expect(dialog.locator(`iframe[title="${GRADED.file!.name}"]`)).toBeVisible();
   });
 
   test("closing and reopening forgets the picked file", async ({ page }) => {
@@ -293,7 +324,7 @@ test.describe("student assignments: the file", () => {
     const second = await open(page, GRADED);
 
     await expect(second.getByRole("img", { name: "scan.png" })).toHaveCount(0);
-    await expect(second.getByRole("img", { name: GRADED.file!.name })).toBeVisible();
+    await expect(second.locator(`iframe[title="${GRADED.file!.name}"]`)).toBeVisible();
   });
 
   test("picking a file saves nothing: after a reload the list is the same", async ({ page }) => {
@@ -496,5 +527,43 @@ test.describe("student assignments: narrow screen", () => {
     const box = await save.boundingBox();
     expect(box!.x).toBeGreaterThanOrEqual(0);
     expect(box!.x + box!.width).toBeLessThanOrEqual(390);
+  });
+});
+
+test.describe("student assignments: other students", () => {
+  const openStudent = async (page: Page, name: string): Promise<void> => {
+    await signInAs(page.request, DEMO_SEED);
+    const student = (await getStudentList(page.request)).find((candidate) => candidate.name === name)!;
+    await gotoHydrated(page, `/dashboard/students/${student.id}`);
+  };
+
+  test("a student only shows their own assignments, with their own grade", async ({ page }) => {
+    await openStudent(page, "איתי ברק");
+
+    await expect(page.locator("tbody tr")).toHaveCount(2);
+    const revolution = page.locator("tbody tr").filter({ hasText: "עבודה על המהפכה התעשייתית" });
+    await expect(revolution.locator("td").nth(2)).toHaveText("88");
+    await expect(page.locator("tbody tr").filter({ hasText: "תרגילי חשבון - פרק 4" }).locator("td").nth(1)).toHaveText("לביצוע");
+    await expect(page.getByText("חיבור: המסע שלי")).toHaveCount(0);
+    await expect(page.getByText("סיכום הספר")).toHaveCount(0);
+  });
+
+  test("a student who was given no assignment shows the empty message, with the add link", async ({ page }) => {
+    await openStudent(page, "שיר דהן");
+
+    await expect(page.getByText("עדיין אין מטלות לתלמיד הזה")).toBeVisible();
+    await expect(page.locator("tbody tr")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "מטלה חדשה" })).toBeVisible();
+  });
+
+  test("a student of another teacher shows the not-found page, with nothing of the assignments", async ({ page }) => {
+    await signInAs(page.request, OTHER_SEED);
+    const theirs = (await getStudentList(page.request))[0];
+    await signInAs(page.request, DEMO_SEED);
+
+    await page.goto(`/dashboard/students/${theirs.id}`);
+
+    await expect(page.getByRole("heading", { name: "התלמיד לא נמצא" })).toBeVisible();
+    await expect(page.getByText("קריאה: פרק ראשון")).toHaveCount(0);
   });
 });

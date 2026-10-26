@@ -2,23 +2,18 @@ import "dotenv/config";
 import { hash } from "@node-rs/argon2";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
-import { SEED_TEACHERS, type TSeedTeacher } from "./seed-data";
+import { deriveStatus } from "../helpers/assignment";
+import { createSamplePdf } from "./sample-pdf";
+import { SEED_TEACHERS, type TSeedAssignment, type TSeedAssignmentPart, type TSeedTeacher } from "./seed-data";
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
-async function seedTeacher(seed: TSeedTeacher): Promise<void> {
-  // The ID number is the password and is only stored as an Argon2 hash.
-  const teacher = await prisma.teacher.upsert({
-    where: { name: seed.name },
-    update: {},
-    create: { name: seed.name, passwordHash: await hash(seed.idNumber) },
-  });
-
+async function seedClasses(teacherId: string, seed: TSeedTeacher): Promise<void> {
   // Only seed sample data once so re-running the seed never duplicates rows.
-  if ((await prisma.class.count({ where: { teacherId: teacher.id } })) > 0) {
-    console.log(`"${seed.name}" already has data, skipping.`);
+  if ((await prisma.class.count({ where: { teacherId } })) > 0) {
+    console.log(`"${seed.name}" already has classes, skipping them.`);
     return;
   }
 
@@ -26,9 +21,9 @@ async function seedTeacher(seed: TSeedTeacher): Promise<void> {
     await prisma.class.create({
       data: {
         name,
-        teacherId: teacher.id,
+        teacherId,
         students: {
-          create: students.map((student) => ({ ...student, teacherId: teacher.id })),
+          create: students.map((student) => ({ ...student, teacherId })),
         },
       },
     });
@@ -38,6 +33,80 @@ async function seedTeacher(seed: TSeedTeacher): Promise<void> {
   console.log(
     `Seeded "${seed.name}" (ID ${seed.idNumber}): ${seed.classes.length} classes, ${studentCount} students.`,
   );
+}
+
+const toSeedPart = (part: TSeedAssignmentPart, studentId: string) => {
+  const submitted: boolean = part.submittedAt !== undefined;
+  const grade: number | null = part.grade ?? null;
+  if (grade !== null && !submitted) throw new Error(`Seed: ${part.student} has a grade without a submission`);
+
+  return {
+    studentId,
+    grade,
+    status: deriveStatus(submitted, grade),
+    submittedAt: part.submittedAt ? new Date(`${part.submittedAt}T10:00:00.000Z`) : null,
+    // The sample file is what makes a submitted part real: it can be opened and previewed.
+    file: submitted
+      ? { create: { name: "עבודה.pdf", mimeType: "application/pdf", ...toSeedFile() } }
+      : undefined,
+  };
+};
+
+const toSeedFile = (): { size: number; data: Uint8Array<ArrayBuffer> } => {
+  const data: Uint8Array<ArrayBuffer> = createSamplePdf("Sample submission");
+  return { size: data.byteLength, data };
+};
+
+// The assignments of a teacher are seeded on their own, once, so a database that already has classes and
+// students (and no assignments) gets them too.
+async function seedAssignments(teacherId: string, seed: TSeedTeacher): Promise<void> {
+  if (!seed.assignments?.length) return;
+  if ((await prisma.assignment.count({ where: { teacherId } })) > 0) {
+    console.log(`"${seed.name}" already has assignments, skipping them.`);
+    return;
+  }
+
+  const students = await prisma.student.findMany({ where: { teacherId }, select: { id: true, name: true } });
+  const idByName = new Map<string, string>(students.map(({ id, name }) => [name, id]));
+
+  for (const assignment of seed.assignments) {
+    await createAssignment(teacherId, assignment, idByName);
+  }
+  console.log(`Seeded "${seed.name}": ${seed.assignments.length} assignments.`);
+}
+
+async function createAssignment(
+  teacherId: string,
+  { title, description, dueDate, parts }: TSeedAssignment,
+  idByName: Map<string, string>,
+): Promise<void> {
+  await prisma.assignment.create({
+    data: {
+      teacherId,
+      title,
+      description,
+      dueDate: new Date(`${dueDate}T00:00:00.000Z`),
+      students: {
+        create: parts.map((part: TSeedAssignmentPart) => {
+          const studentId: string | undefined = idByName.get(part.student);
+          if (!studentId) throw new Error(`Seed: "${part.student}" is not a student of the teacher`);
+          return toSeedPart(part, studentId);
+        }),
+      },
+    },
+  });
+}
+
+async function seedTeacher(seed: TSeedTeacher): Promise<void> {
+  // The ID number is the password and is only stored as an Argon2 hash.
+  const teacher = await prisma.teacher.upsert({
+    where: { name: seed.name },
+    update: {},
+    create: { name: seed.name, passwordHash: await hash(seed.idNumber) },
+  });
+
+  await seedClasses(teacher.id, seed);
+  await seedAssignments(teacher.id, seed);
 }
 
 async function main(): Promise<void> {

@@ -2,13 +2,12 @@ import { notFound, redirect } from "next/navigation";
 import AssignmentStudents from "@/components/assignments/AssignmentStudents";
 import AssignmentSummary from "@/components/assignments/AssignmentSummary";
 import { BackLink } from "@/components/ui/BackLink";
-import { ASSIGNMENTS_PAGE, getSampleTeacherAssignments } from "@/constants/assignment.constant";
+import { ASSIGNMENTS_PAGE } from "@/constants/assignment.constant";
 import { SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
+import { findAssignment } from "@/services/assignment.service";
 import { getSessionTeacher } from "@/services/auth.service";
-import { getStudents } from "@/services/student.service";
 import type { TTeacherAssignment } from "@/types/assignment.type";
 import type { TSessionTeacher } from "@/types/auth.type";
-import type { TStudent } from "@/types/student.type";
 
 type TAuthenticatedAssignmentPageProps = {
   params: Promise<{ id: string }>;
@@ -20,12 +19,7 @@ export default async function AuthenticatedAssignmentPage({ params }: TAuthentic
   if (!teacher) redirect(SESSION_EXPIRED_PATH);
 
   const { id } = await params;
-  const students: TStudent[] = await getStudents(teacher.id);
-
-  // Hardcoded sample until the assignments API exists.
-  const assignment: TTeacherAssignment | undefined = getSampleTeacherAssignments(students).find(
-    (sample: TTeacherAssignment) => sample.id === id,
-  );
+  const assignment: TTeacherAssignment | null = await findAssignment(teacher.id, id);
   if (!assignment) notFound();
 
   return (

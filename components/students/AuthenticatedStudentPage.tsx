@@ -3,10 +3,12 @@ import StudentAssignments from "@/components/assignments/StudentAssignments";
 import StudentDetails from "@/components/students/StudentDetails";
 import { BackLink } from "@/components/ui/BackLink";
 import { LinkButton } from "@/components/ui/LinkButton";
-import { NEW_ASSIGNMENT_PAGE, SAMPLE_STUDENT_ASSIGNMENTS } from "@/constants/assignment.constant";
+import { NEW_ASSIGNMENT_PAGE } from "@/constants/assignment.constant";
 import { DASHBOARD_PAGE, SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
+import { getStudentAssignments } from "@/services/assignment.service";
 import { getSessionTeacher } from "@/services/auth.service";
 import { findStudent } from "@/services/student.service";
+import type { TStudentAssignment } from "@/types/assignment.type";
 import type { TSessionTeacher } from "@/types/auth.type";
 import type { TStudent } from "@/types/student.type";
 
@@ -20,7 +22,11 @@ export default async function AuthenticatedStudentPage({ params }: TAuthenticate
   if (!teacher) redirect(SESSION_EXPIRED_PATH);
 
   const { id } = await params;
-  const student: TStudent | null = await findStudent(teacher.id, id);
+  // Both are scoped to the teacher, so they can run together: another teacher's student has no assignments.
+  const [student, assignments]: [TStudent | null, TStudentAssignment[]] = await Promise.all([
+    findStudent(teacher.id, id),
+    getStudentAssignments(teacher.id, id),
+  ]);
   if (!student) notFound();
 
   return (
@@ -36,8 +42,7 @@ export default async function AuthenticatedStudentPage({ params }: TAuthenticate
             מטלה חדשה
           </LinkButton>
         </div>
-        {/* Hardcoded sample until the assignments API exists: every student shows the same list. */}
-        <StudentAssignments assignments={SAMPLE_STUDENT_ASSIGNMENTS} />
+        <StudentAssignments assignments={assignments} />
       </section>
     </div>
   );

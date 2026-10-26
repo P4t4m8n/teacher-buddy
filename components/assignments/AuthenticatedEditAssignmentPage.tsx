@@ -1,9 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import AssignmentForm from "@/components/assignments/AssignmentForm";
 import FormPage from "@/components/ui/FormPage";
-import { ASSIGNMENTS_PAGE, getSampleTeacherAssignments } from "@/constants/assignment.constant";
+import { ASSIGNMENTS_PAGE } from "@/constants/assignment.constant";
 import { SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
 import { toFormValues } from "@/helpers/assignment";
+import { findAssignment } from "@/services/assignment.service";
 import { getSessionTeacher } from "@/services/auth.service";
 import { getStudents } from "@/services/student.service";
 import type { TTeacherAssignment } from "@/types/assignment.type";
@@ -20,12 +21,10 @@ export default async function AuthenticatedEditAssignmentPage({ params }: TAuthe
   if (!teacher) redirect(SESSION_EXPIRED_PATH);
 
   const { id } = await params;
-  const students: TStudent[] = await getStudents(teacher.id);
-
-  // Hardcoded sample until the assignments API exists.
-  const assignment: TTeacherAssignment | undefined = getSampleTeacherAssignments(students).find(
-    (sample: TTeacherAssignment) => sample.id === id,
-  );
+  const [assignment, students]: [TTeacherAssignment | null, TStudent[]] = await Promise.all([
+    findAssignment(teacher.id, id),
+    getStudents(teacher.id),
+  ]);
   if (!assignment) notFound();
 
   return (

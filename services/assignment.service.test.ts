@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   partDeleteMany: vi.fn(),
   partCount: vi.fn(),
   partCreateMany: vi.fn(),
+  partFindMany: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -35,6 +36,7 @@ vi.mock("@/lib/db", () => {
         deleteMany: mocks.deleteMany,
       },
       student: { count: mocks.studentCount },
+      assignmentStudent: { findMany: mocks.partFindMany },
       $transaction: (run: (client: typeof tx) => Promise<unknown>) => run(tx),
     },
   };
@@ -46,6 +48,7 @@ import {
   findAssignment,
   getAssignment,
   getAssignments,
+  getStudentAssignments,
   updateAssignment,
 } from "./assignment.service";
 
@@ -268,6 +271,107 @@ describe("getAssignment", () => {
 
   it("is the same 404 for an id that is not a uuid", async () => {
     await expectAppError(getAssignment(TEACHER_ID, "abc"), AppError.assignmentNotFound());
+  });
+});
+
+describe("getStudentAssignments", () => {
+  const studentRow = (overrides: Record<string, unknown> = {}): Record<string, unknown> => ({
+    assignmentId: ASSIGNMENT_ID,
+    status: "TODO",
+    grade: null,
+    submittedAt: null,
+    file: null,
+    assignment: { title: "חיבור", description: "<p>הנחיות</p>", dueDate: new Date("2026-12-15T00:00:00.000Z") },
+    ...overrides,
+  });
+
+  it("reads only the assignments of this teacher that were given to this student, newest due date first", async () => {
+    mocks.partFindMany.mockResolvedValue([]);
+
+    await getStudentAssignments(TEACHER_ID, STUDENT_A);
+
+    expect(mocks.partFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { studentId: STUDENT_A, assignment: { teacherId: TEACHER_ID } },
+        orderBy: [{ assignment: { dueDate: "desc" } }, { assignment: { createdAt: "desc" } }, { assignmentId: "asc" }],
+      }),
+    );
+  });
+
+  it("never selects the bytes of the file", async () => {
+    mocks.partFindMany.mockResolvedValue([]);
+
+    await getStudentAssignments(TEACHER_ID, STUDENT_A);
+
+    expect(mocks.partFindMany.mock.calls[0][0].select.file).toEqual({ select: { name: true, mimeType: true } });
+  });
+
+  it.each(["abc", "", "123", "' OR 1=1 --"])("gives an empty list for %j, without touching the database", async (id) => {
+    expect(await getStudentAssignments(TEACHER_ID, id)).toEqual([]);
+    expect(mocks.partFindMany).not.toHaveBeenCalled();
+  });
+
+  it("gives an empty list when there are none", async () => {
+    mocks.partFindMany.mockResolvedValue([]);
+
+    expect(await getStudentAssignments(TEACHER_ID, STUDENT_A)).toEqual([]);
+  });
+
+  it("gives the id of the assignment, with the student's progress in the shape of the page", async () => {
+    mocks.partFindMany.mockResolvedValue([studentRow()]);
+
+    expect(await getStudentAssignments(TEACHER_ID, STUDENT_A)).toEqual([
+      {
+        id: ASSIGNMENT_ID,
+        title: "חיבור",
+        dueDate: "2026-12-15",
+        status: "TODO",
+        submittedAt: null,
+        grade: null,
+        description: "<p>הנחיות</p>",
+        file: null,
+      },
+    ]);
+  });
+
+  it("gives a checked assignment its grade, its file as a link of this student, and the Israeli day of the upload", async () => {
+    mocks.partFindMany.mockResolvedValue([
+      studentRow({
+        status: "CHECKED",
+        grade: 0,
+        submittedAt: new Date("2026-12-14T22:30:00.000Z"),
+        file: { name: "עבודה.pdf", mimeType: "application/pdf" },
+      }),
+    ]);
+
+    const [assignment] = await getStudentAssignments(TEACHER_ID, STUDENT_A);
+
+    expect(assignment).toMatchObject({
+      status: "CHECKED",
+      grade: 0,
+      submittedAt: "2026-12-15",
+      file: {
+        name: "עבודה.pdf",
+        kind: "pdf",
+        url: `/api/assignments/${ASSIGNMENT_ID}/students/${STUDENT_A}/file`,
+      },
+    });
+  });
+
+  it("keeps the order that the database gave", async () => {
+    mocks.partFindMany.mockResolvedValue([
+      studentRow({ assignmentId: "b" }),
+      studentRow({ assignmentId: "a" }),
+    ]);
+
+    expect((await getStudentAssignments(TEACHER_ID, STUDENT_A)).map(({ id }) => id)).toEqual(["b", "a"]);
+  });
+
+  it("does not hide database errors", async () => {
+    const failure = new Error("connection lost");
+    mocks.partFindMany.mockRejectedValue(failure);
+
+    await expect(getStudentAssignments(TEACHER_ID, STUDENT_A)).rejects.toBe(failure);
   });
 });
 

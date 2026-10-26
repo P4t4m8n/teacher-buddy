@@ -26,7 +26,11 @@ export type TAssignmentPartRow = {
 export const getFileUrl = (assignmentId: string, studentId: string): string =>
   `/api/assignments/${assignmentId}/students/${studentId}/file`;
 
-const toFile = (assignmentId: string, studentId: string, file: TAssignmentPartRow["file"]): TAssignmentFile | null => {
+export const toAssignmentFile = (
+  assignmentId: string,
+  studentId: string,
+  file: TAssignmentPartRow["file"],
+): TAssignmentFile | null => {
   if (!file) return null;
 
   return { name: file.name, kind: getFileKind(file.mimeType), url: getFileUrl(assignmentId, studentId) };
@@ -39,5 +43,5 @@ export const toAssignmentStudent = (assignmentId: string, part: TAssignmentPartR
   status: part.status,
   submittedAt: part.submittedAt ? toIsraelIsoDate(part.submittedAt) : null,
   grade: part.grade,
-  file: toFile(assignmentId, part.studentId, part.file),
+  file: toAssignmentFile(assignmentId, part.studentId, part.file),
 });

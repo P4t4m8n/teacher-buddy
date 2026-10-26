@@ -1,11 +1,12 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { getSampleTeacherAssignments, SAMPLE_STUDENT_ASSIGNMENTS } from "../constants/assignment.constant";
 import { DEMO_SEED, OTHER_SEED } from "../prisma/seed-data";
-import { getStudentList, gotoHydrated, signInAs } from "./helpers";
+import type { TTeacherAssignment } from "../types/assignment.type";
+import { findByTitle, getAssignmentsWithStudents, getStudentList, gotoHydrated, signInAs } from "./helpers";
 
 // The pages only show a form for now (nothing is saved yet), so the demo teacher is safe to use.
 const NEW_URL = "/dashboard/assignments/new";
-const EDIT_URL = `/dashboard/assignments/${SAMPLE_STUDENT_ASSIGNMENTS[0].id}/edit`;
+// The assignment of the seed that the edit page tests open.
+const EDITED_TITLE = "עבודה על המהפכה התעשייתית";
 
 // The classes that have students, in the order the list shows them: by name, in Hebrew.
 const GROUPS = DEMO_SEED.classes
@@ -13,10 +14,19 @@ const GROUPS = DEMO_SEED.classes
   .sort((a, b) => a.name.localeCompare(b.name, "he"));
 const [FIRST_GROUP, SECOND_GROUP] = GROUPS;
 
-const openPage = async (page: Page, url: string = NEW_URL): Promise<void> => {
+const openPage = async (page: Page): Promise<void> => {
   await signInAs(page.request, DEMO_SEED);
-  await gotoHydrated(page, url);
+  await gotoHydrated(page, NEW_URL);
   await expect(page.getByRole("toolbar")).toBeVisible();
+};
+
+// Opens the edit page of the seeded assignment, and gives the assignment to compare with.
+const openEditPage = async (page: Page): Promise<TTeacherAssignment> => {
+  await signInAs(page.request, DEMO_SEED);
+  const assignment: TTeacherAssignment = findByTitle(await getAssignmentsWithStudents(page.request), EDITED_TITLE);
+  await gotoHydrated(page, `/dashboard/assignments/${assignment.id}/edit`);
+  await expect(page.getByRole("toolbar")).toBeVisible();
+  return assignment;
 };
 
 const list = (page: Page): Locator => page.getByRole("group", { name: "תלמידים", exact: true });
@@ -232,8 +242,7 @@ test.describe("students multi-select: whole classes", () => {
 
 test.describe("students multi-select: on the edit page", () => {
   test("starts with the students of the assignment chosen, and the counts to match", async ({ page }) => {
-    await openPage(page, EDIT_URL);
-    const sample = getSampleTeacherAssignments(await getStudentList(page.request))[0];
+    const sample: TTeacherAssignment = await openEditPage(page);
 
     for (const { name } of sample.students) await expect(student(page, name)).toBeChecked();
     await expect(page.locator('input[name="studentIds"]:checked')).toHaveCount(sample.students.length);
@@ -242,8 +251,7 @@ test.describe("students multi-select: on the edit page", () => {
   });
 
   test("a student can be removed and another added", async ({ page }) => {
-    await openPage(page, EDIT_URL);
-    const sample = getSampleTeacherAssignments(await getStudentList(page.request))[0];
+    const sample: TTeacherAssignment = await openEditPage(page);
     const outside = DEMO_SEED.classes.flatMap(({ students }) => students).find(
       ({ name }) => !sample.students.some((assigned) => assigned.name === name),
     )!;

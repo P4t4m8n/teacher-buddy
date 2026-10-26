@@ -1,12 +1,10 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { SAMPLE_STUDENT_ASSIGNMENTS } from "../constants/assignment.constant";
 import { DEMO_SEED } from "../prisma/seed-data";
-import { getStudentList, gotoHydrated, signInAs } from "./helpers";
+import { getAssignmentList, getStudentList, gotoHydrated, signInAs } from "./helpers";
 
 // Tabs only navigate, so the demo teacher is safe to use.
 const STUDENTS_URL = "/dashboard";
 const ASSIGNMENTS_URL = "/dashboard/assignments";
-const SAMPLE_ID: string = SAMPLE_STUDENT_ASSIGNMENTS[0].id;
 
 const tabs = (page: Page): Locator => page.getByRole("navigation", { name: "אזורי הלוח" });
 const studentsTab = (page: Page): Locator => tabs(page).getByRole("link", { name: "תלמידים" });
@@ -19,6 +17,7 @@ const expectActive = async (page: Page, active: "students" | "assignments"): Pro
 };
 
 const firstStudentId = async (page: Page): Promise<string> => (await getStudentList(page.request))[0].id;
+const firstAssignmentId = async (page: Page): Promise<string> => (await getAssignmentList(page.request))[0].id;
 
 test.beforeEach(async ({ page }) => {
   await signInAs(page.request, DEMO_SEED);
@@ -147,6 +146,7 @@ test.describe("dashboard tabs: on the other dashboard pages", () => {
     });
     page.on("pageerror", (error) => problems.push(`pageerror: ${error.message.slice(0, 200)}`));
     const id: string = await firstStudentId(page);
+    const assignmentId: string = await firstAssignmentId(page);
 
     for (const url of [
       STUDENTS_URL,
@@ -154,8 +154,8 @@ test.describe("dashboard tabs: on the other dashboard pages", () => {
       `/dashboard/students/${id}/edit`,
       "/dashboard/students/new",
       ASSIGNMENTS_URL,
-      `${ASSIGNMENTS_URL}/${SAMPLE_ID}`,
-      `${ASSIGNMENTS_URL}/${SAMPLE_ID}/edit`,
+      `${ASSIGNMENTS_URL}/${assignmentId}`,
+      `${ASSIGNMENTS_URL}/${assignmentId}/edit`,
       `${ASSIGNMENTS_URL}/new`,
     ]) {
       await gotoHydrated(page, url);
@@ -176,9 +176,11 @@ test.describe("dashboard tabs: on the other dashboard pages", () => {
   });
 
   test("the assignments tab is active on the assignment pages", async ({ page }) => {
+    const assignmentId: string = await firstAssignmentId(page);
+
     for (const url of [
-      `${ASSIGNMENTS_URL}/${SAMPLE_ID}`,
-      `${ASSIGNMENTS_URL}/${SAMPLE_ID}/edit`,
+      `${ASSIGNMENTS_URL}/${assignmentId}`,
+      `${ASSIGNMENTS_URL}/${assignmentId}/edit`,
       `${ASSIGNMENTS_URL}/new`,
     ]) {
       await page.goto(url);

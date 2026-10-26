@@ -4,12 +4,11 @@ import {
   getAssignmentPage,
 } from "@/constants/assignment.constant";
 import { LinkButton } from "@/components/ui/LinkButton";
-import { countSubmitted } from "@/helpers/assignment";
 import { formatDate } from "@/helpers/date";
-import type { TTeacherAssignment } from "@/types/assignment.type";
+import type { TAssignmentListItem } from "@/types/assignment.type";
 
 type TAssignmentsTableProps = {
-  assignments: TTeacherAssignment[];
+  assignments: TAssignmentListItem[];
 };
 
 const HEADER_CELL_CLASSES =
@@ -36,7 +35,7 @@ export default function AssignmentsTable({
       <table className="w-full border-collapse">
         <AssigmentHeader />
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-          {assignments.map((assignment: TTeacherAssignment) => (
+          {assignments.map((assignment: TAssignmentListItem) => (
             <AssignmentRow key={assignment.id} assignment={assignment} />
           ))}
         </tbody>
@@ -75,8 +74,8 @@ const AssigmentHeader = () => {
   );
 };
 
-const AssignmentRow = ({ assignment }: { assignment: TTeacherAssignment }) => {
-  const { id, title, dueDate, students } = assignment;
+const AssignmentRow = ({ assignment }: { assignment: TAssignmentListItem }) => {
+  const { id, title, dueDate, studentCount, submittedCount } = assignment;
   return (
     <tr className="transition hover:bg-slate-50 dark:hover:bg-slate-800/40">
       <td className="px-4 py-3">
@@ -95,10 +94,10 @@ const AssignmentRow = ({ assignment }: { assignment: TTeacherAssignment }) => {
         {formatDate(dueDate)}
       </td>
       <td className="hidden px-4 py-3 text-sm text-slate-600 md:table-cell dark:text-slate-300">
-        {students.length}
+        {studentCount}
       </td>
       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-        {countSubmitted(assignment)} מתוך {students.length}
+        {submittedCount} מתוך {studentCount}
       </td>
       <td className="px-4 py-3">
         <div className="flex flex-wrap items-center justify-end gap-2">
