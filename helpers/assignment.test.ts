@@ -89,10 +89,11 @@ describe("toStudentAssignment", () => {
   it("takes the status, dates, grade and file from the student, and the rest from the assignment", () => {
     const file = { name: "scan.png", kind: "image", url: "/scan.png" } as const;
     const given = assignment([]);
-    const submitted = student({ status: "SUBMITTED", submittedAt: "2026-12-10", grade: 90, file });
+    const submitted = student({ studentId: "s7", status: "SUBMITTED", submittedAt: "2026-12-10", grade: 90, file });
 
     expect(toStudentAssignment(given, submitted)).toEqual({
       id: "a1",
+      studentId: "s7",
       title: "נועה לוי - חיבור",
       dueDate: "2026-12-15",
       status: "SUBMITTED",

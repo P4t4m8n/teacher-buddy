@@ -121,6 +121,7 @@ export const getStudentAssignments = async (teacherId: string, studentId: string
   return rows.map(
     (row): TStudentAssignment => ({
       id: row.assignmentId,
+      studentId,
       title: row.assignment.title,
       dueDate: toIsoDate(row.assignment.dueDate),
       status: row.status,

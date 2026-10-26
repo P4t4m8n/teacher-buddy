@@ -7,7 +7,7 @@ import type { TAssignmentStudent, TTeacherAssignment } from "../types/assignment
 import { findByTitle, getAssignmentsWithStudents, gotoHydrated, signInAs } from "./helpers";
 
 // The pages show what the seed gave to the demo teacher, so they are only read and the demo teacher is safe.
-// Nothing is saved from the modal yet.
+// Saving from the modal changes data, so it is tested with a write teacher (assignments.submission.ui.spec.ts).
 const UNKNOWN_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
 
 const pageOf = (assignment: TTeacherAssignment): string => `/dashboard/assignments/${assignment.id}`;

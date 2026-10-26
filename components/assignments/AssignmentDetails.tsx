@@ -8,24 +8,26 @@ import { LinkButton } from "@/components/ui/LinkButton";
 import { FILE_ACCEPT, getAssignmentEditPage, MAX_GRADE, MIN_GRADE } from "@/constants/assignment.constant";
 import { formatDate } from "@/helpers/date";
 import { canGrade } from "@/helpers/assignment";
-import { useFilePreview } from "@/hooks/useFilePreview";
+import { useSubmissionForm } from "@/hooks/useSubmissionForm";
 import type { TAssignmentFile, TStudentAssignment } from "@/types/assignment.type";
 
 type TAssignmentDetailsProps = {
   assignment: TStudentAssignment;
+  // Called after the file and the grade were saved.
+  onSaved: () => void;
 };
 
 const LABEL_CLASSES = "text-slate-500 dark:text-slate-400";
 
-export default function AssignmentDetails({ assignment }: TAssignmentDetailsProps) {
-  const { preview, handleChange } = useFilePreview();
+export default function AssignmentDetails({ assignment, onSaved }: TAssignmentDetailsProps) {
+  const { preview, handleChange, isPending, errorMessage, fieldErrors, handleSubmit } = useSubmissionForm({
+    assignmentId: assignment.id,
+    studentId: assignment.studentId,
+    savedGrade: assignment.grade,
+    onSaved,
+  });
   // A file picked just now is shown instead of the one that was uploaded before.
   const shownFile: TAssignmentFile | null = preview ?? assignment.file;
-
-  // Nothing is saved yet: the assignments API does not exist.
-  const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>): void => {
-    e.preventDefault();
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -66,8 +68,14 @@ export default function AssignmentDetails({ assignment }: TAssignmentDetailsProp
               name="file"
               accept={FILE_ACCEPT}
               onChange={handleChange}
+              aria-invalid={fieldErrors.file ? true : undefined}
               className="text-sm font-normal file:me-3 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-slate-700 file:hover:cursor-pointer hover:file:bg-slate-50 dark:file:border-slate-700 dark:file:bg-slate-900 dark:file:text-slate-200"
             />
+            {fieldErrors.file?.map((message: string) => (
+              <span key={message} className="text-xs font-normal text-red-600 dark:text-red-400">
+                {message}
+              </span>
+            ))}
           </label>
         </section>
 
@@ -86,11 +94,23 @@ export default function AssignmentDetails({ assignment }: TAssignmentDetailsProp
           disabled={!canGrade(shownFile !== null)}
           hint={canGrade(shownFile !== null) ? undefined : "ניתן להזין ציון רק אחרי העלאת המטלה"}
           defaultValue={assignment.grade ?? ""}
+          errors={fieldErrors.grade}
         />
+
+        {errorMessage && (
+          <p
+            role="alert"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+          >
+            {errorMessage}
+          </p>
+        )}
 
         <div className="flex items-center justify-between gap-3">
           <LinkButton href={getAssignmentEditPage(assignment.id)}>עריכת המטלה</LinkButton>
-          <Button type="submit">שמירה</Button>
+          <Button type="submit" disabled={isPending}>
+            {isPending ? "שומר..." : "שמירה"}
+          </Button>
         </div>
       </form>
     </div>

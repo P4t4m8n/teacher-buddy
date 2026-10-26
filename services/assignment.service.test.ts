@@ -317,12 +317,13 @@ describe("getStudentAssignments", () => {
     expect(await getStudentAssignments(TEACHER_ID, STUDENT_A)).toEqual([]);
   });
 
-  it("gives the id of the assignment, with the student's progress in the shape of the page", async () => {
+  it("gives the id of the assignment and of the student, with the student's progress in the shape of the page", async () => {
     mocks.partFindMany.mockResolvedValue([studentRow()]);
 
     expect(await getStudentAssignments(TEACHER_ID, STUDENT_A)).toEqual([
       {
         id: ASSIGNMENT_ID,
+        studentId: STUDENT_A,
         title: "חיבור",
         dueDate: "2026-12-15",
         status: "TODO",

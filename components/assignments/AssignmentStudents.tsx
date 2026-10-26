@@ -22,7 +22,10 @@ const getStudentPage = (studentId: string): string => `/dashboard/students/${stu
 // The students of an assignment, with their status. The button of a row opens the same modal as on the
 // student's own page: the details, the checked file and the upload.
 export default function AssignmentStudents({ assignment }: TAssignmentStudentsProps) {
-  const [selected, setSelected] = useState<TAssignmentStudent | null>(null);
+  // Only the id is kept, so the modal always shows the current data of the page, also after it was refreshed.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected: TAssignmentStudent | null =
+    assignment.students.find(({ studentId }: TAssignmentStudent) => studentId === selectedId) ?? null;
 
   if (assignment.students.length === 0) {
     return (
@@ -87,7 +90,7 @@ export default function AssignmentStudents({ assignment }: TAssignmentStudentsPr
                     size="sm"
                     aria-haspopup="dialog"
                     aria-label={`פרטים עבור ${student.name}`}
-                    onClick={() => setSelected(student)}
+                    onClick={() => setSelectedId(student.studentId)}
                   >
                     פרטים
                   </Button>
@@ -100,11 +103,13 @@ export default function AssignmentStudents({ assignment }: TAssignmentStudentsPr
 
       <Modal
         isOpen={selected !== null}
-        onClose={() => setSelected(null)}
+        onClose={() => setSelectedId(null)}
         title={selected ? toStudentAssignment(assignment, selected).title : ""}
         size="lg"
       >
-        {selected && <AssignmentDetails assignment={toStudentAssignment(assignment, selected)} />}
+        {selected && (
+          <AssignmentDetails assignment={toStudentAssignment(assignment, selected)} onSaved={() => setSelectedId(null)} />
+        )}
       </Modal>
     </>
   );

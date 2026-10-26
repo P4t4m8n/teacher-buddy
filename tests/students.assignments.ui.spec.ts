@@ -6,7 +6,8 @@ import type { TStudentAssignment } from "../types/assignment.type";
 import { getAssignmentsWithStudents, getStudentList, gotoHydrated, signInAs } from "./helpers";
 
 // The list is what the seed gave to the first student of the demo teacher, so the page is only read and
-// the demo teacher is safe. Nothing is saved from the modal yet.
+// the demo teacher is safe. Saving from the modal changes data, so it is tested with a write teacher
+// (assignments.submission.ui.spec.ts).
 const STUDENT = DEMO_SEED.classes[0].students[0];
 
 // The student's assignments, read from the API of the assignments (a different way than the page reads them).
@@ -31,7 +32,7 @@ const openStudentPage = async (page: Page): Promise<void> => {
     const part = assignment.students.find(({ studentId }) => studentId === student!.id);
     if (!part) return [];
     const { id, title, dueDate, description } = assignment;
-    return [{ id, title, dueDate, description, status: part.status, submittedAt: part.submittedAt, grade: part.grade, file: part.file }];
+    return [{ id, studentId: student!.id, title, dueDate, description, status: part.status, submittedAt: part.submittedAt, grade: part.grade, file: part.file }];
   });
   const byTitle = (title: string): TStudentAssignment => ASSIGNMENTS.find((assignment) => assignment.title === title)!;
   GRADED = byTitle("עבודה על המהפכה התעשייתית");
@@ -449,32 +450,6 @@ test.describe("student assignments: the grade", () => {
     await expect(form.locator('input[type="file"]')).toBeVisible();
     await expect(form.getByRole("button", { name: "שמירה", exact: true })).toHaveAttribute("type", "submit");
     await expect(form).toHaveAttribute("novalidate", "");
-  });
-
-  test("saving does nothing yet: it sends no request, and the modal and the typed grade stay", async ({ page }) => {
-    const requests: string[] = [];
-    page.on("request", (request) => {
-      if (request.method() !== "GET") requests.push(`${request.method()} ${request.url()}`);
-    });
-    const dialog = await open(page, UNGRADED);
-    await dialog.getByLabel("ציון").fill("88");
-
-    await dialog.getByRole("button", { name: "שמירה", exact: true }).click();
-
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByLabel("ציון")).toHaveValue("88");
-    await expect(page).toHaveURL(/\/dashboard\/students\/[0-9a-f-]{36}$/);
-    expect(requests).toEqual([]);
-  });
-
-  test("a value out of range does not raise the browser's own message: the server will answer", async ({ page }) => {
-    const dialog = await open(page, UNGRADED);
-    await dialog.getByLabel("ציון").fill("150");
-
-    await dialog.getByRole("button", { name: "שמירה", exact: true }).click();
-
-    await expect(dialog.getByLabel("ציון")).toHaveValue("150");
-    await expect(dialog.getByLabel("ציון")).not.toHaveAttribute("aria-invalid", "true");
   });
 
   test("a typed grade is forgotten when the modal closes, and another assignment has its own", async ({ page }) => {

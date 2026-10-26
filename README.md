@@ -189,6 +189,18 @@ A grade needs an uploaded assignment. The database enforces this with two checks
 
 All ids are UUID v7. A class that still has students cannot be deleted. Deleting a student deletes that student's parts of assignments and their files (the assignment itself stays).
 
+### The student modal
+
+The modal (on the assignment page and on the student page) is one form for one student's part: the checked file and the grade, with one save button. It uses the two endpoints above, and only sends what changed:
+
+- A picked file goes first (`PUT …/file`), then the grade (`PUT …/grade`), so a student who did not submit can get a file and a grade in one save. A grade that was not touched is not sent, and a file that was not picked is not sent.
+- Clearing the grade field sends `null`: the student goes back to `SUBMITTED`. A new file for a `CHECKED` student keeps the status and the grade.
+- The grade field is closed until there is a file (the saved one or the one just picked), and the server refuses a grade without a file anyway.
+- Everything the teacher sees as an error is the server's Hebrew message: under the grade or the file field, or as one message in the form.
+- When everything was saved the modal closes and the page is refreshed (`router.refresh()`), so the row shows the new status, date and grade.
+- If the file was saved and then the grade was refused, the modal stays open with the message, the page behind it is refreshed, and a new try sends the grade only (the same file is not uploaded twice).
+- The modal keeps only the id of the selected row and reads its data from the page, so it shows what was just saved, never an old copy.
+
 ## Project structure
 
 ```
@@ -196,19 +208,19 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/auth        Sign-in page
   (root)/dashboard   Dashboard with the students table (server-rendered, skeleton while loading); a link to add a student, and each row links to the student page and to edit, and has a delete button with a confirmation
   (root)/dashboard/students/new          Add-student page
-  (root)/dashboard/students/[id]         Student page: the details, and the student's assignments list from the database (name, submitted date, grade; latest due date first). A click opens a modal with the assignment details, the description, the checked file (a PDF in a frame, or an image) with an upload field, and the grade (0-100, empty until checked), saved together with a save button (the modal does not save yet). A missing student, another teacher's or a malformed id all show the same not-found page
+  (root)/dashboard/students/[id]         Student page: the details, and the student's assignments list from the database (name, submitted date, grade; latest due date first). A click opens a modal with the assignment details, the description, the checked file (a PDF in a frame, or an image) with an upload field, and the grade (0-100, empty until checked), saved together with one save button (see "The student modal" below). A missing student, another teacher's or a malformed id all show the same not-found page
   (root)/dashboard/students/[id]/edit    Edit-student page, filled from the database; shares one form (StudentForm) with the add page
   (root)/dashboard/layout.tsx            The header, the tab bar (students | assignments) and the page frame, shared by every dashboard page
   (root)/dashboard/assignments           The teacher's assignments list from the database (name, due date, number of students, how many submitted), latest due date first, with an add button
   (root)/dashboard/assignments/new       Add-assignment form: title, students (a checklist grouped by class, with a shortcut per class), due date and the rich text description. It saves through `POST /api/assignments`: the server's Hebrew messages show under each field (or as one message for other errors), the button is disabled while saving, and a save goes back to the list. After a save the form is empty again when the page is opened later, and a draft that was not saved is kept
-  (root)/dashboard/assignments/[id]      Assignment page from the database: its details, and its students with their status; a student's button opens the same modal, with the checked file (a PDF in a frame, or an image), the grade and an upload field (the modal does not save yet). A missing assignment, another teacher's or a malformed id all show the same not-found page
+  (root)/dashboard/assignments/[id]      Assignment page from the database: its details, and its students with their status; a student's button opens the same modal, with the checked file (a PDF in a frame, or an image), the grade and an upload field, which save the same way. A missing assignment, another teacher's or a malformed id all show the same not-found page
   (root)/dashboard/assignments/[id]/edit Edit-assignment form, the same form as the add page, filled from the database. It saves through `PUT /api/assignments/[id]` with the same messages and behaviour as the add page; removing a student who already submitted shows the server's message and changes nothing. The same not-found page for a missing, foreign or malformed id.
   api/auth/...       Auth endpoints
   api/students       Students endpoints (list, create, and /[id]: details, update, delete)
   api/classes        Classes endpoint
 components/          UI components, grouped by feature (auth, dashboard, students, assignments, ui)
 helpers/             Small pure helpers (button styles, date format)
-hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useAssignmentForm, useFormSaveState, useDeleteStudent, useFilePreview, useModal, useDisclosure)
+hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useAssignmentForm, useFormSaveState, useSubmissionForm, useDeleteStudent, useFilePreview, useModal, useDisclosure)
 services/            Server services (auth.service.ts) and client API services
 schemas/             zod schemas
 types/               Shared TypeScript types

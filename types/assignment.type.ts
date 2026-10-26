@@ -21,7 +21,10 @@ export type TAssignmentFile = {
 
 // One row of the student's assignments list, with what the modal shows when it is clicked.
 export type TStudentAssignment = {
+  // The assignment's id.
   id: string;
+  // The student the list is of: the modal saves this student's file and grade.
+  studentId: string;
   title: string;
   // yyyy-mm-dd
   dueDate: string;

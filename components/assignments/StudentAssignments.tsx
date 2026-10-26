@@ -15,7 +15,9 @@ const HEADER_CELL_CLASSES =
   "bg-slate-50 px-4 py-3 text-start text-xs font-semibold tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400";
 
 export default function StudentAssignments({ assignments }: TStudentAssignmentsProps) {
-  const [selected, setSelected] = useState<TStudentAssignment | null>(null);
+  // Only the id is kept, so the modal always shows the current data of the page, also after it was refreshed.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected: TStudentAssignment | null = assignments.find(({ id }: TStudentAssignment) => id === selectedId) ?? null;
 
   if (assignments.length === 0) {
     return (
@@ -47,7 +49,7 @@ export default function StudentAssignments({ assignments }: TStudentAssignmentsP
               // The whole row opens the modal. The button inside is for the keyboard and screen readers.
               <tr
                 key={assignment.id}
-                onClick={() => setSelected(assignment)}
+                onClick={() => setSelectedId(assignment.id)}
                 className="cursor-pointer transition hover:bg-slate-50 dark:hover:bg-slate-800/40"
               >
                 <td className="px-4 py-3 text-sm font-medium">
@@ -69,8 +71,8 @@ export default function StudentAssignments({ assignments }: TStudentAssignmentsP
         </table>
       </div>
 
-      <Modal isOpen={selected !== null} onClose={() => setSelected(null)} title={selected?.title ?? ""} size="lg">
-        {selected && <AssignmentDetails assignment={selected} />}
+      <Modal isOpen={selected !== null} onClose={() => setSelectedId(null)} title={selected?.title ?? ""} size="lg">
+        {selected && <AssignmentDetails assignment={selected} onSaved={() => setSelectedId(null)} />}
       </Modal>
     </>
   );

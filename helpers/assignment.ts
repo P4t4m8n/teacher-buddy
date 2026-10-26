@@ -36,6 +36,7 @@ export const toStudentAssignment = (
   student: TAssignmentStudent,
 ): TStudentAssignment => ({
   id: assignment.id,
+  studentId: student.studentId,
   title: `${student.name} - ${assignment.title}`,
   dueDate: assignment.dueDate,
   status: student.status,
