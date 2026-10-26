@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { gotoHydrated, TEACHER } from "./helpers";
+import { clientHeaders, gotoHydrated, TEACHER } from "./helpers";
 
 test.describe("sign-in page", () => {
   test("shows the form", async ({ page }) => {
@@ -27,6 +27,7 @@ test.describe("sign-in page", () => {
   });
 
   test("shows an error for wrong credentials and stays on the page", async ({ page }) => {
+    await page.setExtraHTTPHeaders(clientHeaders());
     await gotoHydrated(page, "/auth");
     await page.getByLabel("שם").fill(TEACHER.name);
     await page.getByLabel("תעודת זהות").fill("987654321");

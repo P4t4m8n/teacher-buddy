@@ -7,11 +7,13 @@ import {
   getAssignmentById,
   getSeededStudentList,
   gotoHydrated,
+  listAddress,
   randomLetters,
   removeViaApi,
   signInAs,
   submitPart,
   withTestDb,
+  findInList,
 } from "./helpers";
 
 // These tests delete assignments, so they only use a write teacher and only delete assignments they created
@@ -61,7 +63,7 @@ const interceptDelete = (page: Page, assignment: TTeacherAssignment, handler: (r
 const openList = async (page: Page): Promise<TFixture> => {
   await signInAs(page.request, WRITE_SEED);
   const fixture: TFixture = await createAssignment(page);
-  await gotoHydrated(page, LIST_URL);
+  await gotoHydrated(page, listAddress(LIST_URL, fixture.assignment.title));
   await expect(assignmentRow(page, fixture.assignment.title)).toBeVisible();
   return fixture;
 };
@@ -78,7 +80,7 @@ const openListWithSubmitted = async (page: Page, grades: (number | null)[]): Pro
   await signInAs(page.request, WRITE_SEED);
   const fixture: TFixture = await createAssignment(page);
   for (const [index, grade] of grades.entries()) await submit(fixture, index, grade);
-  await gotoHydrated(page, LIST_URL);
+  await gotoHydrated(page, listAddress(LIST_URL, fixture.assignment.title));
   await expect(assignmentRow(page, fixture.assignment.title)).toBeVisible();
   return fixture;
 };
@@ -115,6 +117,7 @@ test.describe("delete assignment: the confirmation", () => {
     await confirmDialog(page).getByRole("button", { name: "ביטול" }).click();
 
     await expect(confirmDialog(page)).toBeHidden();
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title)).toBeVisible();
     expect(await exists(page, assignment)).toBe(true);
   });
@@ -133,8 +136,7 @@ test.describe("delete assignment: the confirmation", () => {
   test("each row has its own button, and it opens the dialog of that row", async ({ page }) => {
     const first = await openList(page);
     const second = await createAssignment(page);
-    await page.reload();
-    await gotoHydrated(page, LIST_URL);
+    await gotoHydrated(page, listAddress(LIST_URL, second.assignment.title));
 
     await deleteButton(page, second.assignment.title).click();
 
@@ -144,6 +146,7 @@ test.describe("delete assignment: the confirmation", () => {
 
   test("the row has the delete button next to the details and edit links", async ({ page }) => {
     const { assignment } = await openList(page);
+    await findInList(page, assignment.title);
     const row = assignmentRow(page, assignment.title);
 
     await expect(row.getByRole("link", { name: `פרטים עבור ${assignment.title}` })).toBeVisible();
@@ -183,13 +186,13 @@ test.describe("delete assignment: the extra warning when students already submit
   test("the warning is only in the dialog of the assignment that has submissions", async ({ page }) => {
     const withFiles = await openListWithSubmitted(page, [70]);
     const without = await createAssignment(page);
-    await page.reload();
-    await gotoHydrated(page, LIST_URL);
+    await gotoHydrated(page, listAddress(LIST_URL, without.assignment.title));
 
     await deleteButton(page, without.assignment.title).click();
     await expect(confirmDialog(page)).toBeVisible();
     await expect(warning(page)).toHaveCount(0);
     await page.keyboard.press("Escape");
+    await findInList(page, withFiles.assignment.title);
 
     await deleteButton(page, withFiles.assignment.title).click();
     await expect(warning(page)).toContainText("תלמיד אחד כבר הגיש");
@@ -198,6 +201,7 @@ test.describe("delete assignment: the extra warning when students already submit
   test("the warning follows the count in the list row", async ({ page }) => {
     const { assignment } = await openListWithSubmitted(page, [null, 60]);
 
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title).locator("td").nth(3)).toHaveText("2 מתוך 2");
     await deleteButton(page, assignment.title).click();
 
@@ -213,6 +217,7 @@ test.describe("delete assignment: the extra warning when students already submit
 
     await expect(warning(page)).toContainText("2 תלמידים כבר הגישו");
     await confirmDialog(page).getByRole("button", { name: "ביטול" }).click();
+    await findInList(page, title);
     await expect(assignmentRow(page, title)).toBeVisible();
   });
 });
@@ -224,6 +229,7 @@ test.describe("delete assignment: deleting", () => {
 
     await confirmButton(page).click();
 
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title)).toHaveCount(0, REFRESH);
     await expect(page.getByRole("dialog")).toHaveCount(0, REFRESH);
     await expect(page.locator("body")).not.toHaveCSS("overflow", "hidden");
@@ -233,13 +239,14 @@ test.describe("delete assignment: deleting", () => {
   test("deletes only that assignment", async ({ page }) => {
     const first = await openList(page);
     const second = await createAssignment(page);
-    await page.reload();
-    await gotoHydrated(page, LIST_URL);
+    await gotoHydrated(page, listAddress(LIST_URL, first.assignment.title));
     await deleteButton(page, first.assignment.title).click();
 
     await confirmButton(page).click();
 
+    await findInList(page, first.assignment.title);
     await expect(assignmentRow(page, first.assignment.title)).toHaveCount(0, REFRESH);
+    await findInList(page, second.assignment.title);
     await expect(assignmentRow(page, second.assignment.title)).toBeVisible();
     expect(await exists(page, first.assignment)).toBe(false);
     expect(await exists(page, second.assignment)).toBe(true);
@@ -252,6 +259,7 @@ test.describe("delete assignment: deleting", () => {
 
     await confirmButton(page).click();
 
+    await findInList(page, fixture.assignment.title);
     await expect(assignmentRow(page, fixture.assignment.title)).toHaveCount(0, REFRESH);
     expect(await countFiles(fixture.assignment.id)).toBe(0);
     const students = await getSeededStudentList(page.request, WRITE_SEED);
@@ -262,6 +270,7 @@ test.describe("delete assignment: deleting", () => {
     const fixture = await openList(page);
     await deleteButton(page, fixture.assignment.title).click();
     await confirmButton(page).click();
+    await findInList(page, fixture.assignment.title);
     await expect(assignmentRow(page, fixture.assignment.title)).toHaveCount(0, REFRESH);
 
     await gotoHydrated(page, `/dashboard/students/${fixture.students[0].id}`);
@@ -273,6 +282,7 @@ test.describe("delete assignment: deleting", () => {
     const { assignment } = await openList(page);
     await deleteButton(page, assignment.title).click();
     await confirmButton(page).click();
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title)).toHaveCount(0, REFRESH);
 
     await page.goto(`/dashboard/assignments/${assignment.id}`);
@@ -296,6 +306,7 @@ test.describe("delete assignment: deleting", () => {
     await expect(confirmDialog(page).getByRole("button", { name: "ביטול" })).toBeDisabled();
 
     release();
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title)).toHaveCount(0, REFRESH);
   });
 
@@ -312,6 +323,7 @@ test.describe("delete assignment: deleting", () => {
     await confirmButton(page).click();
     await confirmDialog(page).getByRole("button", { name: "מוחק..." }).click({ force: true, timeout: 1000 }).catch(() => {});
 
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title)).toHaveCount(0, REFRESH);
     expect(deletes).toBe(1);
   });
@@ -334,6 +346,7 @@ test.describe("delete assignment: errors", () => {
     await page.unroute(deleteUrl(assignment));
     await confirmButton(page).click();
 
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title)).toHaveCount(0, REFRESH);
     expect(await exists(page, assignment)).toBe(false);
   });
@@ -384,6 +397,7 @@ test.describe("delete assignment: narrow screen", () => {
     await expect(confirmDialog(page)).toBeVisible();
     await confirmButton(page).click();
 
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title)).toHaveCount(0, REFRESH);
     expect(await exists(page, assignment)).toBe(false);
   });
@@ -407,6 +421,7 @@ test.describe("delete assignment: narrow screen", () => {
     const { assignment } = await openList(page);
 
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title).getByRole("button", { name: `מחיקה עבור ${assignment.title}` })).toBeVisible();
   });
 });

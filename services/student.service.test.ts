@@ -4,6 +4,7 @@ import { AppError } from "@/lib/AppError";
 
 const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
+  count: vi.fn(),
   findFirst: vi.fn(),
   create: vi.fn(),
   update: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     student: {
       findMany: mocks.findMany,
+      count: mocks.count,
       findFirst: mocks.findFirst,
       create: mocks.create,
       update: mocks.update,
@@ -30,6 +32,7 @@ import {
   deleteStudent,
   findStudent,
   getStudent,
+  getStudentList,
   getStudents,
   updateStudent,
 } from "./student.service";
@@ -430,5 +433,177 @@ describe("deleteStudent", () => {
     mocks.deleteMany.mockRejectedValue(new Error("database down"));
 
     await expect(deleteStudent(TEACHER_ID, STUDENT_ID)).rejects.toThrow("database down");
+  });
+});
+
+describe("getStudentList", () => {
+  const CLASS_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5fa0";
+  const NO_FILTER = { search: "", classId: "", sort: "name", page: 1 } as const;
+
+  const lastWhere = (): unknown => mocks.findMany.mock.calls.at(-1)?.[0].where;
+  const lastOrderBy = (): unknown => mocks.findMany.mock.calls.at(-1)?.[0].orderBy;
+
+  beforeEach(() => {
+    mocks.findMany.mockResolvedValue([]);
+    mocks.count.mockResolvedValue(0);
+  });
+
+  it("without a filter asks for all of the teacher's students", async () => {
+    await getStudentList(TEACHER_ID, NO_FILTER);
+
+    expect(lastWhere()).toEqual({ teacherId: TEACHER_ID });
+  });
+
+  it("returns the students that match and how many the teacher has in all", async () => {
+    mocks.findMany.mockResolvedValue([{ id: STUDENT_ID }]);
+    mocks.count.mockResolvedValue(12);
+
+    expect(await getStudentList(TEACHER_ID, NO_FILTER)).toEqual({
+      students: [{ id: STUDENT_ID }],
+      total: 12,
+      matched: 12,
+      page: 1,
+      pageCount: 1,
+    });
+    expect(mocks.count).toHaveBeenCalledWith({ where: { teacherId: TEACHER_ID } });
+  });
+
+  it("counts the total without the search or the class, so it does not change with them", async () => {
+    await getStudentList(TEACHER_ID, { search: "דנה", classId: CLASS_ID, sort: "name", page: 1 });
+
+    expect(mocks.count).toHaveBeenCalledWith({ where: { teacherId: TEACHER_ID } });
+  });
+
+  it("looks for the search in the name, without caring about the case, and in the phone", async () => {
+    await getStudentList(TEACHER_ID, { ...NO_FILTER, search: "דנה" });
+
+    expect(lastWhere()).toEqual({
+      teacherId: TEACHER_ID,
+      OR: [{ name: { contains: "דנה", mode: "insensitive" } }, { phone: { contains: "דנה" } }],
+    });
+  });
+
+  it("escapes %, _ and \\ in the search, so they are looked for as the characters and are not wildcards", async () => {
+    await getStudentList(TEACHER_ID, { ...NO_FILTER, search: "5%_\\" });
+
+    expect(lastWhere()).toEqual({
+      teacherId: TEACHER_ID,
+      OR: [{ name: { contains: "5\\%\\_\\\\", mode: "insensitive" } }, { phone: { contains: "5\\%\\_\\\\" } }],
+    });
+  });
+  it("also looks for a phone typed without the hyphen the way it is saved", async () => {
+    await getStudentList(TEACHER_ID, { ...NO_FILTER, search: "0501234567" });
+
+    expect(lastWhere()).toEqual({
+      teacherId: TEACHER_ID,
+      OR: [
+        { name: { contains: "0501234567", mode: "insensitive" } },
+        { phone: { contains: "0501234567" } },
+        { phone: { contains: "050-1234567" } },
+        { phone: { contains: "05-01234567" } },
+      ],
+    });
+  });
+
+  it("filters by the class and keeps the teacher in the filter, so another teacher's class matches nothing", async () => {
+    await getStudentList(TEACHER_ID, { ...NO_FILTER, classId: CLASS_ID });
+
+    expect(lastWhere()).toEqual({ teacherId: TEACHER_ID, classId: CLASS_ID });
+  });
+
+  it("combines the class and the search", async () => {
+    await getStudentList(TEACHER_ID, { search: "יוסי", classId: CLASS_ID, sort: "name", page: 1 });
+
+    expect(lastWhere()).toMatchObject({ teacherId: TEACHER_ID, classId: CLASS_ID, OR: expect.any(Array) });
+  });
+
+  it.each([
+    ["name", [{ name: "asc" }, { id: "asc" }]],
+    ["-name", [{ name: "desc" }, { id: "asc" }]],
+    ["class", [{ class: { name: "asc" } }, { name: "asc" }, { id: "asc" }]],
+    ["-class", [{ class: { name: "desc" } }, { name: "asc" }, { id: "asc" }]],
+    ["phone", [{ phone: "asc" }, { name: "asc" }, { id: "asc" }]],
+    ["-phone", [{ phone: "desc" }, { name: "asc" }, { id: "asc" }]],
+  ] as const)("orders by %s, with the id last so the order never changes between requests", async (sort, expected) => {
+    await getStudentList(TEACHER_ID, { ...NO_FILTER, sort });
+
+    expect(lastOrderBy()).toEqual(expected);
+  });
+});
+
+describe("getStudentList: pages", () => {
+  const NO_FILTER = { search: "", classId: "", sort: "name", page: 1 } as const;
+  const CLASS_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5fa0";
+
+  // The teacher has 45 students, 7 of them in the class.
+  const MATCHED_BY_CLASS = 7;
+  const TOTAL = 45;
+
+  beforeEach(() => {
+    mocks.findMany.mockResolvedValue([]);
+    mocks.count.mockImplementation(async ({ where }: { where: { classId?: string } }) =>
+      where.classId ? MATCHED_BY_CLASS : TOTAL,
+    );
+  });
+
+  const lastFindManyArgs = () => mocks.findMany.mock.calls.at(-1)?.[0];
+
+  it("reads 20 rows from the start for the first page", async () => {
+    await getStudentList(TEACHER_ID, NO_FILTER);
+
+    expect(lastFindManyArgs()).toMatchObject({ skip: 0, take: 20 });
+  });
+
+  it("skips the rows of the earlier pages", async () => {
+    await getStudentList(TEACHER_ID, { ...NO_FILTER, page: 2 });
+    expect(lastFindManyArgs()).toMatchObject({ skip: 20, take: 20 });
+
+    await getStudentList(TEACHER_ID, { ...NO_FILTER, page: 3 });
+    expect(lastFindManyArgs()).toMatchObject({ skip: 40, take: 20 });
+  });
+
+  it("says which page it is on and how many pages there are, counted from what matches and not from the total", async () => {
+    expect(await getStudentList(TEACHER_ID, { ...NO_FILTER, page: 2 })).toMatchObject({
+      total: TOTAL,
+      matched: TOTAL,
+      page: 2,
+      pageCount: 3,
+    });
+    expect(await getStudentList(TEACHER_ID, { ...NO_FILTER, classId: CLASS_ID })).toMatchObject({
+      total: TOTAL,
+      matched: MATCHED_BY_CLASS,
+      page: 1,
+      pageCount: 1,
+    });
+  });
+
+  it("shows the last page for a page past the end, so a page that emptied is never shown empty", async () => {
+    const list = await getStudentList(TEACHER_ID, { ...NO_FILTER, page: 99 });
+
+    expect(list.page).toBe(3);
+    expect(lastFindManyArgs()).toMatchObject({ skip: 40, take: 20 });
+  });
+
+  it("shows page 1 when nothing matches, whatever page was asked for", async () => {
+    mocks.count.mockResolvedValue(0);
+
+    const list = await getStudentList(TEACHER_ID, { ...NO_FILTER, page: 5 });
+
+    expect(list).toMatchObject({ matched: 0, page: 1, pageCount: 1 });
+    expect(lastFindManyArgs()).toMatchObject({ skip: 0, take: 20 });
+  });
+
+  it("counts what matches with the same filter as the rows, so the pages add up", async () => {
+    await getStudentList(TEACHER_ID, { ...NO_FILTER, classId: CLASS_ID, search: "דנה" });
+
+    const rowsWhere = lastFindManyArgs().where;
+    expect(mocks.count).toHaveBeenCalledWith({ where: rowsWhere });
+    expect(mocks.count).toHaveBeenCalledWith({ where: { teacherId: TEACHER_ID } });
+  });
+
+  it("keeps the order when it pages, so a row is not on two pages", async () => {
+    await getStudentList(TEACHER_ID, { ...NO_FILTER, sort: "class", page: 2 });
+
+    expect(lastFindManyArgs().orderBy).toEqual([{ class: { name: "asc" } }, { name: "asc" }, { id: "asc" }]);
   });
 });

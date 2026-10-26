@@ -1,17 +1,24 @@
 import { redirect } from "next/navigation";
 import AssignmentsIndex from "@/components/assignments/AssignmentsIndex";
 import { SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
-import { getAssignments } from "@/services/assignment.service";
+import { parseAssignmentListQuery } from "@/schemas/assignment.schema";
+import type { TSearchParams } from "@/schemas/list.schema";
+import { getAssignmentList } from "@/services/assignment.service";
 import { getSessionTeacher } from "@/services/auth.service";
-import type { TAssignmentListItem } from "@/types/assignment.type";
+import type { TAssignmentList, TAssignmentListQuery } from "@/types/assignment.type";
 import type { TSessionTeacher } from "@/types/auth.type";
 
-export default async function AuthenticatedAssignmentsPage() {
+type TAuthenticatedAssignmentsPageProps = {
+  searchParams: Promise<TSearchParams>;
+};
+
+export default async function AuthenticatedAssignmentsPage({ searchParams }: TAuthenticatedAssignmentsPageProps) {
   // The proxy only checked the token's signature and expiry. This also checks the teacher still exists.
   const teacher: TSessionTeacher | null = await getSessionTeacher();
   if (!teacher) redirect(SESSION_EXPIRED_PATH);
 
-  const assignments: TAssignmentListItem[] = await getAssignments(teacher.id);
+  const query: TAssignmentListQuery = parseAssignmentListQuery(await searchParams);
+  const list: TAssignmentList = await getAssignmentList(teacher.id, query);
 
-  return <AssignmentsIndex assignments={assignments} />;
+  return <AssignmentsIndex list={list} query={query} />;
 }

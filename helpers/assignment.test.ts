@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { TAssignmentStudent, TTeacherAssignment } from "@/types/assignment.type";
-import { canGrade, countSubmitted, deriveStatus, getFileKind, toFormValues, toStudentAssignment } from "./assignment";
+import {
+  canGrade,
+  countSubmitted,
+  deriveStatus,
+  getFileKind,
+  toFormValues,
+  toStudentAssignment,
+  toSubmittedParts,
+} from "./assignment";
 
 const student = (overrides: Partial<TAssignmentStudent> = {}): TAssignmentStudent => ({
   studentId: "s1",
@@ -119,5 +127,39 @@ describe("toFormValues", () => {
 
   it("has an empty list of students for an assignment given to nobody", () => {
     expect(toFormValues(assignment([])).studentIds).toEqual([]);
+  });
+});
+
+describe("toSubmittedParts", () => {
+  const file = { name: "עבודה.pdf", kind: "pdf" as const, url: "/f" };
+
+  it("gives the students who uploaded, with their name and grade, and leaves out those who did not", () => {
+    const given = assignment([
+      student({ studentId: "s1", name: "נועה לוי" }),
+      student({ studentId: "s2", name: "איתי ברק", status: "SUBMITTED", submittedAt: "2026-12-10", file }),
+      student({ studentId: "s3", name: "מאיה אברהם", status: "CHECKED", submittedAt: "2026-12-11", grade: 88, file }),
+    ]);
+
+    expect(toSubmittedParts(given)).toEqual([
+      { studentId: "s2", name: "איתי ברק", grade: null },
+      { studentId: "s3", name: "מאיה אברהם", grade: 88 },
+    ]);
+  });
+
+  it("keeps a grade of 0", () => {
+    const given = assignment([student({ status: "CHECKED", submittedAt: "2026-12-11", grade: 0, file })]);
+
+    expect(toSubmittedParts(given)[0].grade).toBe(0);
+  });
+
+  it("is empty when nobody uploaded, and for an assignment given to nobody", () => {
+    expect(toSubmittedParts(assignment([student(), student({ studentId: "s2" })]))).toEqual([]);
+    expect(toSubmittedParts(assignment([]))).toEqual([]);
+  });
+
+  it("does not carry the file or the date: the form only needs to name the student and say what is lost", () => {
+    const given = assignment([student({ status: "SUBMITTED", submittedAt: "2026-12-10", file })]);
+
+    expect(Object.keys(toSubmittedParts(given)[0]).sort()).toEqual(["grade", "name", "studentId"]);
   });
 });

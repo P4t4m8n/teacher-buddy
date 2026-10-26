@@ -71,6 +71,38 @@ export type TAssignmentListItem = {
   submittedCount: number;
 };
 
+// A minus in front is descending. "students" is the number of students, "submitted" how many of them uploaded.
+export type TAssignmentSort =
+  | "title"
+  | "-title"
+  | "dueDate"
+  | "-dueDate"
+  | "students"
+  | "-students"
+  | "submitted"
+  | "-submitted";
+
+// What the assignments list is narrowed and ordered by. It is read from the address, so it is always valid.
+export type TAssignmentListQuery = {
+  // Looked for in the title. Empty: no search.
+  search: string;
+  sort: TAssignmentSort;
+  // 1-based. A page past the end shows the last page.
+  page: number;
+};
+
+export type TAssignmentList = {
+  // The assignments of the page shown.
+  assignments: TAssignmentListItem[];
+  // All the teacher's assignments, whatever the query.
+  total: number;
+  // The assignments the query matches, on all the pages: the list shows "N of total".
+  matched: number;
+  // The page shown: the one asked for, or the last page when it is past the end.
+  page: number;
+  pageCount: number;
+};
+
 // What a request to create an assignment has.
 export type TCreateAssignmentDto = {
   title: string;
@@ -81,8 +113,22 @@ export type TCreateAssignmentDto = {
   studentIds: string[];
 };
 
-// An update replaces the title, description, due date and students, so it has the same shape as a create.
-export type TUpdateAssignmentDto = TCreateAssignmentDto;
+// An update replaces the title, description, due date and students, so it has the same shape as a create, with one
+// more field for the case of a student who already submitted being removed.
+export type TUpdateAssignmentDto = TCreateAssignmentDto & {
+  // The students who already submitted whom the teacher confirmed removing: their file and grade are deleted with
+  // them. A removed student who submitted and is not in this list stops the update (409), so a submission that
+  // arrived after the teacher looked at the page is never deleted by a confirmation that did not mention it.
+  confirmedRemovalIds?: string[];
+};
+
+// A student's part that was already submitted, as the edit form needs it to ask before the student is removed.
+export type TSubmittedPart = {
+  studentId: string;
+  name: string;
+  // The file is deleted with the part, and so is the grade, if there is one.
+  grade: number | null;
+};
 
 export type TGetAssignmentsResponse = {
   assignments: TAssignmentListItem[];

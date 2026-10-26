@@ -35,6 +35,8 @@ const resetWriteTeachers = async (): Promise<void> => {
         [seed.name, seededStudentNames(seed)],
       );
     }
+    // Teachers made by a test file for itself (createBulkTeacher), left behind by a run that stopped before it cleaned up.
+    await client.query(`delete from "Teacher" where name like 'מורה לדפדוף %'`);
   } finally {
     await client.end();
   }

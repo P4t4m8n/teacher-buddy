@@ -6,6 +6,7 @@ import { z } from "zod";
 import { SESSION_COOKIE } from "@/constants/auth.constant";
 import { AppError } from "@/lib/AppError";
 import { prisma } from "@/lib/db";
+import { loginLimiter } from "@/lib/loginAttempt";
 import type { TSessionTeacher, TSignInDto } from "@/types/auth.type";
 
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
@@ -51,7 +52,13 @@ const createCookie = async (token: string): Promise<void> => {
   });
 };
 
-export const signIn = async (dto: TSignInDto): Promise<TSessionTeacher> => {
+// A client that has failed too many times is refused before anything is read or hashed, so guessing costs the
+// attacker the wait and costs the server nothing. A failed try, also for a name that does not exist, is counted
+// the same way, and a success clears the count. `attemptKey` says who is counted (see getLoginAttemptKey).
+export const signIn = async (dto: TSignInDto, attemptKey: string): Promise<TSessionTeacher> => {
+  const retryAfterSeconds: number = loginLimiter.getRetryAfterSeconds(attemptKey);
+  if (retryAfterSeconds > 0) throw AppError.tooManyAttempts(retryAfterSeconds);
+
   const teacher = await prisma.teacher.findUnique({
     where: { name: dto.name },
   });
@@ -61,8 +68,12 @@ export const signIn = async (dto: TSignInDto): Promise<TSessionTeacher> => {
   const isValid: boolean = await verify(hashToVerify, dto.idNumber);
 
   // Same error for unknown name and wrong ID number.
-  if (!teacher || !isValid) throw AppError.invalidCredentials();
+  if (!teacher || !isValid) {
+    loginLimiter.recordFailure(attemptKey);
+    throw AppError.invalidCredentials();
+  }
 
+  loginLimiter.reset(attemptKey);
   const token: string = await createJWT(teacher.id);
   await createCookie(token);
 

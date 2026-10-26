@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { ERROR_MESSAGES } from "../constants/error.constant";
-import { TEACHER } from "./helpers";
+import { clientHeaders, TEACHER } from "./helpers";
 
 const LOGIN_URL = "/api/auth/login";
 
@@ -65,10 +65,14 @@ test.describe("POST /api/auth/login", () => {
   });
 
   test("returns the same 401 for a wrong ID number and an unknown name, with no cookie", async ({ request }) => {
+    // Failed tries are counted for the client address and the name, so this test is its own client.
+    const headers = clientHeaders();
     const wrongId = await request.post(LOGIN_URL, {
+      headers,
       data: { name: TEACHER.name, idNumber: "987654321" },
     });
     const unknownName = await request.post(LOGIN_URL, {
+      headers,
       data: { name: "לא קיים", idNumber: TEACHER.idNumber },
     });
 

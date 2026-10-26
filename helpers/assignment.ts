@@ -4,6 +4,7 @@ import type {
   TAssignmentStudent,
   TFileKind,
   TStudentAssignment,
+  TSubmittedPart,
   TTeacherAssignment,
 } from "@/types/assignment.type";
 
@@ -45,6 +46,12 @@ export const toStudentAssignment = (
   description: assignment.description,
   file: student.file,
 });
+
+// The students whose assignment was uploaded: removing one of them from the assignment deletes their file and grade.
+export const toSubmittedParts = (assignment: TTeacherAssignment): TSubmittedPart[] =>
+  assignment.students
+    .filter(({ status }: TAssignmentStudent) => status !== "TODO")
+    .map(({ studentId, name, grade }: TAssignmentStudent): TSubmittedPart => ({ studentId, name, grade }));
 
 // What the add and edit form starts with, for an assignment that already exists.
 export const toFormValues = (assignment: TTeacherAssignment): TAssignmentFormValues => ({

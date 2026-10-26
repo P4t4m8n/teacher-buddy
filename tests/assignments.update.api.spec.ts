@@ -3,7 +3,16 @@ import { ERROR_MESSAGES } from "../constants/error.constant";
 import { WRITE_OTHER_SEED, WRITE_SEED } from "../prisma/seed-data";
 import type { TTeacherAssignment } from "../types/assignment.type";
 import type { TStudent } from "../types/student.type";
-import { getSeededStudentList, getStudentList, signInAs, signToken, submitPart, UNKNOWN_TEACHER_ID, withTestDb } from "./helpers";
+import {
+  createStudent,
+  getSeededStudentList,
+  getStudentList,
+  signInAs,
+  signToken,
+  submitPart,
+  UNKNOWN_TEACHER_ID,
+  withTestDb,
+} from "./helpers";
 
 const ASSIGNMENTS_URL = "/api/assignments";
 
@@ -181,6 +190,203 @@ test.describe("PUT /api/assignments/[id]", () => {
     expect(response.status()).toBe(409);
   });
 
+  test.describe("a student who submitted is removed only when the removal is confirmed", () => {
+    const SUBMITTED = { submittedAt: "2030-06-01T10:00:00Z", mimeType: "application/pdf" };
+
+    test("is removed with the file and the grade when confirmed, and the rest of the update is saved", async ({ request }) => {
+      const { students, assignment } = await setup(request);
+      await update(request, assignment.id, body([students[0].id, students[1].id]));
+      await submitPart(assignment.id, students[0].id, { ...SUBMITTED, grade: 70 });
+
+      const response = await update(
+        request,
+        assignment.id,
+        body([students[1].id], { title: "שם חדש אחרי אישור", confirmedRemovalIds: [students[0].id] }),
+      );
+
+      expect(response.status()).toBe(200);
+      const saved: TTeacherAssignment = (await response.json()).assignment;
+      expect(saved.title).toBe("שם חדש אחרי אישור");
+      expect(studentIdsOf(saved)).toEqual([students[1].id]);
+      expect(await countRows(assignment.id)).toMatchObject({ parts: 1, files: 0 });
+      expect(studentIdsOf(await read(request, assignment.id))).toEqual([students[1].id]);
+    });
+
+    test("is removed when it was submitted and not graded too", async ({ request }) => {
+      const { students, assignment } = await setup(request);
+      await update(request, assignment.id, body([students[0].id, students[1].id]));
+      await submitPart(assignment.id, students[0].id, { ...SUBMITTED, grade: null });
+
+      const response = await update(request, assignment.id, body([students[1].id], { confirmedRemovalIds: [students[0].id] }));
+
+      expect(response.status()).toBe(200);
+      expect(await countRows(assignment.id)).toMatchObject({ parts: 1, files: 0 });
+    });
+
+    test("is still a 409 for a removed student who submitted and was not named, and nothing is changed, also for the one that was", async ({ request }) => {
+      const { students, assignment } = await setup(request);
+      const third: TStudent = await createStudent(request);
+      await update(request, assignment.id, body([students[0].id, students[1].id, third.id]));
+      await submitPart(assignment.id, students[0].id, { ...SUBMITTED, grade: null });
+      await submitPart(assignment.id, students[1].id, { ...SUBMITTED, grade: 55 });
+      const before: TTeacherAssignment = await read(request, assignment.id);
+
+      const response = await update(
+        request,
+        assignment.id,
+        body([third.id], { title: "לא אמור להישמר", confirmedRemovalIds: [students[0].id] }),
+      );
+
+      expect(response.status()).toBe(409);
+      expect(await response.json()).toEqual({ error: ERROR_MESSAGES.assignmentStudentSubmitted });
+      expect(await read(request, assignment.id)).toEqual(before);
+      expect(await countRows(assignment.id)).toMatchObject({ parts: 3, files: 2 });
+    });
+
+    test("removes all of the students who were named", async ({ request }) => {
+      const { students, assignment } = await setup(request);
+      const third: TStudent = await createStudent(request);
+      await update(request, assignment.id, body([students[0].id, students[1].id, third.id]));
+      await submitPart(assignment.id, students[0].id, { ...SUBMITTED, grade: null });
+      await submitPart(assignment.id, students[1].id, { ...SUBMITTED, grade: 55 });
+
+      const response = await update(
+        request,
+        assignment.id,
+        body([third.id], { confirmedRemovalIds: [students[0].id, students[1].id] }),
+      );
+
+      expect(response.status()).toBe(200);
+      expect(studentIdsOf((await response.json()).assignment)).toEqual([third.id]);
+      expect(await countRows(assignment.id)).toMatchObject({ parts: 1, files: 0 });
+    });
+
+    test("never deletes a student who stays, also when the student is named", async ({ request }) => {
+      const { students, assignment } = await setup(request);
+      await update(request, assignment.id, body([students[0].id, students[1].id]));
+      await submitPart(assignment.id, students[0].id, { ...SUBMITTED, grade: 85 });
+
+      const response = await update(
+        request,
+        assignment.id,
+        body([students[0].id, students[1].id], { confirmedRemovalIds: [students[0].id] }),
+      );
+
+      expect(response.status()).toBe(200);
+      const kept = (await response.json()).assignment.students.find(
+        ({ studentId }: { studentId: string }) => studentId === students[0].id,
+      );
+      expect(kept).toMatchObject({ status: "CHECKED", grade: 85, file: { kind: "pdf" } });
+      expect(await countRows(assignment.id)).toMatchObject({ parts: 2, files: 1 });
+    });
+
+    test("a student who did not submit is removed as before, also when named", async ({ request }) => {
+      const { students, assignment } = await setup(request);
+      await update(request, assignment.id, body([students[0].id, students[1].id]));
+
+      const response = await update(request, assignment.id, body([students[1].id], { confirmedRemovalIds: [students[0].id] }));
+
+      expect(response.status()).toBe(200);
+      expect(studentIdsOf((await response.json()).assignment)).toEqual([students[1].id]);
+    });
+
+    test("only changes this assignment: the same student's part of another assignment keeps its file", async ({ request }) => {
+      const { students, assignment } = await setup(request);
+      const other: TTeacherAssignment = await create(request, [students[0].id, students[1].id]);
+      await update(request, assignment.id, body([students[0].id, students[1].id]));
+      await submitPart(assignment.id, students[0].id, { ...SUBMITTED, grade: 60 });
+      await submitPart(other.id, students[0].id, { ...SUBMITTED, grade: 61 });
+
+      const response = await update(request, assignment.id, body([students[1].id], { confirmedRemovalIds: [students[0].id] }));
+
+      expect(response.status()).toBe(200);
+      expect(await countRows(assignment.id)).toMatchObject({ parts: 1, files: 0 });
+      expect(await countRows(other.id)).toMatchObject({ parts: 2, files: 1 });
+      const untouched = (await read(request, other.id)).students.find(({ studentId }) => studentId === students[0].id);
+      expect(untouched).toMatchObject({ status: "CHECKED", grade: 61 });
+    });
+
+    test("an id that is not a student of the assignment (or not the teacher's) does nothing", async ({ request }) => {
+      const { students, assignment } = await setup(request);
+      const before: TTeacherAssignment = await read(request, assignment.id);
+
+      const response = await update(
+        request,
+        assignment.id,
+        body([students[0].id], { title: before.title, confirmedRemovalIds: [UNKNOWN_TEACHER_ID, students[1].id] }),
+      );
+
+      expect(response.status()).toBe(200);
+      expect(studentIdsOf((await response.json()).assignment)).toEqual([students[0].id]);
+    });
+
+    test("is rolled back with everything else when the update fails", async ({ request }) => {
+      const { students, assignment } = await setup(request);
+      await update(request, assignment.id, body([students[0].id, students[1].id]));
+      await submitPart(assignment.id, students[0].id, { ...SUBMITTED, grade: 90 });
+      const before: TTeacherAssignment = await read(request, assignment.id);
+
+      // A student of the teacher that does not exist: the update fails after the confirmed part would be deleted.
+      const response = await update(
+        request,
+        assignment.id,
+        body([students[1].id, UNKNOWN_TEACHER_ID], { confirmedRemovalIds: [students[0].id] }),
+      );
+
+      expect(response.status()).toBe(404);
+      expect(await read(request, assignment.id)).toEqual(before);
+      expect(await countRows(assignment.id)).toMatchObject({ parts: 2, files: 1 });
+    });
+
+    test("another teacher cannot use it: 404, and nothing is deleted", async ({ request }) => {
+      const { students, assignment } = await setup(request);
+      await update(request, assignment.id, body([students[0].id, students[1].id]));
+      await submitPart(assignment.id, students[0].id, { ...SUBMITTED, grade: 90 });
+      const before: TTeacherAssignment = await read(request, assignment.id);
+      await signInAs(request, WRITE_OTHER_SEED);
+      const [otherStudent] = await getSeededStudentList(request, WRITE_OTHER_SEED);
+
+      const response = await update(request, assignment.id, body([otherStudent.id], { confirmedRemovalIds: [students[0].id] }));
+
+      expect(response.status()).toBe(404);
+      await signInAs(request, WRITE_SEED);
+      expect(await read(request, assignment.id)).toEqual(before);
+      expect(await countRows(assignment.id)).toMatchObject({ parts: 2, files: 1 });
+    });
+
+    test("a create ignores it", async ({ request }) => {
+      await signInAs(request, WRITE_SEED);
+      const students: TStudent[] = await getSeededStudentList(request, WRITE_SEED);
+
+      const response = await request.post(ASSIGNMENTS_URL, { data: body([students[0].id], { confirmedRemovalIds: [students[1].id] }) });
+
+      expect(response.status()).toBe(201);
+      expect(studentIdsOf((await response.json()).assignment)).toEqual([students[0].id]);
+    });
+
+    test.describe("a confirmation that is not a list of ids is a 400 with a Hebrew message, and nothing is changed", () => {
+      for (const [label, value] of [
+        ["a text", "yes"],
+        ["true", true],
+        ["a number", 3],
+        ["null", null],
+        ["an id that is not a uuid", ["abc"]],
+        ["a list with a number", [5]],
+      ] as const) {
+        test(label, async ({ request }) => {
+          const { students, assignment } = await setup(request);
+
+          const response = await update(request, assignment.id, body([students[0].id], { confirmedRemovalIds: value }));
+
+          expect(response.status()).toBe(400);
+          const result = await response.json();
+          expect(result.error).toBe(ERROR_MESSAGES.validation);
+          expect(result.fields.confirmedRemovalIds).toEqual(["רשימת התלמידים להסרה אינה תקינה"]);
+          expect(await read(request, assignment.id)).toEqual(assignment);
+        });
+      }
+    });
+  });
   test("never takes the status, the grade or the teacher from the body", async ({ request }) => {
     const { students, assignment } = await setup(request);
 

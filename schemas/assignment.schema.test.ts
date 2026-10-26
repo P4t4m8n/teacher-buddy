@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { createAssignmentSchema } from "./assignment.schema";
+import { createAssignmentSchema, updateAssignmentSchema } from "./assignment.schema";
 
 const STUDENT_A = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f61";
 const STUDENT_B = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f62";
@@ -247,5 +247,65 @@ describe("createAssignmentSchema: the whole request", () => {
     if (!result.success) {
       for (const { message } of result.error.issues) expect(message).toMatch(/[\u05D0-\u05EA]/);
     }
+  });
+});
+
+describe("updateAssignmentSchema: the students whose removal was confirmed", () => {
+  const MESSAGE = "רשימת התלמידים להסרה אינה תקינה";
+  const parse = (confirmedRemovalIds: unknown) => updateAssignmentSchema.safeParse({ ...valid, confirmedRemovalIds });
+
+  it("follows the same rules as a create for the other fields", () => {
+    expect(updateAssignmentSchema.safeParse({ ...valid, title: "" }).success).toBe(false);
+    expect(updateAssignmentSchema.safeParse({ ...valid, studentIds: [] }).success).toBe(false);
+    expect(updateAssignmentSchema.safeParse({ ...valid, dueDate: "x" }).success).toBe(false);
+  });
+
+  it("is an empty list when it is not sent, so an ordinary save confirms nothing", () => {
+    const result = updateAssignmentSchema.parse(valid);
+
+    expect(result.confirmedRemovalIds).toEqual([]);
+  });
+
+  it("accepts a list of ids", () => {
+    expect(parse([STUDENT_A, STUDENT_B]).data?.confirmedRemovalIds).toEqual([STUDENT_A, STUDENT_B]);
+  });
+
+  it("counts a student named twice once", () => {
+    expect(parse([STUDENT_A, STUDENT_A, STUDENT_B, STUDENT_A]).data?.confirmedRemovalIds).toEqual([STUDENT_A, STUDENT_B]);
+  });
+
+  it("accepts an empty list", () => {
+    expect(parse([]).data?.confirmedRemovalIds).toEqual([]);
+  });
+
+  it.each([
+    ["a text", "yes"],
+    ["true", true],
+    ["a number", 1],
+    ["null", null],
+    ["an object", { [STUDENT_A]: true }],
+    ["a list with an id that is not a uuid", ["abc"]],
+    ["a list with a number", [5]],
+    ["a list with an empty text", [""]],
+    ["a list with a good id and a bad one", [STUDENT_A, "' OR 1=1 --"]],
+  ])("refuses %s, with a Hebrew message", (_label, input) => {
+    const result = parse(input);
+
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.every((issue) => issue.path[0] === "confirmedRemovalIds")).toBe(true);
+    expect(result.error?.issues[0].message).toBe(MESSAGE);
+  });
+
+  it("refuses more than 500 ids", () => {
+    const ids: string[] = Array.from({ length: 501 }, (_, index) => `0198f0a2-7b3c-7d4e-8f5a-${String(index).padStart(12, "0")}`);
+
+    expect(parse(ids).success).toBe(false);
+    expect(parse(ids.slice(0, 500)).success).toBe(true);
+  });
+
+  it("is not accepted by the create schema, which ignores it, so a create never confirms a removal", () => {
+    const result = createAssignmentSchema.parse({ ...valid, confirmedRemovalIds: [STUDENT_B] });
+
+    expect(result).not.toHaveProperty("confirmedRemovalIds");
   });
 });

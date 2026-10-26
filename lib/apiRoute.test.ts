@@ -178,6 +178,20 @@ describe("handleRouteError", () => {
     expect(await response.json()).toEqual({ error: ERROR_MESSAGES.validation, fields });
   });
 
+  it("answers a 429 with the message and how long to wait, in the Retry-After header", async () => {
+    const response = handleRouteError(AppError.tooManyAttempts(754), "POST /api/test");
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("Retry-After")).toBe("754");
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.tooManyAttempts });
+  });
+
+  it("sends no Retry-After header with any other error", () => {
+    for (const error of [AppError.unauthorized(), AppError.classNotFound(), AppError.validation({ a: ["b"] })]) {
+      expect(handleRouteError(error, "POST /api/test").headers.get("Retry-After")).toBeNull();
+    }
+  });
+
   it("does not log expected errors", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
 

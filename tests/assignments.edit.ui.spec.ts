@@ -14,6 +14,8 @@ import {
   removeViaApi,
   signInAs,
   submitPart,
+  withTestDb,
+  findInList,
 } from "./helpers";
 
 // These tests change assignments, so they only use a write teacher and only change assignments they created
@@ -158,7 +160,9 @@ test.describe("edit assignment: saving", () => {
     await save(page);
 
     await expect(page).toHaveURL(LIST_URL, SAVED);
+    await findInList(page, title);
     await expect(assignmentRow(page, title)).toBeVisible(SAVED);
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title)).toHaveCount(0);
     expect((await fromApi(page, assignment))?.title).toBe(title);
   });
@@ -170,6 +174,7 @@ test.describe("edit assignment: saving", () => {
     await save(page);
 
     await expect(page).toHaveURL(LIST_URL, SAVED);
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title).locator("td").nth(1)).toHaveText(formatDate("2031-02-03"), SAVED);
     expect((await fromApi(page, assignment))?.dueDate).toBe("2031-02-03");
   });
@@ -211,6 +216,7 @@ test.describe("edit assignment: saving", () => {
     const saved = await fromApi(page, assignment);
     expect(saved?.students.map(({ name }) => name).sort()).toEqual([students[0].name, students[1].name].sort());
     expect(saved?.students.find(({ studentId }) => studentId === students[1].id)).toMatchObject({ status: "TODO", grade: null, file: null });
+    await findInList(page, assignment.title);
     await expect(assignmentRow(page, assignment.title).locator("td").nth(2)).toHaveText("2", SAVED);
   });
 
@@ -275,6 +281,7 @@ test.describe("edit assignment: saving", () => {
 
     await page.reload();
 
+    await findInList(page, title);
     await expect(assignmentRow(page, title)).toBeVisible();
     await page.goto(editUrl(assignment));
     await expect(titleField(page)).toHaveValue(title);
@@ -291,6 +298,7 @@ test.describe("edit assignment: saving", () => {
     await page.keyboard.type(" ותוספת");
     await save(page);
     await expect(page).toHaveURL(LIST_URL, SAVED);
+    await findInList(page, title);
     await expect(assignmentRow(page, title)).toBeVisible(SAVED);
 
     await page.getByRole("link", { name: `עריכה עבור ${title}` }).click();
@@ -310,6 +318,7 @@ test.describe("edit assignment: saving", () => {
     const first = uniqueTitle();
     await titleField(page).fill(first);
     await save(page);
+    await findInList(page, first);
     await expect(assignmentRow(page, first)).toBeVisible(SAVED);
     await page.getByRole("link", { name: `עריכה עבור ${first}` }).click();
     const second = uniqueTitle();
@@ -319,6 +328,7 @@ test.describe("edit assignment: saving", () => {
     await save(page);
 
     await expect(page).toHaveURL(LIST_URL, SAVED);
+    await findInList(page, second);
     await expect(assignmentRow(page, second)).toBeVisible(SAVED);
     const saved = await fromApi(page, assignment);
     expect(saved?.title).toBe(second);
@@ -335,6 +345,7 @@ test.describe("edit assignment: saving", () => {
     await titleField(page).fill(title);
     await save(page);
     await expect(page).toHaveURL(LIST_URL, SAVED);
+    await findInList(page, title);
     await assignmentRow(page, title).getByRole("link", { name: `פרטים עבור ${title}` }).click();
 
     await expect(page.getByRole("heading", { name: title, level: 1 })).toBeVisible();
@@ -392,7 +403,7 @@ test.describe("edit assignment: saving", () => {
 });
 
 test.describe("edit assignment: errors from the server", () => {
-  test("removing a student who already submitted shows the server's message, and changes nothing", async ({ page }) => {
+  test("removing a student who submitted after the page was opened shows the server's message, and changes nothing", async ({ page }) => {
     const { students, assignment } = await openEditPage(page);
     await submitPart(assignment.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: null, mimeType: "application/pdf" });
     const before: TTeacherAssignment | undefined = await fromApi(page, assignment);
@@ -408,7 +419,7 @@ test.describe("edit assignment: errors from the server", () => {
     expect(await fromApi(page, assignment)).toEqual(before);
   });
 
-  test("after that message the form can be fixed and saved", async ({ page }) => {
+  test("after that message the form can be fixed and saved (a submission that came after the page was opened)", async ({ page }) => {
     const { students, assignment } = await openEditPage(page);
     await submitPart(assignment.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: null, mimeType: "application/pdf" });
     await studentBox(page, students[0].name).uncheck();
@@ -516,5 +527,306 @@ test.describe("edit assignment: narrow screen", () => {
 
     await expect(page).toHaveURL(LIST_URL, SAVED);
     expect((await fromApi(page, assignment))?.title).toBe(title);
+  });
+});
+
+// Removing a student who already submitted deletes their file and grade, so the form asks first. The page knows who
+// submitted when it was opened; the server is the protection (it refuses a removal that was not confirmed).
+const confirmDialog = (page: Page): Locator => page.getByRole("dialog", { name: "הסרת תלמידים שהגישו" });
+const backToEditing = (page: Page): Locator => confirmDialog(page).getByRole("button", { name: "חזרה לעריכה" });
+const confirmRemoval = (page: Page): Locator => confirmDialog(page).getByRole("button", { name: "הסרה ושמירה" });
+
+type TSubmission = { index: number; grade: number | null };
+
+// An assignment given to the first `memberCount` students of the write teacher, where some of them already submitted
+// (a file, and maybe a grade) before the edit page is opened.
+const openEditPageWithSubmissions = async (
+  page: Page,
+  submissions: TSubmission[],
+  memberCount: number = 2,
+): Promise<TFixture> => {
+  await signInAs(page.request, WRITE_SEED);
+  const students: TStudent[] = await getSeededStudentList(page.request, WRITE_SEED);
+  while (students.length < memberCount) students.push(await createStudent(page.request));
+  const members: TStudent[] = students.slice(0, memberCount);
+  const response = await page.request.post("/api/assignments", {
+    data: { title: uniqueTitle(), description: DESCRIPTION, dueDate: "2030-06-15", studentIds: members.map(({ id }) => id) },
+  });
+  expect(response.status()).toBe(201);
+  const created: TTeacherAssignment = (await response.json()).assignment;
+  for (const { index, grade } of submissions) {
+    await submitPart(created.id, members[index].id, { submittedAt: "2030-06-01T10:00:00Z", grade, mimeType: "application/pdf" });
+  }
+  const assignment: TTeacherAssignment = (await getAssignmentById(page.request, created.id))!;
+  await gotoHydrated(page, editUrl(assignment));
+  await expect(page.getByRole("toolbar", { name: "עיצוב טקסט" })).toBeVisible();
+  return { students: members, assignment };
+};
+
+const countFiles = (assignment: TTeacherAssignment): Promise<number> =>
+  withTestDb(async (client) => {
+    const result = await client.query(
+      `select count(*)::int as count from "SubmissionFile" f
+         join "AssignmentStudent" s on s.id = f."assignmentStudentId" where s."assignmentId" = $1::uuid`,
+      [assignment.id],
+    );
+    return result.rows[0].count as number;
+  });
+
+const studentNamesOf = (assignment: TTeacherAssignment | undefined): string[] =>
+  (assignment?.students ?? []).map(({ name }) => name).sort();
+
+test.describe("edit assignment: removing a student who already submitted", () => {
+  test("asks first, names the student and what is lost, and saves nothing yet", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(page, [{ index: 0, grade: null }]);
+    await titleField(page).fill(uniqueTitle());
+    await studentBox(page, students[0].name).uncheck();
+
+    await save(page);
+
+    await expect(confirmDialog(page)).toBeVisible();
+    await expect(confirmDialog(page).getByText("תלמיד אחד כבר הגיש")).toBeVisible();
+    await expect(confirmDialog(page).getByText(students[0].name)).toBeVisible();
+    await expect(confirmDialog(page).getByText("הקובץ שהועלה", { exact: true })).toBeVisible();
+    await expect(confirmDialog(page).getByRole("note")).toContainText("יימחקו לצמיתות");
+    await expect(page).toHaveURL(editUrl(assignment));
+    await expectUnchanged(page, assignment);
+  });
+
+  test("says the grade too, when the student was checked", async ({ page }) => {
+    const { students } = await openEditPageWithSubmissions(page, [{ index: 0, grade: 70 }]);
+    await studentBox(page, students[0].name).uncheck();
+
+    await save(page);
+
+    await expect(confirmDialog(page).getByText("הקובץ שהועלה והציון 70")).toBeVisible();
+  });
+
+  test("'back to editing' closes it, saves nothing, and keeps what was typed and chosen", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(page, [{ index: 0, grade: null }]);
+    const title = uniqueTitle();
+    await titleField(page).fill(title);
+    await studentBox(page, students[0].name).uncheck();
+    await save(page);
+
+    await backToEditing(page).click();
+
+    await expect(confirmDialog(page)).toBeHidden();
+    await expect(titleField(page)).toHaveValue(title);
+    await expect(studentBox(page, students[0].name)).not.toBeChecked();
+    await expect(saveButton(page)).toBeEnabled();
+    await expectUnchanged(page, assignment);
+  });
+
+  test("Escape does the same as 'back to editing'", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(page, [{ index: 0, grade: null }]);
+    await studentBox(page, students[0].name).uncheck();
+    await save(page);
+    await expect(confirmDialog(page)).toBeVisible();
+
+    await page.keyboard.press("Escape");
+
+    await expect(confirmDialog(page)).toBeHidden();
+    await expectUnchanged(page, assignment);
+  });
+
+  test("after going back, choosing the student again saves without asking, and the file is kept", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(page, [{ index: 0, grade: 85 }]);
+    await studentBox(page, students[0].name).uncheck();
+    await save(page);
+    await backToEditing(page).click();
+    const title = uniqueTitle();
+
+    await studentBox(page, students[0].name).check();
+    await titleField(page).fill(title);
+    await save(page);
+
+    await expect(page).toHaveURL(LIST_URL, SAVED);
+    const saved = await fromApi(page, assignment);
+    expect(saved?.title).toBe(title);
+    expect(saved?.students.find(({ studentId }) => studentId === students[0].id)).toMatchObject({ status: "CHECKED", grade: 85 });
+    expect(await countFiles(assignment)).toBe(1);
+  });
+
+  test("confirming sends the student's id as confirmed, removes the student with the file and the grade, and saves the rest", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(page, [{ index: 0, grade: 90 }]);
+    let sent: Record<string, unknown> | null = null;
+    await routePut(page, assignment, (route, request) => {
+      sent = request.postDataJSON();
+      return route.continue();
+    });
+    const title = uniqueTitle();
+    await titleField(page).fill(title);
+    await studentBox(page, students[0].name).uncheck();
+    await save(page);
+
+    await confirmRemoval(page).click();
+
+    await expect(page).toHaveURL(LIST_URL, SAVED);
+    expect(sent).toMatchObject({ title, studentIds: [students[1].id], confirmedRemovalIds: [students[0].id] });
+    const saved = await fromApi(page, assignment);
+    expect(saved?.title).toBe(title);
+    expect(studentNamesOf(saved)).toEqual([students[1].name]);
+    expect(await countFiles(assignment)).toBe(0);
+  });
+
+  test("with two students who submitted, lists both, and confirms both", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(
+      page,
+      [
+        { index: 0, grade: null },
+        { index: 1, grade: 60 },
+      ],
+      3,
+    );
+    let sent = null as { confirmedRemovalIds?: string[] } | null;
+    await routePut(page, assignment, (route, request) => {
+      sent = request.postDataJSON();
+      return route.continue();
+    });
+    await studentBox(page, students[0].name).uncheck();
+    await studentBox(page, students[1].name).uncheck();
+    await save(page);
+
+    await expect(confirmDialog(page).getByText("2 תלמידים כבר הגישו")).toBeVisible();
+    await expect(confirmDialog(page).getByText(students[0].name)).toBeVisible();
+    await expect(confirmDialog(page).getByText(students[1].name)).toBeVisible();
+    await confirmRemoval(page).click();
+
+    await expect(page).toHaveURL(LIST_URL, SAVED);
+    expect([...(sent?.confirmedRemovalIds ?? [])].sort()).toEqual([students[0].id, students[1].id].sort());
+    expect(studentNamesOf(await fromApi(page, assignment))).toEqual([students[2].name]);
+    expect(await countFiles(assignment)).toBe(0);
+  });
+
+  test("lists only the students who are removed, and a student who submitted and stays keeps the file", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(
+      page,
+      [
+        { index: 0, grade: null },
+        { index: 1, grade: 60 },
+      ],
+      3,
+    );
+    await studentBox(page, students[0].name).uncheck();
+    await save(page);
+
+    await expect(confirmDialog(page).getByText(students[0].name)).toBeVisible();
+    await expect(confirmDialog(page).getByText(students[1].name)).toHaveCount(0);
+    await expect(confirmDialog(page).getByText(students[2].name)).toHaveCount(0);
+    await confirmRemoval(page).click();
+
+    await expect(page).toHaveURL(LIST_URL, SAVED);
+    const saved = await fromApi(page, assignment);
+    expect(studentNamesOf(saved)).toEqual([students[1].name, students[2].name].sort());
+    expect(saved?.students.find(({ studentId }) => studentId === students[1].id)).toMatchObject({ status: "CHECKED", grade: 60 });
+    expect(await countFiles(assignment)).toBe(1);
+  });
+
+  test("does not ask when the student who is removed has not submitted", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(page, [{ index: 0, grade: null }]);
+    let sent: Record<string, unknown> | null = null;
+    await routePut(page, assignment, (route, request) => {
+      sent = request.postDataJSON();
+      return route.continue();
+    });
+    await studentBox(page, students[1].name).uncheck();
+
+    await save(page);
+
+    await expect(page).toHaveURL(LIST_URL, SAVED);
+    await expect(confirmDialog(page)).toBeHidden();
+    expect(Object.keys(sent ?? {}).sort()).toEqual(["description", "dueDate", "studentIds", "title"]);
+    expect(studentNamesOf(await fromApi(page, assignment))).toEqual([students[0].name]);
+    expect(await countFiles(assignment)).toBe(1);
+  });
+
+  test("does not ask when nobody is removed", async ({ page }) => {
+    const { assignment } = await openEditPageWithSubmissions(page, [{ index: 0, grade: 90 }]);
+    const title = uniqueTitle();
+    await titleField(page).fill(title);
+
+    await save(page);
+
+    await expect(page).toHaveURL(LIST_URL, SAVED);
+    expect((await fromApi(page, assignment))?.title).toBe(title);
+    expect(await countFiles(assignment)).toBe(1);
+  });
+
+  test("while it saves, both buttons of the dialog are closed", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(page, [{ index: 0, grade: null }]);
+    await routePut(page, assignment, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+    await studentBox(page, students[0].name).uncheck();
+    await save(page);
+
+    await confirmRemoval(page).click();
+
+    await expect(confirmDialog(page).getByRole("button", { name: "שומר..." })).toBeDisabled();
+    await expect(backToEditing(page)).toBeDisabled();
+    await expect(page).toHaveURL(LIST_URL, SAVED);
+  });
+
+  test("when the save fails, the dialog closes and the form shows the server's message and keeps its values", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(page, [{ index: 0, grade: null }]);
+    await routePut(page, assignment, fulfillJson(500, { error: ERROR_MESSAGES.internal }));
+    const title = uniqueTitle();
+    await titleField(page).fill(title);
+    await studentBox(page, students[0].name).uncheck();
+    await save(page);
+
+    await confirmRemoval(page).click();
+
+    await expect(confirmDialog(page)).toBeHidden();
+    await expect(page.getByText(ERROR_MESSAGES.internal)).toBeVisible();
+    await expect(titleField(page)).toHaveValue(title);
+    await expect(studentBox(page, students[0].name)).not.toBeChecked();
+    await expect(saveButton(page)).toBeEnabled();
+    await expect(page).toHaveURL(editUrl(assignment));
+    expect(await countFiles(assignment)).toBe(1);
+  });
+
+  test("a student who submitted after the page was opened is not removed by the confirmation, and nothing is changed", async ({ page }) => {
+    const { students, assignment } = await openEditPageWithSubmissions(page, [{ index: 0, grade: null }], 3);
+    await submitPart(assignment.id, students[1].id, { submittedAt: "2030-06-02T10:00:00Z", grade: null, mimeType: "application/pdf" });
+    const before: TTeacherAssignment | undefined = await fromApi(page, assignment);
+    await studentBox(page, students[0].name).uncheck();
+    await studentBox(page, students[1].name).uncheck();
+    await save(page);
+    await expect(confirmDialog(page).getByText("תלמיד אחד כבר הגיש")).toBeVisible();
+    await expect(confirmDialog(page).getByText(students[1].name)).toHaveCount(0);
+
+    await confirmRemoval(page).click();
+
+    await expect(page.getByText(ERROR_MESSAGES.assignmentStudentSubmitted)).toBeVisible();
+    await expect(confirmDialog(page)).toBeHidden();
+    await expect(page).toHaveURL(editUrl(assignment));
+    expect(await fromApi(page, assignment)).toEqual(before);
+    expect(await countFiles(assignment)).toBe(2);
+  });
+
+  test("adding the assignment never asks: nobody has submitted a new assignment", async ({ page }) => {
+    await signInAs(page.request, WRITE_SEED);
+    await gotoHydrated(page, "/dashboard/assignments/new");
+
+    await expect(confirmDialog(page)).toBeHidden();
+  });
+
+  test("on a narrow screen the dialog fits and both buttons can be reached", async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 700 });
+    const { students } = await openEditPageWithSubmissions(page, [{ index: 0, grade: 90 }]);
+    await studentBox(page, students[0].name).uncheck();
+    await save(page);
+
+    await expect(confirmDialog(page)).toBeVisible();
+    for (const button of [backToEditing(page), confirmRemoval(page)]) {
+      await expect(button).toBeVisible();
+      const box = await button.boundingBox();
+      expect(box).not.toBeNull();
+      expect(box!.x).toBeGreaterThanOrEqual(0);
+      expect(box!.x + box!.width).toBeLessThanOrEqual(375);
+    }
   });
 });

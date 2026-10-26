@@ -7,12 +7,15 @@ import {
   fillStudentForm,
   getClassList,
   getStudentList,
+  classField,
   gotoHydrated,
+  listAddress,
   randomDigits,
   signInAs,
   submitStudentForm,
   uniqueName,
   uniquePhone,
+  findInList,
 } from "./helpers";
 
 // These tests change students, so they only use a write teacher and only change students they created
@@ -63,7 +66,7 @@ test.describe("edit student: getting to the page", () => {
   test("the edit link of a row opens that student's edit page", async ({ page }) => {
     await signInAs(page.request, WRITE_SEED);
     const student: TStudent = await createStudent(page.request);
-    await gotoHydrated(page, DASHBOARD_URL);
+    await gotoHydrated(page, listAddress(DASHBOARD_URL, student.name));
 
     await page.getByRole("link", { name: `עריכה עבור ${student.name}` }).click();
 
@@ -114,8 +117,8 @@ test.describe("edit student: the page", () => {
 
     await expect(page.getByLabel("שם התלמיד")).toHaveValue(student.name);
     await expect(page.getByLabel("טלפון")).toHaveValue(student.phone);
-    await expect(page.getByLabel("כיתה").locator("option:checked")).toHaveText(student.class.name);
-    await expect(page.getByLabel("כיתה").locator("option")).toHaveText(["בחרו כיתה", ...CLASS_NAMES]);
+    await expect(classField(page).locator("option:checked")).toHaveText(student.class.name);
+    await expect(classField(page).locator("option")).toHaveText(["בחרו כיתה", ...CLASS_NAMES]);
   });
 
   test("has the save button, the cancel link and the back link", async ({ page }) => {
@@ -131,7 +134,7 @@ test.describe("edit student: the page", () => {
   test("shows the saved values, not what the list showed when it loaded", async ({ page }) => {
     await signInAs(page.request, WRITE_SEED);
     const student: TStudent = await createStudent(page.request);
-    await gotoHydrated(page, DASHBOARD_URL);
+    await gotoHydrated(page, listAddress(DASHBOARD_URL, student.name));
     // The student is changed after the list was loaded, as if from another tab.
     const changed = { name: uniqueName(), phone: uniquePhone(), classId: student.class.id };
     expect((await page.request.put(`/api/students/${student.id}`, { data: changed })).status()).toBe(200);
@@ -172,7 +175,7 @@ test.describe("edit student: validation", () => {
     const student: TStudent = await openEditPage(page);
     await page.getByLabel("שם התלמיד").fill("");
     await page.getByLabel("טלפון").fill("");
-    await page.getByLabel("כיתה").selectOption("");
+    await classField(page).selectOption("");
 
     await save(page);
 
@@ -222,7 +225,9 @@ test.describe("edit student: saving", () => {
     await save(page);
 
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, name);
     await expect(studentRow(page, name)).toBeVisible(SAVED);
+    await findInList(page, student.name);
     await expect(studentRow(page, student.name)).toHaveCount(0);
     expect((await fromApi(page, student))?.name).toBe(name);
   });
@@ -234,6 +239,7 @@ test.describe("edit student: saving", () => {
     await page.getByLabel("טלפון").fill(`050${digits}`);
     await save(page);
 
+    await findInList(page, student.name);
     await expect(studentRow(page, student.name).locator("td").nth(2)).toHaveText(`050-${digits}`, SAVED);
   });
 
@@ -241,9 +247,10 @@ test.describe("edit student: saving", () => {
     const student: TStudent = await openEditPage(page);
     const otherClass: string = CLASS_NAMES.find((name) => name !== student.class.name)!;
 
-    await page.getByLabel("כיתה").selectOption({ label: otherClass });
+    await classField(page).selectOption({ label: otherClass });
     await save(page);
 
+    await findInList(page, student.name);
     await expect(studentRow(page, student.name).locator("td").nth(1)).toHaveText(otherClass, SAVED);
     expect((await fromApi(page, student))?.class.name).toBe(otherClass);
   });
@@ -259,6 +266,7 @@ test.describe("edit student: saving", () => {
     await fillStudentForm(page, values);
     await save(page);
 
+    await findInList(page, values.name);
     const row = studentRow(page, values.name);
     await expect(row).toBeVisible(SAVED);
     await expect(row.locator("td").nth(1)).toHaveText(values.className);
@@ -273,6 +281,7 @@ test.describe("edit student: saving", () => {
     await page.getByLabel("טלפון").fill(`050${digits}`);
     await save(page);
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, name);
     await expect(studentRow(page, name)).toBeVisible(SAVED);
 
     await page.getByRole("link", { name: `עריכה עבור ${name}` }).click();
@@ -289,6 +298,7 @@ test.describe("edit student: saving", () => {
     const first: string = uniqueName();
     await page.getByLabel("שם התלמיד").fill(first);
     await save(page);
+    await findInList(page, first);
     await expect(studentRow(page, first)).toBeVisible(SAVED);
     await page.getByRole("link", { name: `עריכה עבור ${first}` }).click();
     const second: string = uniqueName();
@@ -297,6 +307,7 @@ test.describe("edit student: saving", () => {
     await save(page);
 
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, second);
     await expect(studentRow(page, second)).toBeVisible(SAVED);
     expect((await fromApi(page, student))?.name).toBe(second);
   });
@@ -307,6 +318,7 @@ test.describe("edit student: saving", () => {
     await save(page);
 
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, student.name);
     await expect(studentRow(page, student.name)).toBeVisible(SAVED);
     await expectUnchanged(page, student);
   });
@@ -318,6 +330,7 @@ test.describe("edit student: saving", () => {
     await page.getByLabel("שם התלמיד").fill(uniqueName());
     await save(page);
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, student.name);
     await expect(studentRow(page, student.name)).toHaveCount(0, SAVED);
 
     // Other tests add students at the same time, so only this student's rows are compared.
@@ -344,10 +357,12 @@ test.describe("edit student: saving", () => {
     const name: string = uniqueName();
     await page.getByLabel("שם התלמיד").fill(name);
     await save(page);
+    await findInList(page, name);
     await expect(studentRow(page, name)).toBeVisible(SAVED);
 
     await page.reload();
 
+    await findInList(page, name);
     await expect(studentRow(page, name)).toBeVisible();
   });
 
@@ -451,6 +466,7 @@ test.describe("edit student: errors from the server", () => {
     await save(page);
 
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, name);
     await expect(studentRow(page, name)).toBeVisible(SAVED);
   });
 });
@@ -469,14 +485,16 @@ test.describe("edit student: narrow screen", () => {
     await save(page);
 
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, name);
     await expect(studentRow(page, name)).toBeVisible(SAVED);
+    await findInList(page, student.name);
     await expect(studentRow(page, student.name)).toHaveCount(0);
   });
 
   test("the edit link in a row works on a narrow screen", async ({ page }) => {
     await signInAs(page.request, WRITE_SEED);
     const student: TStudent = await createStudent(page.request);
-    await gotoHydrated(page, DASHBOARD_URL);
+    await gotoHydrated(page, listAddress(DASHBOARD_URL, student.name));
 
     await page.getByRole("link", { name: `עריכה עבור ${student.name}` }).click();
 

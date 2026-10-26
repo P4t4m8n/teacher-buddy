@@ -22,6 +22,7 @@ describe("ERROR_MESSAGES", () => {
       "network",
       "studentExists",
       "studentNotFound",
+      "tooManyAttempts",
       "unauthorized",
       "unsupportedFile",
       "validation",

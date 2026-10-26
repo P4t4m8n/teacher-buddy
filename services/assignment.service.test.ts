@@ -4,6 +4,7 @@ import { AppError } from "@/lib/AppError";
 
 const mocks = vi.hoisted(() => ({
   findMany: vi.fn(),
+  assignmentCount: vi.fn(),
   findFirst: vi.fn(),
   create: vi.fn(),
   studentCount: vi.fn(),
@@ -31,6 +32,7 @@ vi.mock("@/lib/db", () => {
     prisma: {
       assignment: {
         findMany: mocks.findMany,
+        count: mocks.assignmentCount,
         findFirst: mocks.findFirst,
         create: mocks.create,
         deleteMany: mocks.deleteMany,
@@ -47,6 +49,7 @@ import {
   deleteAssignment,
   findAssignment,
   getAssignment,
+  getAssignmentList,
   getAssignments,
   getStudentAssignments,
   updateAssignment,
@@ -618,5 +621,299 @@ describe("deleteAssignment", () => {
     await expectAppError(deleteAssignment(TEACHER_ID, id), AppError.assignmentNotFound());
 
     expect(mocks.deleteMany).not.toHaveBeenCalled();
+  });
+});
+
+describe("getAssignmentList", () => {
+  const NO_SEARCH = { search: "", sort: "-dueDate", page: 1 } as const;
+  const row = (id: string, title: string, students: number, submitted: number) => ({
+    id,
+    title,
+    dueDate: new Date("2026-12-15T00:00:00.000Z"),
+    _count: { students },
+    students: Array.from({ length: submitted }, (_, index) => ({ id: `${id}-${index}` })),
+  });
+
+  const lastArgs = () => mocks.findMany.mock.calls.at(-1)?.[0];
+
+  beforeEach(() => {
+    mocks.findMany.mockResolvedValue([]);
+    mocks.assignmentCount.mockResolvedValue(0);
+  });
+
+  it("without a search asks for all of the teacher's assignments, newest due date first", async () => {
+    await getAssignmentList(TEACHER_ID, NO_SEARCH);
+
+    expect(lastArgs().where).toEqual({ teacherId: TEACHER_ID });
+    expect(lastArgs().orderBy).toEqual([{ dueDate: "desc" }, { createdAt: "desc" }, { id: "asc" }]);
+  });
+
+  it("looks for the search in the title, without caring about the case, and keeps the teacher in the filter", async () => {
+    await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, search: "חיבור" });
+
+    expect(lastArgs().where).toEqual({
+      teacherId: TEACHER_ID,
+      title: { contains: "חיבור", mode: "insensitive" },
+    });
+  });
+
+  it("escapes %, _ and \\ in the search, so they are looked for as the characters and are not wildcards", async () => {
+    await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, search: "5%_\\" });
+
+    expect(lastArgs().where.title).toEqual({ contains: "5\\%\\_\\\\", mode: "insensitive" });
+  });
+  it("returns the assignments that match and how many the teacher has in all, whatever the search", async () => {
+    mocks.findMany.mockResolvedValue([row("a", "חיבור", 3, 1)]);
+    mocks.assignmentCount.mockResolvedValue(9);
+
+    const list = await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, search: "חיבור" });
+
+    expect(list.total).toBe(9);
+    expect(list.assignments).toEqual([
+      { id: "a", title: "חיבור", dueDate: "2026-12-15", studentCount: 3, submittedCount: 1 },
+    ]);
+    expect(mocks.assignmentCount).toHaveBeenCalledWith({ where: { teacherId: TEACHER_ID } });
+  });
+
+  it.each([
+    ["title", [{ title: "asc" }, { id: "asc" }]],
+    ["-title", [{ title: "desc" }, { id: "asc" }]],
+    ["dueDate", [{ dueDate: "asc" }, { createdAt: "desc" }, { id: "asc" }]],
+    ["-dueDate", [{ dueDate: "desc" }, { createdAt: "desc" }, { id: "asc" }]],
+    ["students", [{ students: { _count: "asc" } }, { dueDate: "desc" }, { id: "asc" }]],
+    ["-students", [{ students: { _count: "desc" } }, { dueDate: "desc" }, { id: "asc" }]],
+  ] as const)("orders by %s in the database", async (sort, expected) => {
+    await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, sort });
+
+    expect(lastArgs().orderBy).toEqual(expected);
+  });
+
+  describe("by the number that submitted", () => {
+    const rows = () => [row("a", "א", 5, 2), row("b", "ב", 5, 0), row("c", "ג", 5, 5), row("d", "ד", 5, 2)];
+
+    const ids = async (sort: "submitted" | "-submitted"): Promise<string[]> => {
+      mocks.findMany.mockResolvedValue(rows());
+      const { assignments } = await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, sort });
+      return assignments.map((assignment) => assignment.id);
+    };
+
+    it("starts from the default order, so it does not need a different one in the database", async () => {
+      await ids("submitted");
+
+      expect(lastArgs().orderBy).toEqual([{ dueDate: "desc" }, { createdAt: "desc" }, { id: "asc" }]);
+    });
+
+    it("puts the fewest first, and keeps the database order of equal counts", async () => {
+      expect(await ids("submitted")).toEqual(["b", "a", "d", "c"]);
+    });
+
+    it("puts the most first, and keeps the database order of equal counts", async () => {
+      expect(await ids("-submitted")).toEqual(["c", "a", "d", "b"]);
+    });
+  });
+
+  it("does not reorder the database's order for the other sorts", async () => {
+    mocks.findMany.mockResolvedValue([row("a", "א", 1, 1), row("b", "ב", 1, 0)]);
+
+    const { assignments } = await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, sort: "title" });
+
+    expect(assignments.map((assignment) => assignment.id)).toEqual(["a", "b"]);
+  });
+});
+
+describe("getAssignmentList: pages", () => {
+  const NO_SEARCH = { search: "", sort: "-dueDate", page: 1 } as const;
+
+  // The teacher has 45 assignments, 7 of them match a search.
+  const MATCHED_BY_SEARCH = 7;
+  const TOTAL = 45;
+
+  const row = (index: number, submitted: number) => ({
+    id: `a${String(index).padStart(2, "0")}`,
+    title: `מטלה ${index}`,
+    dueDate: new Date("2026-12-15T00:00:00.000Z"),
+    _count: { students: 3 },
+    students: Array.from({ length: submitted }, (_, part) => ({ id: `${index}-${part}` })),
+  });
+
+  const lastArgs = () => mocks.findMany.mock.calls.at(-1)?.[0];
+
+  beforeEach(() => {
+    mocks.findMany.mockResolvedValue([]);
+    mocks.assignmentCount.mockImplementation(async ({ where }: { where: { title?: unknown } }) =>
+      where.title ? MATCHED_BY_SEARCH : TOTAL,
+    );
+  });
+
+  it("reads 20 rows from the start for the first page, in the database", async () => {
+    await getAssignmentList(TEACHER_ID, NO_SEARCH);
+
+    expect(lastArgs()).toMatchObject({ skip: 0, take: 20 });
+  });
+
+  it("skips the rows of the earlier pages", async () => {
+    await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, page: 2 });
+    expect(lastArgs()).toMatchObject({ skip: 20, take: 20 });
+
+    await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, page: 3 });
+    expect(lastArgs()).toMatchObject({ skip: 40, take: 20 });
+  });
+
+  it("says which page it is on and how many pages there are, counted from what matches and not from the total", async () => {
+    expect(await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, page: 2 })).toMatchObject({
+      total: TOTAL,
+      matched: TOTAL,
+      page: 2,
+      pageCount: 3,
+    });
+    expect(await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, search: "מטלה" })).toMatchObject({
+      total: TOTAL,
+      matched: MATCHED_BY_SEARCH,
+      page: 1,
+      pageCount: 1,
+    });
+  });
+
+  it("shows the last page for a page past the end", async () => {
+    const list = await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, page: 99 });
+
+    expect(list.page).toBe(3);
+    expect(lastArgs()).toMatchObject({ skip: 40, take: 20 });
+  });
+
+  it("counts what matches with the same filter as the rows", async () => {
+    await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, search: "מטלה" });
+
+    expect(mocks.assignmentCount).toHaveBeenCalledWith({ where: lastArgs().where });
+    expect(mocks.assignmentCount).toHaveBeenCalledWith({ where: { teacherId: TEACHER_ID } });
+  });
+
+  describe("by the number that submitted", () => {
+    // 45 rows whose submitted counts go 0, 1, 2, 3, 0, 1, 2, 3, ... in the database order.
+    const allRows = () => Array.from({ length: TOTAL }, (_, index) => row(index, index % 4));
+
+    const ids = async (sort: "submitted" | "-submitted", page: number): Promise<string[]> => {
+      mocks.findMany.mockResolvedValue(allRows());
+      const { assignments } = await getAssignmentList(TEACHER_ID, { ...NO_SEARCH, sort, page });
+      return assignments.map((assignment) => assignment.id);
+    };
+
+    it("reads all the rows (the order is made here), and gives only the rows of the page", async () => {
+      const first = await ids("submitted", 1);
+
+      expect(lastArgs().skip).toBeUndefined();
+      expect(lastArgs().take).toBeUndefined();
+      expect(first).toHaveLength(20);
+    });
+
+    it("pages the sorted list: the pages together are every row once, in order of the count", async () => {
+      const pages: string[][] = [await ids("submitted", 1), await ids("submitted", 2), await ids("submitted", 3)];
+
+      expect(pages.map((page) => page.length)).toEqual([20, 20, 5]);
+      const all: string[] = pages.flat();
+      expect(new Set(all).size).toBe(TOTAL);
+      const counts: number[] = all.map((id) => Number(id.slice(1)) % 4);
+      expect(counts).toEqual([...counts].sort((a, b) => a - b));
+    });
+
+    it("pages the other direction too", async () => {
+      const all: string[] = [...(await ids("-submitted", 1)), ...(await ids("-submitted", 2)), ...(await ids("-submitted", 3))];
+
+      const counts: number[] = all.map((id) => Number(id.slice(1)) % 4);
+      expect(counts).toEqual([...counts].sort((a, b) => b - a));
+    });
+  });
+});
+
+describe("updateAssignment: removing students who already submitted", () => {
+  const STUDENT_C = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f63";
+  const dto = {
+    title: "חיבור חדש",
+    description: "<p>חדש</p>",
+    dueDate: "2027-01-20",
+    studentIds: [STUDENT_A],
+  };
+
+  beforeEach(() => {
+    mocks.updateMany.mockResolvedValue({ count: 1 });
+    mocks.studentCount.mockResolvedValue(1);
+    mocks.partDeleteMany.mockResolvedValue({ count: 0 });
+    mocks.partCount.mockResolvedValue(0);
+    mocks.partCreateMany.mockResolvedValue({ count: 0 });
+    mocks.findUniqueOrThrow.mockResolvedValue(row({ title: "חיבור חדש" }));
+  });
+
+  it("does not delete a submitted part without a confirmation: one delete only, for the parts that are TODO", async () => {
+    await updateAssignment(TEACHER_ID, ASSIGNMENT_ID, dto);
+
+    expect(mocks.partDeleteMany).toHaveBeenCalledTimes(1);
+    expect(mocks.partDeleteMany).toHaveBeenCalledWith({
+      where: { assignmentId: ASSIGNMENT_ID, studentId: { notIn: [STUDENT_A] }, status: "TODO" },
+    });
+  });
+
+  it("does not delete anything more for an empty confirmation", async () => {
+    await updateAssignment(TEACHER_ID, ASSIGNMENT_ID, { ...dto, confirmedRemovalIds: [] });
+
+    expect(mocks.partDeleteMany).toHaveBeenCalledTimes(1);
+  });
+
+  it("deletes the part of a removed student whose removal was confirmed, in this assignment only", async () => {
+    await updateAssignment(TEACHER_ID, ASSIGNMENT_ID, { ...dto, confirmedRemovalIds: [STUDENT_B] });
+
+    expect(mocks.partDeleteMany).toHaveBeenCalledTimes(2);
+    expect(mocks.partDeleteMany).toHaveBeenLastCalledWith({
+      where: { assignmentId: ASSIGNMENT_ID, studentId: { in: [STUDENT_B], notIn: [STUDENT_A] } },
+    });
+  });
+
+  it("never deletes the part of a student who stays, also when it was named as confirmed", async () => {
+    await updateAssignment(TEACHER_ID, ASSIGNMENT_ID, { ...dto, confirmedRemovalIds: [STUDENT_A, STUDENT_B] });
+
+    expect(mocks.partDeleteMany).toHaveBeenLastCalledWith({
+      where: { assignmentId: ASSIGNMENT_ID, studentId: { in: [STUDENT_A, STUDENT_B], notIn: [STUDENT_A] } },
+    });
+  });
+
+  it("deletes the confirmed parts before it checks what is left, so the check sees only what was not confirmed", async () => {
+    await updateAssignment(TEACHER_ID, ASSIGNMENT_ID, { ...dto, confirmedRemovalIds: [STUDENT_B] });
+
+    const confirmedDelete: number = mocks.partDeleteMany.mock.invocationCallOrder[1];
+    const check: number = mocks.partCount.mock.invocationCallOrder[0];
+    expect(confirmedDelete).toBeLessThan(check);
+  });
+
+  it("is still a 409 when another removed student submitted and was not confirmed", async () => {
+    mocks.partCount.mockResolvedValue(1);
+
+    await expectAppError(
+      updateAssignment(TEACHER_ID, ASSIGNMENT_ID, { ...dto, confirmedRemovalIds: [STUDENT_B] }),
+      AppError.assignmentStudentSubmitted(),
+    );
+
+    expect(mocks.partCount).toHaveBeenCalledWith({
+      where: { assignmentId: ASSIGNMENT_ID, studentId: { notIn: [STUDENT_A] } },
+    });
+    expect(mocks.partCreateMany).not.toHaveBeenCalled();
+    expect(mocks.findUniqueOrThrow).not.toHaveBeenCalled();
+  });
+
+  it("does not confirm anything for a student that is not in the assignment: it is only a filter", async () => {
+    await updateAssignment(TEACHER_ID, ASSIGNMENT_ID, { ...dto, confirmedRemovalIds: [STUDENT_C] });
+
+    expect(mocks.partDeleteMany).toHaveBeenLastCalledWith({
+      where: { assignmentId: ASSIGNMENT_ID, studentId: { in: [STUDENT_C], notIn: [STUDENT_A] } },
+    });
+  });
+
+  it("checks that the assignment and the students are the teacher's before it deletes anything", async () => {
+    mocks.updateMany.mockResolvedValue({ count: 0 });
+
+    await expectAppError(
+      updateAssignment(TEACHER_ID, ASSIGNMENT_ID, { ...dto, confirmedRemovalIds: [STUDENT_B] }),
+      AppError.assignmentNotFound(),
+    );
+
+    expect(mocks.partDeleteMany).not.toHaveBeenCalled();
   });
 });

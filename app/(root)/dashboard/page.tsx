@@ -1,13 +1,18 @@
 import { Suspense } from "react";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import AuthenticatedDashboard from "@/components/dashboard/AuthenticatedDashboard";
+import type { TSearchParams } from "@/schemas/list.schema";
 
-// Reading the session cookie is a request-time read, so it lives behind a Suspense boundary
+type TDashboardPageProps = {
+  searchParams: Promise<TSearchParams>;
+};
+
+// Reading the session cookie and the search params are request-time reads, so they live behind a Suspense boundary
 // The skeleton is the only part prerendered, the rest streams in.
-export default function DashboardPage() {
+export default function DashboardPage({ searchParams }: TDashboardPageProps) {
   return (
     <Suspense fallback={<DashboardSkeleton />}>
-      <AuthenticatedDashboard />
+      <AuthenticatedDashboard searchParams={searchParams} />
     </Suspense>
   );
 }

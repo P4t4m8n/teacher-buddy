@@ -1,6 +1,9 @@
 import { z } from "zod";
+import { CLASS_PARAM, PAGE_PARAM, SEARCH_PARAM, SORT_PARAM } from "@/constants/list.constant";
+import { DEFAULT_STUDENT_SORT, STUDENT_SORT_OPTIONS } from "@/constants/student.constant";
 import { normalizePhone } from "@/lib/phone";
-import type { TCreateStudentDto } from "@/types/student.type";
+import { classIdSchema, getSortSchema, pageSchema, searchSchema, type TSearchParams } from "@/schemas/list.schema";
+import type { TCreateStudentDto, TStudentListQuery } from "@/types/student.type";
 
 // Letters of any language (and their marks), spaces, apostrophes (' ’ ׳) and hyphens (- ־).
 const NAME_PATTERN = /^[\p{L}\p{M}' ’׳\-־]+$/u;
@@ -28,3 +31,19 @@ export const createStudentSchema = z.object({
 
 // An update replaces all three fields, so it follows the same rules as a create.
 export const updateStudentSchema = createStudentSchema;
+
+const studentListQuerySchema = z.object({
+  search: searchSchema,
+  classId: classIdSchema,
+  sort: getSortSchema(STUDENT_SORT_OPTIONS, DEFAULT_STUDENT_SORT),
+  page: pageSchema,
+}) satisfies z.ZodType<TStudentListQuery>;
+
+// Reads the students list's filters from the page's address. It never fails: what is not valid is the default.
+export const parseStudentListQuery = (params: TSearchParams): TStudentListQuery =>
+  studentListQuerySchema.parse({
+    search: params[SEARCH_PARAM],
+    classId: params[CLASS_PARAM],
+    sort: params[SORT_PARAM],
+    page: params[PAGE_PARAM],
+  });

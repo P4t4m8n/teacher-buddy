@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { ERROR_MESSAGES } from "../constants/error.constant";
-import { gotoHydrated, TEACHER } from "./helpers";
+import { clientHeaders, gotoHydrated, TEACHER } from "./helpers";
 
 const signInWithForm = async (page: Page): Promise<void> => {
   await gotoHydrated(page, "/auth");
@@ -54,6 +54,7 @@ test.describe("sign-in flow", () => {
   });
 
   test("a failed sign-in can be corrected and retried", async ({ page }) => {
+    await page.setExtraHTTPHeaders(clientHeaders());
     await gotoHydrated(page, "/auth");
     await page.getByLabel("שם").fill(TEACHER.name);
     await page.getByLabel("תעודת זהות").fill("987654321");
@@ -117,6 +118,7 @@ test.describe("error messages come from the server", () => {
   });
 
   test("wrong credentials show the server's Hebrew message from the real API", async ({ page }) => {
+    await page.setExtraHTTPHeaders(clientHeaders());
     await gotoHydrated(page, "/auth");
     await page.getByLabel("שם").fill(TEACHER.name);
     await page.getByLabel("תעודת זהות").fill("987654321");
@@ -171,6 +173,7 @@ test.describe("error messages come from the server", () => {
   });
 
   test("the previous error is cleared when the next attempt starts", async ({ page }) => {
+    await page.setExtraHTTPHeaders(clientHeaders());
     await gotoHydrated(page, "/auth");
     await page.getByLabel("שם").fill(TEACHER.name);
     await page.getByLabel("תעודת זהות").fill("987654321");

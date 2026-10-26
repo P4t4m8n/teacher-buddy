@@ -51,7 +51,9 @@ export const handleRouteError = (error: unknown, context: string): NextResponse<
   if (error instanceof AppError && error.status < 500) {
     const body: TApiErrorBody = { error: error.message };
     if (error.fields) body.fields = error.fields;
-    return NextResponse.json(body, { status: error.status });
+    const headers: Record<string, string> = {};
+    if (error.retryAfterSeconds !== undefined) headers["Retry-After"] = String(error.retryAfterSeconds);
+    return NextResponse.json(body, { status: error.status, headers });
   }
 
   console.error(`${context} failed:`, error);

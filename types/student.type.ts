@@ -10,6 +10,32 @@ export type TStudent = {
   class: TStudentClass;
 };
 
+// A minus in front is descending.
+export type TStudentSort = "name" | "-name" | "class" | "-class" | "phone" | "-phone";
+
+// What the students list is narrowed and ordered by. It is read from the address, so it is always valid.
+export type TStudentListQuery = {
+  // Looked for in the name and the phone. Empty: no search.
+  search: string;
+  // Empty: all the classes.
+  classId: string;
+  sort: TStudentSort;
+  // 1-based. A page past the end shows the last page.
+  page: number;
+};
+
+export type TStudentList = {
+  // The students of the page shown.
+  students: TStudent[];
+  // All the teacher's students, whatever the query.
+  total: number;
+  // The students the query matches, on all the pages: the list shows "N of total".
+  matched: number;
+  // The page shown: the one asked for, or the last page when it is past the end.
+  page: number;
+  pageCount: number;
+};
+
 export type TGetStudentsResponse = {
   students: TStudent[];
 };

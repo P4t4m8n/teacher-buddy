@@ -1,6 +1,9 @@
 import { z } from "zod";
+import { DEFAULT_ASSIGNMENT_SORT, ASSIGNMENT_SORT_OPTIONS } from "@/constants/assignment.constant";
+import { PAGE_PARAM, SEARCH_PARAM, SORT_PARAM } from "@/constants/list.constant";
 import { sanitizeRichText } from "@/lib/richText";
-import type { TCreateAssignmentDto } from "@/types/assignment.type";
+import { getSortSchema, pageSchema, searchSchema, type TSearchParams } from "@/schemas/list.schema";
+import type { TAssignmentListQuery, TCreateAssignmentDto, TUpdateAssignmentDto } from "@/types/assignment.type";
 
 const MAX_DESCRIPTION_LENGTH = 20_000;
 const MAX_STUDENTS = 500;
@@ -36,6 +39,27 @@ export const createAssignmentSchema = z.object({
     .transform((ids: string[]) => [...new Set(ids)]),
 }) satisfies z.ZodType<TCreateAssignmentDto>;
 
-// An update replaces all four fields, so it follows the same rules as a create.
-export const updateAssignmentSchema = createAssignmentSchema;
+// An update replaces all four fields, so it follows the same rules as a create, and may name the students who
+// submitted whose removal the teacher confirmed.
+export const updateAssignmentSchema = createAssignmentSchema.extend({
+  confirmedRemovalIds: z
+    .array(z.uuid({ error: "רשימת התלמידים להסרה אינה תקינה" }), { error: "רשימת התלמידים להסרה אינה תקינה" })
+    .max(MAX_STUDENTS, { error: "רשימת התלמידים להסרה אינה תקינה", abort: true })
+    .default([])
+    .transform((ids: string[]) => [...new Set(ids)]),
+}) satisfies z.ZodType<TUpdateAssignmentDto>;
 
+
+const assignmentListQuerySchema = z.object({
+  search: searchSchema,
+  sort: getSortSchema(ASSIGNMENT_SORT_OPTIONS, DEFAULT_ASSIGNMENT_SORT),
+  page: pageSchema,
+}) satisfies z.ZodType<TAssignmentListQuery>;
+
+// Reads the assignments list's filters from the page's address. It never fails: what is not valid is the default.
+export const parseAssignmentListQuery = (params: TSearchParams): TAssignmentListQuery =>
+  assignmentListQuerySchema.parse({
+    search: params[SEARCH_PARAM],
+    sort: params[SORT_PARAM],
+    page: params[PAGE_PARAM],
+  });

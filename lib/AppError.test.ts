@@ -20,6 +20,7 @@ describe("AppError", () => {
     ["studentNotFound", AppError.studentNotFound(), 404, ERROR_MESSAGES.studentNotFound],
     ["studentExists", AppError.studentExists(), 409, ERROR_MESSAGES.studentExists],
     ["assignmentNotFound", AppError.assignmentNotFound(), 404, ERROR_MESSAGES.assignmentNotFound],
+    ["tooManyAttempts", AppError.tooManyAttempts(60), 429, ERROR_MESSAGES.tooManyAttempts],
     ["invalidFormData", AppError.invalidFormData(), 400, ERROR_MESSAGES.invalidFormData],
     ["fileTooLarge", AppError.fileTooLarge(), 413, ERROR_MESSAGES.fileTooLarge],
     ["fileNotFound", AppError.fileNotFound(), 404, ERROR_MESSAGES.fileNotFound],

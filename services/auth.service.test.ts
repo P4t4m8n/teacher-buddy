@@ -16,6 +16,7 @@ vi.mock("@/lib/db", () => ({
   prisma: { teacher: { findUnique: mocks.findUnique } },
 }));
 
+import { LOGIN_MAX_FAILURES } from "@/constants/auth.constant";
 import { AppError } from "@/lib/AppError";
 import { getSessionTeacher, requireSessionTeacher, signIn, signOut } from "./auth.service";
 
@@ -30,6 +31,10 @@ const expectAppError = async (promise: Promise<unknown>, expected: AppError): Pr
 };
 
 const ID_NUMBER = "123456789";
+
+// The limit is kept for the whole file, so every test is a different client and cannot meet another one's failures.
+let attemptCount = 0;
+const freshKey = (): string => JSON.stringify([`test-client-${(attemptCount += 1)}`, "test"]);
 let teacher: { id: string; name: string; passwordHash: string };
 
 beforeAll(async () => {
@@ -54,7 +59,7 @@ describe("signIn", () => {
   it("returns the teacher and sets a signed session cookie", async () => {
     mocks.findUnique.mockResolvedValue(teacher);
 
-    const result = await signIn({ name: teacher.name, idNumber: ID_NUMBER });
+    const result = await signIn({ name: teacher.name, idNumber: ID_NUMBER }, freshKey());
 
     expect(result).toEqual({ id: teacher.id, name: teacher.name });
     expect(mocks.findUnique).toHaveBeenCalledWith({ where: { name: teacher.name } });
@@ -79,7 +84,7 @@ describe("signIn", () => {
     mocks.findUnique.mockResolvedValue(null);
 
     await expectAppError(
-      signIn({ name: "לא קיים", idNumber: ID_NUMBER }),
+      signIn({ name: "לא קיים", idNumber: ID_NUMBER }, freshKey()),
       AppError.invalidCredentials(),
     );
     expect(mocks.cookieSet).not.toHaveBeenCalled();
@@ -89,7 +94,7 @@ describe("signIn", () => {
     mocks.findUnique.mockResolvedValue(teacher);
 
     await expectAppError(
-      signIn({ name: teacher.name, idNumber: "987654321" }),
+      signIn({ name: teacher.name, idNumber: "987654321" }, freshKey()),
       AppError.invalidCredentials(),
     );
     expect(mocks.cookieSet).not.toHaveBeenCalled();
@@ -100,10 +105,98 @@ describe("signIn", () => {
     mocks.findUnique.mockResolvedValue(teacher);
 
     await expectAppError(
-      signIn({ name: teacher.name, idNumber: ID_NUMBER }),
+      signIn({ name: teacher.name, idNumber: ID_NUMBER }, freshKey()),
       AppError.internal("JWT_SECRET is required"),
     );
     expect(mocks.cookieSet).not.toHaveBeenCalled();
+  });
+});
+
+describe("signIn: the limit on failed tries", () => {
+  const wrong = { name: "דנה כהן", idNumber: "987654321" };
+  const right = { name: "דנה כהן", idNumber: ID_NUMBER };
+
+  const failTimes = async (key: string, times: number): Promise<void> => {
+    for (let index = 0; index < times; index += 1) {
+      await expectAppError(signIn(wrong, key), AppError.invalidCredentials());
+    }
+  };
+
+  beforeEach(() => {
+    mocks.findUnique.mockResolvedValue(teacher);
+  });
+
+  it("allows the maximum number of failed tries, each one a 401", async () => {
+    await failTimes(freshKey(), LOGIN_MAX_FAILURES);
+  });
+
+  it("refuses the next try with a 429, the Hebrew message and how long to wait", async () => {
+    const key = freshKey();
+    await failTimes(key, LOGIN_MAX_FAILURES);
+
+    const error: unknown = await signIn(wrong, key).then(
+      () => null,
+      (thrown: unknown) => thrown,
+    );
+
+    expect(error).toBeInstanceOf(AppError);
+    expect(error).toMatchObject({ status: 429, message: AppError.tooManyAttempts(1).message });
+    expect((error as AppError).retryAfterSeconds).toBeGreaterThan(14 * 60);
+    expect((error as AppError).retryAfterSeconds).toBeLessThanOrEqual(15 * 60);
+  });
+
+  it("refuses the right ID number too while it waits, and sets no cookie", async () => {
+    const key = freshKey();
+    await failTimes(key, LOGIN_MAX_FAILURES);
+    mocks.cookieSet.mockReset();
+
+    await expectAppError(signIn(right, key), AppError.tooManyAttempts(1));
+
+    expect(mocks.cookieSet).not.toHaveBeenCalled();
+  });
+
+  it("refuses before it reads the database: guessing costs the server nothing", async () => {
+    const key = freshKey();
+    await failTimes(key, LOGIN_MAX_FAILURES);
+    mocks.findUnique.mockClear();
+
+    await expectAppError(signIn(wrong, key), AppError.tooManyAttempts(1));
+
+    expect(mocks.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("counts a name that does not exist the same way, so the limit tells nothing about which names are real", async () => {
+    const key = freshKey();
+    mocks.findUnique.mockResolvedValue(null);
+    for (let index = 0; index < LOGIN_MAX_FAILURES; index += 1) {
+      await expectAppError(signIn({ name: "לא קיים", idNumber: ID_NUMBER }, key), AppError.invalidCredentials());
+    }
+
+    await expectAppError(signIn({ name: "לא קיים", idNumber: ID_NUMBER }, key), AppError.tooManyAttempts(1));
+  });
+
+  it("a success clears the count: the failures before it do not add up with the ones after it", async () => {
+    const key = freshKey();
+    await failTimes(key, LOGIN_MAX_FAILURES - 1);
+
+    await signIn(right, key);
+    await failTimes(key, LOGIN_MAX_FAILURES);
+  });
+
+  it("another client, or another name, is not refused", async () => {
+    const key = freshKey();
+    await failTimes(key, LOGIN_MAX_FAILURES);
+
+    await signIn(right, freshKey());
+    await signIn(right, `${key}-other-name`);
+  });
+
+  it("a failed try is not counted before it happens: the first try always reaches the database", async () => {
+    mocks.findUnique.mockClear();
+
+    await signIn(right, freshKey());
+
+    expect(mocks.findUnique).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -133,7 +226,7 @@ describe("cookie Secure flag (COOKIE_SECURE)", () => {
   const readSecureFlag = async (action: "signIn" | "signOut"): Promise<unknown> => {
     mocks.findUnique.mockResolvedValue(teacher);
     if (action === "signIn") {
-      await signIn({ name: teacher.name, idNumber: ID_NUMBER });
+      await signIn({ name: teacher.name, idNumber: ID_NUMBER }, freshKey());
     } else {
       await signOut();
     }

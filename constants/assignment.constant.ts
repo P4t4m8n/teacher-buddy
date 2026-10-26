@@ -1,4 +1,17 @@
-import type { TAssignmentStatus } from "@/types/assignment.type";
+import type { TAssignmentSort, TAssignmentStatus } from "@/types/assignment.type";
+
+export const DEFAULT_ASSIGNMENT_SORT: TAssignmentSort = "-dueDate";
+
+export const ASSIGNMENT_SORT_OPTIONS: { value: TAssignmentSort; label: string }[] = [
+  { value: "-dueDate", label: "תאריך הגשה (החדש ראשון)" },
+  { value: "dueDate", label: "תאריך הגשה (הישן ראשון)" },
+  { value: "title", label: "שם (א-ת)" },
+  { value: "-title", label: "שם (ת-א)" },
+  { value: "-students", label: "מספר תלמידים (מהרב למעט)" },
+  { value: "students", label: "מספר תלמידים (מהמעט לרב)" },
+  { value: "-submitted", label: "הוגשו (מהרב למעט)" },
+  { value: "submitted", label: "הוגשו (מהמעט לרב)" },
+];
 
 export const ASSIGNMENT_STATUS_LABELS: Record<TAssignmentStatus, string> = {
   TODO: "לביצוע",

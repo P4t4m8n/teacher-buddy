@@ -1,9 +1,11 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import { ERROR_MESSAGES } from "../constants/error.constant";
+import { PAGE_SIZE } from "../constants/list.constant";
 import { WRITE_SEED } from "../prisma/seed-data";
 import {
   fillStudentForm,
   getStudentList,
+  classField,
   gotoHydrated,
   randomDigits,
   signInAs,
@@ -11,6 +13,7 @@ import {
   uniqueName,
   uniquePhone,
   type TStudentFormValues,
+  findInList,
 } from "./helpers";
 
 // These tests add students through the form, so they only use a write teacher (see helpers):
@@ -85,8 +88,8 @@ test.describe("add student: the page", () => {
   test("has the three fields, empty, and the teacher's classes in the picker", async ({ page }) => {
     await expect(page.getByLabel("שם התלמיד")).toHaveValue("");
     await expect(page.getByLabel("טלפון")).toHaveValue("");
-    await expect(page.getByLabel("כיתה")).toHaveValue("");
-    await expect(page.getByLabel("כיתה").locator("option")).toHaveText(["בחרו כיתה", ...CLASS_NAMES]);
+    await expect(classField(page)).toHaveValue("");
+    await expect(classField(page).locator("option")).toHaveText(["בחרו כיתה", ...CLASS_NAMES]);
     await expect(page.getByRole("button", { name: "הוספה", exact: true })).toBeVisible();
     await expect(page.getByRole("link", { name: "ביטול" })).toBeVisible();
   });
@@ -138,7 +141,7 @@ test.describe("add student: validation", () => {
     await expect(page.getByText(CLASS_REQUIRED)).toBeVisible();
     await expect(page.getByLabel("שם התלמיד")).toHaveAttribute("aria-invalid", "true");
     await expect(page.getByLabel("טלפון")).toHaveAttribute("aria-invalid", "true");
-    await expect(page.getByLabel("כיתה")).toHaveAttribute("aria-invalid", "true");
+    await expect(classField(page)).toHaveAttribute("aria-invalid", "true");
     await expect(page).toHaveURL(NEW_URL);
   });
 
@@ -152,7 +155,7 @@ test.describe("add student: validation", () => {
     await expect(page.getByText(NAME_BAD_CHARACTERS)).toBeVisible();
     await expect(page.getByLabel("שם התלמיד")).toHaveValue(name);
     await expect(page.getByLabel("טלפון")).toHaveValue(phone);
-    await expect(page.getByLabel("כיתה").locator("option:checked")).toHaveText(CLASS_NAMES[1]);
+    await expect(classField(page).locator("option:checked")).toHaveText(CLASS_NAMES[1]);
     expect(await countStudentsNamed(page, name)).toBe(0);
   });
 
@@ -166,7 +169,7 @@ test.describe("add student: validation", () => {
     await expect(page.getByText(NAME_BAD_CHARACTERS)).toBeVisible();
     await expect(page.getByText(PHONE_INVALID)).toBeVisible();
     await expect(page.getByText(CLASS_REQUIRED)).toHaveCount(0);
-    await expect(page.getByLabel("כיתה")).not.toHaveAttribute("aria-invalid", "true");
+    await expect(classField(page)).not.toHaveAttribute("aria-invalid", "true");
   });
 
   test("shows one message per field, never a stack", async ({ page }) => {
@@ -185,6 +188,7 @@ test.describe("add student: validation", () => {
     await add(page);
 
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, values.name);
     await expect(studentRow(page, values.name)).toBeVisible(SAVED);
   });
 
@@ -214,6 +218,7 @@ test.describe("add student: saving", () => {
     await add(page);
 
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, values.name);
     const row = studentRow(page, values.name);
     await expect(row).toBeVisible(SAVED);
     await expect(row.locator("td").nth(1)).toHaveText(values.className);
@@ -221,15 +226,24 @@ test.describe("add student: saving", () => {
     expect(await countStudentsNamed(page, values.name)).toBe(1);
   });
 
-  test("the number in the heading matches the rows after saving", async ({ page }) => {
-    const values = validValues();
-    await fillStudentForm(page, values);
+  test("the number in the heading matches the rows after saving, up to the 20 that a page shows", async ({ page }) => {
+    await fillStudentForm(page, validValues());
     await add(page);
-    await expect(studentRow(page, values.name)).toBeVisible(SAVED);
+    await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
 
-    const headingCount: number = await studentCount(page);
-
-    expect(await page.locator("tbody tr").count()).toBe(headingCount);
+    // The list is not searched here, so its rows are one page. The count and the rows are two queries, and other tests
+    // add students at the same time, so they can differ by the student added between them. The page is loaded again
+    // until they agree.
+    await expect
+      .poll(
+        async () => {
+          await page.reload();
+          await expect(page.getByRole("heading", { name: /התלמידים שלי/ })).toBeVisible();
+          return (await page.locator("tbody tr").count()) === Math.min(await studentCount(page), PAGE_SIZE);
+        },
+        { timeout: 30_000, intervals: [300] },
+      )
+      .toBe(true);
   });
 
   test("saves the student in the class that was chosen", async ({ page }) => {
@@ -238,6 +252,7 @@ test.describe("add student: saving", () => {
     await fillStudentForm(page, values);
     await add(page);
 
+    await findInList(page, values.name);
     await expect(studentRow(page, values.name).locator("td").nth(1)).toHaveText(CLASS_NAMES[1], SAVED);
   });
 
@@ -248,6 +263,7 @@ test.describe("add student: saving", () => {
     await fillStudentForm(page, values);
     await add(page);
 
+    await findInList(page, values.name);
     await expect(studentRow(page, values.name).locator("td").nth(2)).toHaveText(`050-${digits}`, SAVED);
   });
 
@@ -255,10 +271,12 @@ test.describe("add student: saving", () => {
     const values = validValues();
     await fillStudentForm(page, values);
     await add(page);
+    await findInList(page, values.name);
     await expect(studentRow(page, values.name)).toBeVisible(SAVED);
 
     await page.reload();
 
+    await findInList(page, values.name);
     await expect(studentRow(page, values.name)).toBeVisible();
   });
 
@@ -272,7 +290,7 @@ test.describe("add student: saving", () => {
     await expect(page).toHaveURL(NEW_URL);
     await expect(page.getByLabel("שם התלמיד")).toHaveValue("");
     await expect(page.getByLabel("טלפון")).toHaveValue("");
-    await expect(page.getByLabel("כיתה")).toHaveValue("");
+    await expect(classField(page)).toHaveValue("");
     await expect(page.getByRole("button", { name: "הוספה", exact: true })).toBeEnabled();
   });
 
@@ -287,6 +305,7 @@ test.describe("add student: saving", () => {
     await add(page);
 
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, second.name);
     await expect(studentRow(page, second.name)).toBeVisible(SAVED);
     expect(await countStudentsNamed(page, second.name)).toBe(1);
   });
@@ -343,6 +362,7 @@ test.describe("add student: errors from the server", () => {
     const values = validValues();
     await fillStudentForm(page, values);
     await add(page);
+    await findInList(page, values.name);
     await expect(studentRow(page, values.name)).toBeVisible(SAVED);
 
     await gotoHydrated(page, NEW_URL);
@@ -412,6 +432,7 @@ test.describe("add student: errors from the server", () => {
     await add(page);
 
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, values.name);
     await expect(studentRow(page, values.name)).toBeVisible(SAVED);
   });
 });
@@ -433,6 +454,7 @@ test.describe("add student: narrow screen", () => {
     await add(page);
 
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await findInList(page, values.name);
     await expect(studentRow(page, values.name)).toBeVisible(SAVED);
   });
 

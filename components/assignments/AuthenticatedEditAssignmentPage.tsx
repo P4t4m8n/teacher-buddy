@@ -3,7 +3,7 @@ import AssignmentForm from "@/components/assignments/AssignmentForm";
 import FormPage from "@/components/ui/FormPage";
 import { ASSIGNMENTS_PAGE } from "@/constants/assignment.constant";
 import { SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
-import { toFormValues } from "@/helpers/assignment";
+import { toFormValues, toSubmittedParts } from "@/helpers/assignment";
 import { findAssignment } from "@/services/assignment.service";
 import { getSessionTeacher } from "@/services/auth.service";
 import { getStudents } from "@/services/student.service";
@@ -29,7 +29,11 @@ export default async function AuthenticatedEditAssignmentPage({ params }: TAuthe
 
   return (
     <FormPage title="עריכת מטלה" backHref={ASSIGNMENTS_PAGE} backLabel="חזרה לרשימת המטלות">
-      <AssignmentForm students={students} assignment={{ id: assignment.id, ...toFormValues(assignment) }} />
+      <AssignmentForm
+        students={students}
+        assignment={{ id: assignment.id, ...toFormValues(assignment) }}
+        submittedParts={toSubmittedParts(assignment)}
+      />
     </FormPage>
   );
 }

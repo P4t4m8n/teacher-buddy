@@ -4,6 +4,10 @@ import { prisma } from "@/lib/db";
 import { Prisma } from "@/generated/prisma/client";
 import { isForeignKeyViolation } from "@/lib/prismaError";
 import { isUuid } from "@/lib/uuid";
+import { DEFAULT_ASSIGNMENT_SORT } from "@/constants/assignment.constant";
+import { PAGE_SIZE } from "@/constants/list.constant";
+import { escapeLikePattern } from "@/lib/likePattern";
+import { getPageInfo, type TPageInfo } from "@/lib/pagination";
 import { toIsoDate, toIsraelIsoDate } from "@/helpers/date";
 import {
   ASSIGNMENT_PART_SELECT,
@@ -12,7 +16,10 @@ import {
   type TAssignmentPartRow,
 } from "@/services/assignment.mapper";
 import type {
+  TAssignmentList,
   TAssignmentListItem,
+  TAssignmentListQuery,
+  TAssignmentSort,
   TCreateAssignmentDto,
   TStudentAssignment,
   TTeacherAssignment,
@@ -49,10 +56,42 @@ const toAssignment = (row: TAssignmentRow): TTeacherAssignment => ({
   students: toAssignmentStudents(row.id, row.students),
 });
 
-// The newest due date first. The id is the last tie-break, so the order never changes between requests.
-export const getAssignments = async (teacherId: string): Promise<TAssignmentListItem[]> => {
+// The default order is the newest due date first. The id is the last tie-break, so the order never changes between requests.
+const ASSIGNMENT_ORDER: Record<TAssignmentSort, Prisma.AssignmentOrderByWithRelationInput[]> = {
+  title: [{ title: "asc" }, { id: "asc" }],
+  "-title": [{ title: "desc" }, { id: "asc" }],
+  dueDate: [{ dueDate: "asc" }, { createdAt: "desc" }, { id: "asc" }],
+  "-dueDate": [{ dueDate: "desc" }, { createdAt: "desc" }, { id: "asc" }],
+  students: [{ students: { _count: "asc" } }, { dueDate: "desc" }, { id: "asc" }],
+  "-students": [{ students: { _count: "desc" } }, { dueDate: "desc" }, { id: "asc" }],
+  // The number of students that submitted cannot be ordered by the database (it is a filtered count), so
+  // these two are ordered below. They start from the default order, which stays the order of equal counts.
+  submitted: [{ dueDate: "desc" }, { createdAt: "desc" }, { id: "asc" }],
+  "-submitted": [{ dueDate: "desc" }, { createdAt: "desc" }, { id: "asc" }],
+};
+
+const toSubmittedDirection = (sort: TAssignmentSort): 1 | -1 | 0 => {
+  if (sort === "submitted") return 1;
+  if (sort === "-submitted") return -1;
+  return 0;
+};
+
+// The search is escaped, so a % or _ in it is the character itself and not a wildcard.
+const toAssignmentFilter = (teacherId: string, query: TAssignmentListQuery): Prisma.AssignmentWhereInput => ({
+  teacherId,
+  ...(query.search && { title: { contains: escapeLikePattern(query.search), mode: "insensitive" } }),
+});
+
+// The assignments of the filter in the order of the query. `window` is the part to read (a page), or null for all.
+// The sort by the number that submitted is done here, in memory, so its page is cut here too.
+const listAssignments = async (
+  where: Prisma.AssignmentWhereInput,
+  sort: TAssignmentSort,
+  window: { skip: number; take: number } | null,
+): Promise<TAssignmentListItem[]> => {
+  const direction: 1 | -1 | 0 = toSubmittedDirection(sort);
   const rows = await prisma.assignment.findMany({
-    where: { teacherId },
+    where,
     select: {
       id: true,
       title: true,
@@ -62,10 +101,11 @@ export const getAssignments = async (teacherId: string): Promise<TAssignmentList
       },
       students: { where: { status: { not: "TODO" } }, select: { id: true } },
     },
-    orderBy: [{ dueDate: "desc" }, { createdAt: "desc" }, { id: "asc" }],
+    orderBy: ASSIGNMENT_ORDER[sort],
+    ...(window && direction === 0 && window),
   });
 
-  return rows.map(
+  const items: TAssignmentListItem[] = rows.map(
     (row): TAssignmentListItem => ({
       id: row.id,
       title: row.title,
@@ -74,8 +114,30 @@ export const getAssignments = async (teacherId: string): Promise<TAssignmentList
       submittedCount: row.students.length,
     }),
   );
+  if (direction === 0) return items;
+
+  const sorted: TAssignmentListItem[] = items.sort((a, b): number => direction * (a.submittedCount - b.submittedCount));
+  return window ? sorted.slice(window.skip, window.skip + window.take) : sorted;
 };
 
+export const getAssignments = async (teacherId: string): Promise<TAssignmentListItem[]> => {
+  return listAssignments({ teacherId }, DEFAULT_ASSIGNMENT_SORT, null);
+};
+
+// For the assignments list: one page of the assignments the query matches, in its order, and the numbers the list
+// shows. A page past the end is the last page, so a page that emptied (its assignments were deleted) is never shown empty.
+export const getAssignmentList = async (teacherId: string, query: TAssignmentListQuery): Promise<TAssignmentList> => {
+  const where: Prisma.AssignmentWhereInput = toAssignmentFilter(teacherId, query);
+  const [matched, total] = await Promise.all([
+    prisma.assignment.count({ where }),
+    prisma.assignment.count({ where: { teacherId } }),
+  ]);
+  const { page, pageCount, skip, take }: TPageInfo = getPageInfo(matched, query.page, PAGE_SIZE);
+
+  const assignments: TAssignmentListItem[] = await listAssignments(where, query.sort, { skip, take });
+
+  return { assignments, total, matched, page, pageCount };
+};
 // For pages: null when there is no such assignment. An assignment that does not exist, one of another
 // teacher and an id that is not a uuid all give null, so ids cannot be probed.
 export const findAssignment = async (
@@ -192,10 +254,17 @@ export const updateAssignment = async (
       const ownedCount: number = await tx.student.count({ where: { id: { in: dto.studentIds }, teacherId } });
       if (ownedCount !== dto.studentIds.length) throw AppError.studentNotFound();
 
-      // Only parts that are still TODO are deleted. Any part of a removed student that is left was submitted,
-      // also if it was submitted a moment ago, so the check cannot miss a file that arrived in between.
+      // A removed student's part is deleted when it is still TODO, or when the teacher confirmed removing that
+      // student (its file and grade go with it). Any part of a removed student that is left was submitted and not
+      // confirmed, also if it was submitted a moment ago, so the check cannot miss a file that arrived in between.
       const removed = { assignmentId, studentId: { notIn: dto.studentIds } };
       await tx.assignmentStudent.deleteMany({ where: { ...removed, status: "TODO" } });
+      const confirmedIds: string[] = dto.confirmedRemovalIds ?? [];
+      if (confirmedIds.length > 0) {
+        await tx.assignmentStudent.deleteMany({
+          where: { assignmentId, studentId: { in: confirmedIds, notIn: dto.studentIds } },
+        });
+      }
       if ((await tx.assignmentStudent.count({ where: removed })) > 0) throw AppError.assignmentStudentSubmitted();
 
       await tx.assignmentStudent.createMany({

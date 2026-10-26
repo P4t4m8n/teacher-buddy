@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizePhone } from "./phone";
+import { getPhoneSearchTerms, normalizePhone } from "./phone";
 
 describe("normalizePhone", () => {
   it.each([
@@ -38,5 +38,21 @@ describe("normalizePhone", () => {
     ["text", "abc"],
   ])("returns input that is %s as it is", (_label, input) => {
     expect(normalizePhone(input)).toBe(input);
+  });
+});
+
+describe("getPhoneSearchTerms", () => {
+  it.each([
+    ["digits of a mobile", "0501234567", ["0501234567", "050-1234567", "05-01234567"]],
+    ["digits that are only a code", "05", ["05"]],
+    ["digits just past a 3-digit code", "0501", ["0501", "050-1", "05-01"]],
+    ["digits just past a 2-digit code", "031", ["031", "03-1"]],
+    ["a part with the hyphen", "050-12", ["050-12", "05-012"]],
+    ["a name", "דנה", ["דנה"]],
+    ["letters and digits", "דנה 05", ["דנה 05"]],
+    ["a search with a percent sign", "05%", ["05%"]],
+    ["nothing", "", [""]],
+  ])("gives the terms for %s", (_label, input, expected) => {
+    expect(getPhoneSearchTerms(input)).toEqual(expected);
   });
 });

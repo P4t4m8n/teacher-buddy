@@ -1,4 +1,5 @@
-import { expect, type APIRequestContext, type APIResponse, type Page } from "@playwright/test";
+import { expect, type APIRequestContext, type APIResponse, type Locator, type Page } from "@playwright/test";
+import { hash } from "@node-rs/argon2";
 import { SignJWT } from "jose";
 import { Client } from "pg";
 import { DEMO_TEACHER } from "../constants/demo.constant";
@@ -12,6 +13,12 @@ export const TEACHER = DEMO_TEACHER;
 
 // A teacher id that is not in the database.
 export const UNKNOWN_TEACHER_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
+
+// The server counts failed sign-ins per client address (x-forwarded-for) and name, and refuses a client after a few.
+// A test that signs in with a wrong ID number must be its own client, or it would count against every other test
+// that uses the same teacher, and block them. Use these headers for every such request.
+export const uniqueClientIp = (): string => `10.${randomDigits(3)}.${randomDigits(3)}.${randomDigits(3)}`;
+export const clientHeaders = (ip: string = uniqueClientIp()): Record<string, string> => ({ "x-forwarded-for": ip });
 
 // Signs the request context in as a seeded teacher.
 export const signInAs = async (request: APIRequestContext, seed: TSeedTeacher): Promise<void> => {
@@ -226,12 +233,93 @@ export const gotoHydrated = async (page: Page, url: string): Promise<void> => {
 // The add and edit pages share one form. The class is chosen by its name.
 export type TStudentFormValues = { name: string; phone: string; className: string };
 
+// The class select of the student form. By name, not by label: the dashboard's class filter (kept in the page
+// while another page is open) has a label with the same word.
+export const classField = (page: Page): Locator => page.locator('select[name="classId"]');
+
 export const fillStudentForm = async (page: Page, { name, phone, className }: TStudentFormValues): Promise<void> => {
   await page.getByLabel("שם התלמיד").fill(name);
   await page.getByLabel("טלפון").fill(phone);
-  await page.getByLabel("כיתה").selectOption({ label: className });
+  await classField(page).selectOption({ label: className });
 };
 
 // The submit button says "הוספה" on the add page and "שמירה" on the edit page.
 export const submitStudentForm = (page: Page, label: "הוספה" | "שמירה"): Promise<void> =>
   page.getByRole("button", { name: label, exact: true }).click();
+
+// A teacher made only for one test file, with many students and assignments, so a list has more than one page.
+// The demo teachers cannot be used for this: they are read by many tests and must not change.
+//   Students "תלמיד 001" to "תלמיד NNN" in two classes (an even number is in the first class), phone "050-000NNNN".
+//   Assignments "מטלה 001" to "מטלה NNN": number g is due on 2026-01-01 plus g days, is given to the first 3 students,
+//   and g % 4 of those 3 have submitted. So the newest due date is the highest number.
+export type TBulkTeacher = {
+  id: string;
+  name: string;
+  idNumber: string;
+  classNames: [string, string];
+};
+
+export const BULK_STUDENT_COUNT = 45;
+export const BULK_ASSIGNMENT_COUNT = 45;
+
+export const createBulkTeacher = async (): Promise<TBulkTeacher> => {
+  const name: string = `מורה לדפדוף ${randomLetters(10)}`;
+  const idNumber: string = randomDigits(9);
+  const classNames: [string, string] = ["כיתה ראשונה", "כיתה שנייה"];
+  const passwordHash: string = await hash(idNumber);
+
+  const id: string = await withTestDb(async (client) => {
+    const teacher = await client.query(
+      `insert into "Teacher" (id, name, "passwordHash") values (gen_random_uuid(), $1, $2) returning id`,
+      [name, passwordHash],
+    );
+    const teacherId: string = teacher.rows[0].id;
+    const classes = await client.query(
+      `insert into "Class" (id, name, "teacherId")
+       select gen_random_uuid(), unnest($1::text[]), $2::uuid returning id, name`,
+      [classNames, teacherId],
+    );
+    const classId = (className: string): string => classes.rows.find((row) => row.name === className).id;
+    await client.query(
+      `insert into "Student" (id, name, phone, "teacherId", "classId")
+       select gen_random_uuid(), 'תלמיד ' || lpad(g::text, 3, '0'), '050-' || lpad(g::text, 7, '0'), $1::uuid,
+              (case when g % 2 = 0 then $2 else $3 end)::uuid
+       from generate_series(1, $4::int) g`,
+      [teacherId, classId(classNames[0]), classId(classNames[1]), BULK_STUDENT_COUNT],
+    );
+    await client.query(
+      `with a as (
+         insert into "Assignment" (id, title, description, "dueDate", "teacherId")
+         select gen_random_uuid(), 'מטלה ' || lpad(g::text, 3, '0'), '<p>בדיקה</p>', date '2026-01-01' + g, $1::uuid
+         from generate_series(1, $2::int) g
+         returning id, title
+       ), s as (
+         select id, row_number() over (order by name) as rn from "Student" where "teacherId" = $1::uuid order by name limit 3
+       )
+       insert into "AssignmentStudent" (id, "assignmentId", "studentId", status, "submittedAt")
+       select gen_random_uuid(), a.id, s.id,
+              (case when s.rn <= right(a.title, 3)::int % 4 then 'SUBMITTED' else 'TODO' end)::"AssignmentStatus",
+              case when s.rn <= right(a.title, 3)::int % 4 then now() end
+       from a cross join s`,
+      [teacherId, BULK_ASSIGNMENT_COUNT],
+    );
+    return teacherId;
+  });
+
+  return { id, name, idNumber, classNames };
+};
+
+// Deletes the teacher and, by the database's cascade, everything that belongs to it.
+export const deleteBulkTeacher = (teacher: TBulkTeacher): Promise<void> =>
+  withTestDb(async (client) => {
+    await client.query(`delete from "Teacher" where id = $1::uuid`, [teacher.id]);
+  });
+
+// The students and the assignments lists show 20 rows at a time, and the lists of the write teachers grow with every
+// test that adds data. So a test that needs the row it made looks for it by its name, as a teacher would: by searching.
+export const findInList = async (page: Page, text: string): Promise<void> => {
+  await page.getByRole("searchbox", { name: "חיפוש" }).fill(text);
+};
+
+// The address of a list that is already searching for this text.
+export const listAddress = (path: string, search: string): string => `${path}?q=${encodeURIComponent(search)}`;

@@ -2,7 +2,7 @@ import { expect, test, type Locator, type Page, type Route } from "@playwright/t
 import { ERROR_MESSAGES } from "../constants/error.constant";
 import { WRITE_SEED } from "../prisma/seed-data";
 import type { TStudent } from "../types/student.type";
-import { getClassList, getStudentList, gotoHydrated, signInAs, uniqueName, uniquePhone } from "./helpers";
+import { getClassList, getStudentList, gotoHydrated, listAddress, signInAs, uniqueName, uniquePhone } from "./helpers";
 
 // These tests delete students, so they only use a write teacher and only delete students they created
 // themselves (see helpers).
@@ -14,10 +14,10 @@ const NOT_FOUND_MESSAGE = ERROR_MESSAGES.studentNotFound;
 // it can take longer than the default 5 seconds, so the checks that wait for it are given more time.
 const REFRESH = { timeout: 20_000 };
 
-const createStudent = async (page: Page): Promise<TStudent> => {
+const createStudent = async (page: Page, name: string = uniqueName()): Promise<TStudent> => {
   const [firstClass] = await getClassList(page.request);
   const response = await page.request.post("/api/students", {
-    data: { name: uniqueName(), phone: uniquePhone(), classId: firstClass.id },
+    data: { name, phone: uniquePhone(), classId: firstClass.id },
   });
   expect(response.status()).toBe(201);
   return (await response.json()).student;
@@ -42,10 +42,12 @@ const interceptDelete = (page: Page, student: TStudent, handler: (route: Route) 
     route.request().method() === "DELETE" ? handler(route) : route.fallback(),
   );
 
-const openDashboard = async (page: Page): Promise<TStudent> => {
+// The list shows 20 students at a time and the write teacher has more, so the dashboard is opened already searching
+// for the student (by its name, or by `search` when the test needs more than one student in the list).
+const openDashboard = async (page: Page, name?: string, search?: string): Promise<TStudent> => {
   await signInAs(page.request, WRITE_SEED);
-  const student: TStudent = await createStudent(page);
-  await gotoHydrated(page, DASHBOARD_URL);
+  const student: TStudent = await createStudent(page, name);
+  await gotoHydrated(page, listAddress(DASHBOARD_URL, search ?? student.name));
   await expect(studentRow(page, student)).toBeVisible();
   return student;
 };
@@ -99,8 +101,9 @@ test.describe("delete student: wide screen", () => {
   });
 
   test("deletes only that student", async ({ page }) => {
-    const first: TStudent = await openDashboard(page);
-    const second: TStudent = await createStudent(page);
+    const group: string = uniqueName();
+    const first: TStudent = await openDashboard(page, `${group} א`, group);
+    const second: TStudent = await createStudent(page, `${group} ב`);
     await page.reload();
     await expect(studentRow(page, second)).toBeVisible();
 

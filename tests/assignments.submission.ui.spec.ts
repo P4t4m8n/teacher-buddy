@@ -4,7 +4,17 @@ import { formatDate } from "../helpers/date";
 import { WRITE_SEED } from "../prisma/seed-data";
 import type { TAssignmentStudent, TTeacherAssignment } from "../types/assignment.type";
 import type { TStudent } from "../types/student.type";
-import { getAssignmentById, getSeededStudentList, gotoHydrated, randomLetters, removeViaApi, signInAs, withTestDb } from "./helpers";
+import {
+  findInList,
+  getAssignmentById,
+  getSeededStudentList,
+  gotoHydrated,
+  listAddress,
+  randomLetters,
+  removeViaApi,
+  signInAs,
+  withTestDb,
+} from "./helpers";
 
 // These tests save files and grades, so they only use a write teacher and only change assignments they created
 // themselves (see helpers). The global setup removes what they create before a run.
@@ -715,7 +725,7 @@ test.describe("student modal on the student page", () => {
 test.describe("student modal: the pages show the change when they are opened with a link", () => {
   test("after a save on the assignment page, the list shows the new count of submitted students", async ({ page }) => {
     const fixture = await createFixture(page);
-    await gotoHydrated(page, LIST_URL);
+    await gotoHydrated(page, listAddress(LIST_URL, fixture.assignment.title));
     const listRow = (): Locator => page.locator("tbody tr:visible").filter({ hasText: fixture.assignment.title });
     await expect(listRow().locator("td").nth(3)).toHaveText("0 מתוך 2");
     await listRow().getByRole("link", { name: `פרטים עבור ${fixture.assignment.title}` }).click();
@@ -728,6 +738,7 @@ test.describe("student modal: the pages show the change when they are opened wit
     await page.getByRole("link", { name: "חזרה לרשימת המטלות" }).click();
 
     await expect(page).toHaveURL(LIST_URL);
+    await findInList(page, fixture.assignment.title);
     await expect(listRow().locator("td").nth(3)).toHaveText("1 מתוך 2", SAVED);
   });
 

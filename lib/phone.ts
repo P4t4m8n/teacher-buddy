@@ -8,3 +8,17 @@ export const normalizePhone = (phone: string): string => {
   const codeLength: number = digits.length === 10 ? 3 : 2;
   return `${digits.slice(0, codeLength)}-${digits.slice(codeLength)}`;
 };
+
+// What a phone search looks for. The phone is stored with a hyphen, but a teacher may type it without one, so a
+// search made only of digits is also looked for with the hyphen after the 3-digit code (mobile) and the 2-digit
+// code (landline). Any other search is looked for as it is.
+export const getPhoneSearchTerms = (search: string): string[] => {
+  if (!/^[\d\s-]+$/.test(search)) return [search];
+
+  const digits: string = search.replace(/\D/g, "");
+  const terms: string[] = [search];
+  for (const codeLength of [3, 2]) {
+    if (digits.length > codeLength) terms.push(`${digits.slice(0, codeLength)}-${digits.slice(codeLength)}`);
+  }
+  return [...new Set(terms)];
+};

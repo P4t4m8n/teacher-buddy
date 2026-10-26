@@ -5,6 +5,7 @@
 export const ERROR_MESSAGES = {
   unauthorized: "נדרשת התחברות למערכת",
   invalidCredentials: "שם או תעודת זהות שגויים",
+  tooManyAttempts: "יותר מדי ניסיונות כניסה שגויים, נסו שוב בעוד כמה דקות",
   validation: "הנתונים שהוזנו אינם תקינים",
   invalidJson: "גוף הבקשה אינו תקין",
   invalidFormData: "הבקשה אינה תקינה",

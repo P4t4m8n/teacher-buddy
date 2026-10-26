@@ -6,12 +6,15 @@ import type { TApiFieldErrors } from "@/types/api.type";
 export class AppError extends Error {
   readonly status: number;
   readonly fields?: TApiFieldErrors;
+  // For a 429: how long the client must wait, sent as the Retry-After header.
+  readonly retryAfterSeconds?: number;
 
-  constructor(message: string, status: number, fields?: TApiFieldErrors) {
+  constructor(message: string, status: number, fields?: TApiFieldErrors, retryAfterSeconds?: number) {
     super(message);
     this.name = "AppError";
     this.status = status;
     this.fields = fields;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 
   static unauthorized(): AppError {
@@ -20,6 +23,10 @@ export class AppError extends Error {
 
   static invalidCredentials(): AppError {
     return new AppError(ERROR_MESSAGES.invalidCredentials, 401);
+  }
+
+  static tooManyAttempts(retryAfterSeconds: number): AppError {
+    return new AppError(ERROR_MESSAGES.tooManyAttempts, 429, undefined, retryAfterSeconds);
   }
 
   static validation(fields: TApiFieldErrors): AppError {

@@ -12,6 +12,7 @@ import {
   randomLetters,
   removeViaApi,
   signInAs,
+  findInList,
 } from "./helpers";
 
 // These tests add assignments through the form, so they only use a write teacher (see helpers): the tests that
@@ -195,6 +196,7 @@ test.describe("add assignment: validation", () => {
     await add(page);
 
     await expect(page).toHaveURL(LIST_URL, SAVED);
+    await findInList(page, values.title);
     await expect(assignmentRow(page, values.title)).toBeVisible(SAVED);
     expect(await countNamed(page, values.title)).toBe(1);
   });
@@ -212,6 +214,7 @@ test.describe("add assignment: saving", () => {
     await add(page);
 
     await expect(page).toHaveURL(LIST_URL, SAVED);
+    await findInList(page, values.title);
     const row = assignmentRow(page, values.title);
     await expect(row).toBeVisible(SAVED);
     await expect(row.locator("td").nth(1)).toHaveText(formatDate("2031-02-03"));
@@ -301,6 +304,7 @@ test.describe("add assignment: saving", () => {
     await expect(page).toHaveURL(LIST_URL, SAVED);
 
     await page.reload();
+    await findInList(page, values.title);
     await assignmentRow(page, values.title).getByRole("link", { name: `פרטים עבור ${values.title}` }).click();
 
     await expect(page.getByRole("heading", { name: values.title, level: 1 })).toBeVisible();
@@ -336,6 +340,7 @@ test.describe("add assignment: saving", () => {
     await add(page);
 
     await expect(page).toHaveURL(LIST_URL, SAVED);
+    await findInList(page, second.title);
     await expect(assignmentRow(page, second.title)).toBeVisible(SAVED);
     expect(await countNamed(page, second.title)).toBe(1);
   });
@@ -480,6 +485,7 @@ test.describe("add assignment: errors from the server", () => {
     await add(page);
 
     await expect(page).toHaveURL(LIST_URL, SAVED);
+    await findInList(page, values.title);
     await expect(assignmentRow(page, values.title)).toBeVisible(SAVED);
     expect(await countNamed(page, values.title)).toBe(1);
   });
@@ -498,6 +504,7 @@ test.describe("add assignment: narrow screen", () => {
     await add(page);
 
     await expect(page).toHaveURL(LIST_URL, SAVED);
+    await findInList(page, values.title);
     await expect(assignmentRow(page, values.title)).toBeVisible(SAVED);
   });
 });
