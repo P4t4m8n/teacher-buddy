@@ -13,24 +13,17 @@ import type { TStudent } from "@/types/student.type";
 type TAssignmentFormProps = {
   students: TStudent[];
   // With an assignment the form edits it. Without one it adds a new assignment.
-  assignment?: TAssignmentFormValues;
+  assignment?: TAssignmentFormValues & { id: string };
 };
 
 export default function AssignmentForm({ students, assignment }: TAssignmentFormProps) {
-  const { isPending, errorMessage, fieldErrors, formKey, handleSubmit } = useAssignmentForm();
-
-  // Saving an edit is the next step, so for now the edit form's submit does nothing.
-  const handleEditSubmit = (e: React.SubmitEvent<HTMLFormElement>): void => {
-    e.preventDefault();
-  };
+  const { isPending, errorMessage, fieldErrors, formKey, handleSubmit } = useAssignmentForm({
+    assignmentId: assignment?.id,
+    dataKey: assignment ? JSON.stringify(assignment) : "new",
+  });
 
   return (
-    <form
-      key={formKey}
-      onSubmit={assignment ? handleEditSubmit : handleSubmit}
-      className="flex flex-col gap-5"
-      noValidate
-    >
+    <form key={formKey} onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
       <FormField
         label="שם המטלה"
         name="title"

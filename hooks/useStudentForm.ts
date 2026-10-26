@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useFormSaveState } from "@/hooks/useFormSaveState";
 import ApiError from "@/services/ApiError.client";
 import { studentClientService } from "@/services/student.client.service";
 import { DASHBOARD_PAGE } from "@/constants/auth.constant";
@@ -11,11 +12,13 @@ import type { TCreateStudentDto } from "@/types/student.type";
 type TUseStudentFormOptions = {
   // With an id the form updates that student. Without one it creates a new student.
   studentId?: string;
+  // The saved data of the student that is edited, as text, so the form starts again when it changes.
+  dataKey: string;
 };
 
-export const useStudentForm = ({ studentId }: TUseStudentFormOptions) => {
+export const useStudentForm = ({ studentId, dataKey }: TUseStudentFormOptions) => {
   const router = useRouter();
-  const [isPending, setIsPending] = useState<boolean>(false);
+  const { isPending, setIsPending, markSaved, formKey } = useFormSaveState(dataKey);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TApiFieldErrors>({});
 
@@ -42,7 +45,8 @@ export const useStudentForm = ({ studentId }: TUseStudentFormOptions) => {
     try {
       if (studentId) await studentClientService.updateStudent(studentId, dto);
       else await studentClientService.createStudent(dto);
-      // Pending stays on until the page changes, so the form cannot be sent twice.
+      // Pending stays on until the page is hidden, so the form cannot be sent twice.
+      markSaved();
       router.push(DASHBOARD_PAGE);
     } catch (error: unknown) {
       const formErrors: TFormErrors = ApiError.from(error).toFormErrors();
@@ -52,5 +56,5 @@ export const useStudentForm = ({ studentId }: TUseStudentFormOptions) => {
     }
   };
 
-  return { isPending, errorMessage, fieldErrors, handleSubmit };
+  return { isPending, errorMessage, fieldErrors, formKey, handleSubmit };
 };

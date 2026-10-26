@@ -5,7 +5,8 @@ import { WRITE_SEED } from "../prisma/seed-data";
 import type { TTeacherAssignment } from "../types/assignment.type";
 import {
   createStudent,
-  getAssignmentsWithStudents,
+  getAssignmentByTitle,
+  getAssignmentList,
   getStudentList,
   gotoHydrated,
   randomLetters,
@@ -64,11 +65,11 @@ const add = (page: Page): Promise<void> => submitButton(page).click();
 
 // Tests run in parallel on the same teacher, so a global count is not stable. Checks use the assignment that a
 // test created, found by its random title through the API.
-const findCreated = async (page: Page, title: string): Promise<TTeacherAssignment | undefined> =>
-  (await getAssignmentsWithStudents(page.request)).find((assignment) => assignment.title === title);
+const findCreated = (page: Page, title: string): Promise<TTeacherAssignment | undefined> =>
+  getAssignmentByTitle(page.request, title);
 
 const countNamed = async (page: Page, title: string): Promise<number> =>
-  (await getAssignmentsWithStudents(page.request)).filter((assignment) => assignment.title === title).length;
+  (await getAssignmentList(page.request)).filter((assignment) => assignment.title === title).length;
 
 const assignmentRow = (page: Page, title: string): Locator => page.locator("tbody tr:visible").filter({ hasText: title });
 

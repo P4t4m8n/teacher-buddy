@@ -15,12 +15,13 @@ type TStudentFormProps = {
 };
 
 export default function StudentForm({ classes, student }: TStudentFormProps) {
-  const { isPending, errorMessage, fieldErrors, handleSubmit } = useStudentForm({
+  const { isPending, errorMessage, fieldErrors, formKey, handleSubmit } = useStudentForm({
     studentId: student?.id,
+    dataKey: student ? JSON.stringify([student.name, student.phone, student.class.id]) : "new",
   });
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+    <form key={formKey} onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
       <FormField
         label="שם התלמיד"
         name="name"

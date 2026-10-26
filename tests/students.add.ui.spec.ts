@@ -262,16 +262,44 @@ test.describe("add student: saving", () => {
     await expect(studentRow(page, values.name)).toBeVisible();
   });
 
-  test("the add page is empty again after saving one", async ({ page }) => {
+  test("the add page is empty again after saving one, also when it is opened with the link", async ({ page }) => {
     await fillStudentForm(page, validValues());
     await add(page);
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
 
-    await gotoHydrated(page, NEW_URL);
+    await page.getByRole("link", { name: "הוספת תלמיד" }).click();
 
+    await expect(page).toHaveURL(NEW_URL);
     await expect(page.getByLabel("שם התלמיד")).toHaveValue("");
     await expect(page.getByLabel("טלפון")).toHaveValue("");
     await expect(page.getByLabel("כיתה")).toHaveValue("");
+    await expect(page.getByRole("button", { name: "הוספה", exact: true })).toBeEnabled();
+  });
+
+  test("a second student can be added from the same page opened with the link", async ({ page }) => {
+    await fillStudentForm(page, validValues());
+    await add(page);
+    await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await page.getByRole("link", { name: "הוספת תלמיד" }).click();
+    const second = validValues();
+
+    await fillStudentForm(page, second);
+    await add(page);
+
+    await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await expect(studentRow(page, second.name)).toBeVisible(SAVED);
+    expect(await countStudentsNamed(page, second.name)).toBe(1);
+  });
+
+  test("a draft that was not saved is still there when the page is opened again", async ({ page }) => {
+    const name = uniqueName();
+    await page.getByLabel("שם התלמיד").fill(name);
+    await page.getByRole("link", { name: "ביטול" }).click();
+    await expect(page).toHaveURL(DASHBOARD_URL);
+
+    await page.getByRole("link", { name: "הוספת תלמיד" }).click();
+
+    await expect(page.getByLabel("שם התלמיד")).toHaveValue(name);
   });
 
   test("while saving, the submit button is disabled and says so, until the page changes", async ({ page }) => {

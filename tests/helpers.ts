@@ -54,15 +54,29 @@ export const getAssignmentList = async (request: APIRequestContext): Promise<TAs
   return (await response.json()).assignments;
 };
 
-// Every assignment of the signed-in teacher with its students, in the order of the list.
-export const getAssignmentsWithStudents = async (request: APIRequestContext): Promise<TTeacherAssignment[]> =>
-  Promise.all(
-    (await getAssignmentList(request)).map(async ({ id }: TAssignmentListItem): Promise<TTeacherAssignment> => {
-      const response = await getWithRetry(request, `/api/assignments/${id}`);
-      expect(response.status()).toBe(200);
-      return (await response.json()).assignment;
-    }),
+// One assignment of the signed-in teacher with its students, or undefined when it does not exist (any more).
+export const getAssignmentById = async (request: APIRequestContext, id: string): Promise<TTeacherAssignment | undefined> => {
+  const response = await getWithRetry(request, `/api/assignments/${id}`);
+  if (response.status() === 404) return undefined;
+  expect(response.status()).toBe(200);
+  return (await response.json()).assignment;
+};
+
+// The assignment with this title (the tests give every title once), found through the light list and then read
+// alone. Reading every assignment of a write teacher would grow with every test of the run.
+export const getAssignmentByTitle = async (request: APIRequestContext, title: string): Promise<TTeacherAssignment | undefined> => {
+  const item: TAssignmentListItem | undefined = (await getAssignmentList(request)).find((candidate) => candidate.title === title);
+  return item ? getAssignmentById(request, item.id) : undefined;
+};
+
+// Every assignment of the signed-in teacher with its students, in the order of the list. An assignment that
+// another test deleted between the list and its details is left out. For the demo teachers, who have a few.
+export const getAssignmentsWithStudents = async (request: APIRequestContext): Promise<TTeacherAssignment[]> => {
+  const found = await Promise.all(
+    (await getAssignmentList(request)).map(({ id }: TAssignmentListItem) => getAssignmentById(request, id)),
   );
+  return found.filter((assignment): assignment is TTeacherAssignment => assignment !== undefined);
+};
 
 // One of the seeded assignments, by its title (the seed gives every title once per teacher).
 export const findByTitle = (assignments: TTeacherAssignment[], title: string): TTeacherAssignment => {

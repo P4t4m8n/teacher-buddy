@@ -265,6 +265,42 @@ test.describe("edit student: saving", () => {
     await expect(row.locator("td").nth(2)).toHaveText(values.phone);
   });
 
+  test("opening the edit page again after saving shows the saved values, and the save button works", async ({ page }) => {
+    const student: TStudent = await openEditPage(page);
+    const name: string = uniqueName();
+    const digits = randomDigits(7);
+    await page.getByLabel("שם התלמיד").fill(name);
+    await page.getByLabel("טלפון").fill(`050${digits}`);
+    await save(page);
+    await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await expect(studentRow(page, name)).toBeVisible(SAVED);
+
+    await page.getByRole("link", { name: `עריכה עבור ${name}` }).click();
+
+    await expect(page).toHaveURL(editUrl(student));
+    await expect(page.getByLabel("שם התלמיד")).toHaveValue(name);
+    // The phone is shown in the format the server saved it in, not as it was typed.
+    await expect(page.getByLabel("טלפון")).toHaveValue(`050-${digits}`);
+    await expect(page.getByRole("button", { name: "שמירה", exact: true })).toBeEnabled();
+  });
+
+  test("a student can be edited twice in a row, each time from the edit link", async ({ page }) => {
+    const student: TStudent = await openEditPage(page);
+    const first: string = uniqueName();
+    await page.getByLabel("שם התלמיד").fill(first);
+    await save(page);
+    await expect(studentRow(page, first)).toBeVisible(SAVED);
+    await page.getByRole("link", { name: `עריכה עבור ${first}` }).click();
+    const second: string = uniqueName();
+
+    await page.getByLabel("שם התלמיד").fill(second);
+    await save(page);
+
+    await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
+    await expect(studentRow(page, second)).toBeVisible(SAVED);
+    expect((await fromApi(page, student))?.name).toBe(second);
+  });
+
   test("saving without changes works, and keeps the student", async ({ page }) => {
     const student: TStudent = await openEditPage(page);
 

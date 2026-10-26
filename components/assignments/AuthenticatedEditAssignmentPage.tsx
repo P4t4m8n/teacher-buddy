@@ -29,7 +29,7 @@ export default async function AuthenticatedEditAssignmentPage({ params }: TAuthe
 
   return (
     <FormPage title="עריכת מטלה" backHref={ASSIGNMENTS_PAGE} backLabel="חזרה לרשימת המטלות">
-      <AssignmentForm students={students} assignment={toFormValues(assignment)} />
+      <AssignmentForm students={students} assignment={{ id: assignment.id, ...toFormValues(assignment) }} />
     </FormPage>
   );
 }
