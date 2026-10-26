@@ -22,6 +22,7 @@ describe("AppError", () => {
     ["assignmentNotFound", AppError.assignmentNotFound(), 404, ERROR_MESSAGES.assignmentNotFound],
     ["invalidFormData", AppError.invalidFormData(), 400, ERROR_MESSAGES.invalidFormData],
     ["fileTooLarge", AppError.fileTooLarge(), 413, ERROR_MESSAGES.fileTooLarge],
+    ["fileNotFound", AppError.fileNotFound(), 404, ERROR_MESSAGES.fileNotFound],
     [
       "assignmentStudentSubmitted",
       AppError.assignmentStudentSubmitted(),

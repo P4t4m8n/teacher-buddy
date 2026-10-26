@@ -38,6 +38,10 @@ export class AppError extends Error {
     return new AppError(ERROR_MESSAGES.fileTooLarge, 413);
   }
 
+  static fileNotFound(): AppError {
+    return new AppError(ERROR_MESSAGES.fileNotFound, 404);
+  }
+
   static classNotFound(): AppError {
     return new AppError(ERROR_MESSAGES.classNotFound, 404);
   }

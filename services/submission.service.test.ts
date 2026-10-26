@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   upsert: vi.fn(),
   findUniqueOrThrow: vi.fn(),
+  fileFindFirst: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -19,10 +20,15 @@ vi.mock("@/lib/db", () => {
     },
     submissionFile: { upsert: mocks.upsert },
   };
-  return { prisma: { $transaction: (run: (client: typeof tx) => Promise<unknown>) => run(tx) } };
+  return {
+    prisma: {
+      $transaction: (run: (client: typeof tx) => Promise<unknown>) => run(tx),
+      submissionFile: { findFirst: mocks.fileFindFirst },
+    },
+  };
 });
 
-import { uploadSubmission } from "./submission.service";
+import { getSubmissionFile, uploadSubmission } from "./submission.service";
 
 const TEACHER_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
 const ASSIGNMENT_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f90";
@@ -189,5 +195,49 @@ describe("uploadSubmission", () => {
     mocks.upsert.mockRejectedValue(failure);
 
     await expect(uploadSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, pdf())).rejects.toBe(failure);
+  });
+});
+
+describe("getSubmissionFile", () => {
+  const stored = { name: "עבודה.pdf", mimeType: "application/pdf", data: new Uint8Array([0x25, 0x50, 0x44, 0x46]) };
+
+  it("asks for the file of this teacher's assignment only", async () => {
+    mocks.fileFindFirst.mockResolvedValue(stored);
+
+    await getSubmissionFile(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID);
+
+    expect(mocks.fileFindFirst).toHaveBeenCalledWith({
+      where: { assignmentStudent: { assignmentId: ASSIGNMENT_ID, studentId: STUDENT_ID, assignment: { teacherId: TEACHER_ID } } },
+      select: { name: true, mimeType: true, data: true },
+    });
+  });
+
+  it("gives the name, the type and the bytes", async () => {
+    mocks.fileFindFirst.mockResolvedValue(stored);
+
+    expect(await getSubmissionFile(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID)).toEqual(stored);
+  });
+
+  it("is a 404 when there is no file", async () => {
+    mocks.fileFindFirst.mockResolvedValue(null);
+
+    await expectAppError(getSubmissionFile(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID), AppError.fileNotFound());
+  });
+
+  it.each([
+    ["the assignment id", "abc", STUDENT_ID],
+    ["the student id", ASSIGNMENT_ID, "abc"],
+    ["both ids", "' OR 1=1 --", ""],
+  ])("is the same 404 when %s is not a uuid, without touching the database", async (_label, assignmentId, studentId) => {
+    await expectAppError(getSubmissionFile(TEACHER_ID, assignmentId, studentId), AppError.fileNotFound());
+
+    expect(mocks.fileFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("does not hide database errors", async () => {
+    const failure = new Error("connection lost");
+    mocks.fileFindFirst.mockRejectedValue(failure);
+
+    await expect(getSubmissionFile(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID)).rejects.toBe(failure);
   });
 });

@@ -434,3 +434,189 @@ test.describe("PUT /api/assignments/[id]/students/[studentId]/file: not found", 
     }
   });
 });
+
+const fileUrl = (assignmentId: string, studentId: string): string =>
+  `${ASSIGNMENTS_URL}/${assignmentId}/students/${studentId}/file`;
+
+test.describe("GET /api/assignments/[id]/students/[studentId]/file: authorization", () => {
+  test("returns 401 without a session", async ({ request }) => {
+    const response = await request.get(fileUrl(UNKNOWN_TEACHER_ID, UNKNOWN_TEACHER_ID));
+
+    expect(response.status()).toBe(401);
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.unauthorized });
+  });
+
+  test("returns 401 for a forged cookie", async ({ request }) => {
+    const response = await request.get(fileUrl(UNKNOWN_TEACHER_ID, UNKNOWN_TEACHER_ID), {
+      headers: { Cookie: "session=forged.token.value" },
+    });
+
+    expect(response.status()).toBe(401);
+  });
+
+  test("returns 401 for a valid token of a teacher that does not exist", async ({ request }) => {
+    const response = await request.get(fileUrl(UNKNOWN_TEACHER_ID, UNKNOWN_TEACHER_ID), {
+      headers: { Cookie: `session=${await signToken(UNKNOWN_TEACHER_ID, "1h")}` },
+    });
+
+    expect(response.status()).toBe(401);
+  });
+
+  test("returns 401 again after logout, for a file that was readable", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+    await upload(request, assignment.id, students[0].id, pdfFile());
+    expect((await request.get(fileUrl(assignment.id, students[0].id))).status()).toBe(200);
+
+    await request.post("/api/auth/logout");
+
+    expect((await request.get(fileUrl(assignment.id, students[0].id))).status()).toBe(401);
+  });
+});
+
+test.describe("GET /api/assignments/[id]/students/[studentId]/file: the file", () => {
+  test("gives the exact bytes that were uploaded, with the headers that show a PDF in the page", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+    const file: TUploadFile = pdfFile("work.pdf", 6000);
+    file.buffer.fill(0xcd, 50);
+    await upload(request, assignment.id, students[0].id, file);
+
+    const response = await request.get(fileUrl(assignment.id, students[0].id));
+
+    expect(response.status()).toBe(200);
+    expect((await response.body()).equals(file.buffer)).toBe(true);
+    expect(response.headers()).toMatchObject({
+      "content-type": "application/pdf",
+      "content-length": "6000",
+      "x-content-type-options": "nosniff",
+      "cache-control": "private, no-store",
+    });
+    expect(response.headers()["content-disposition"]).toBe(`inline; filename="work.pdf"; filename*=UTF-8''work.pdf`);
+  });
+
+  test("gives an image with the type that was found in its bytes", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+    const buffer: Buffer = withPadding(PNG_HEADER, 500);
+    await upload(request, assignment.id, students[0].id, { name: "scan.pdf", mimeType: "application/pdf", buffer });
+
+    const response = await request.get(fileUrl(assignment.id, students[0].id));
+
+    expect(response.headers()["content-type"]).toBe("image/png");
+    expect((await response.body()).equals(buffer)).toBe(true);
+  });
+
+  test("gives the real name, in Hebrew, in the header", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+    await upload(request, assignment.id, students[0].id, pdfFile("עבודה של נועה (סופי).pdf"));
+
+    const disposition: string = (await request.get(fileUrl(assignment.id, students[0].id))).headers()["content-disposition"];
+
+    const encoded = /filename\*=UTF-8''(.+)$/.exec(disposition)?.[1] ?? "";
+    expect(decodeURIComponent(encoded)).toBe("עבודה של נועה (סופי).pdf");
+    expect(disposition).toMatch(/^inline;/);
+  });
+
+  test("is the link that the assignment gives for the file", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+    const file: TUploadFile = pdfFile("a.pdf", 321);
+    await upload(request, assignment.id, students[0].id, file);
+    const part: TAssignmentStudent = await partOf(request, assignment.id, students[0].id);
+
+    const response = await request.get(part.file?.url ?? "");
+
+    expect(response.status()).toBe(200);
+    expect((await response.body()).equals(file.buffer)).toBe(true);
+  });
+
+  test("gives the new file after the file was replaced", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+    await upload(request, assignment.id, students[0].id, pdfFile("old.pdf", 100));
+    const replacement: Buffer = withPadding(JPEG_HEADER, 250);
+    await upload(request, assignment.id, students[0].id, { name: "new.jpg", mimeType: "image/jpeg", buffer: replacement });
+
+    const response = await request.get(fileUrl(assignment.id, students[0].id));
+
+    expect(response.headers()["content-type"]).toBe("image/jpeg");
+    expect((await response.body()).equals(replacement)).toBe(true);
+  });
+
+  test("gives each student their own file", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+    const first: TUploadFile = pdfFile("a.pdf", 100);
+    const second: TUploadFile = { name: "b.png", mimeType: "image/png", buffer: withPadding(PNG_HEADER, 200) };
+    await upload(request, assignment.id, students[0].id, first);
+    await upload(request, assignment.id, students[1].id, second);
+
+    expect((await (await request.get(fileUrl(assignment.id, students[0].id))).body()).equals(first.buffer)).toBe(true);
+    expect((await (await request.get(fileUrl(assignment.id, students[1].id))).body()).equals(second.buffer)).toBe(true);
+  });
+
+  test("never shows a stored type that cannot be uploaded: it is a download of unknown type", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+    await upload(request, assignment.id, students[0].id, pdfFile("page.pdf", 100));
+    await withTestDb((client) =>
+      client.query(
+        `update "SubmissionFile" set "mimeType" = 'text/html'
+         where "assignmentStudentId" in (select id from "AssignmentStudent" where "assignmentId" = $1::uuid)`,
+        [assignment.id],
+      ),
+    );
+
+    const response = await request.get(fileUrl(assignment.id, students[0].id));
+
+    expect(response.status()).toBe(200);
+    expect(response.headers()["content-type"]).toBe("application/octet-stream");
+    expect(response.headers()["content-disposition"]).toMatch(/^attachment;/);
+    expect(response.headers()["x-content-type-options"]).toBe("nosniff");
+  });
+});
+
+test.describe("GET /api/assignments/[id]/students/[studentId]/file: not found", () => {
+  const expectFileNotFound = async (response: APIResponse): Promise<void> => {
+    expect(response.status()).toBe(404);
+    expect(await response.json()).toEqual({ error: ERROR_MESSAGES.fileNotFound });
+  };
+
+  test("returns 404 for a student who has not uploaded", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+
+    await expectFileNotFound(await request.get(fileUrl(assignment.id, students[0].id)));
+  });
+
+  test("returns the same 404 for an assignment that does not exist", async ({ request }) => {
+    const { students } = await setup(request);
+
+    await expectFileNotFound(await request.get(fileUrl(UNKNOWN_TEACHER_ID, students[0].id)));
+  });
+
+  test("returns the same 404 for a student who is not in the assignment", async ({ request }) => {
+    await signInAs(request, WRITE_SEED);
+    const students: TStudent[] = await getStudentList(request);
+    const assignment: TTeacherAssignment = await createAssignment(request, [students[0].id]);
+    await upload(request, assignment.id, students[0].id, pdfFile());
+
+    await expectFileNotFound(await request.get(fileUrl(assignment.id, students[1].id)));
+  });
+
+  test("returns the same 404 for the file of another teacher, and never its bytes", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+    await upload(request, assignment.id, students[0].id, pdfFile("secret.pdf", 100));
+    await signInAs(request, WRITE_OTHER_SEED);
+
+    const response = await request.get(fileUrl(assignment.id, students[0].id));
+
+    await expectFileNotFound(response);
+    expect(response.headers()["content-type"]).toContain("application/json");
+  });
+
+  test("returns the same 404 for ids that are not uuids", async ({ request }) => {
+    const { students, assignment } = await setup(request);
+
+    for (const [assignmentId, studentId] of [
+      ["abc", students[0].id],
+      [assignment.id, "abc"],
+      ["' OR 1=1 --", "123"],
+    ]) {
+      await expectFileNotFound(await request.get(fileUrl(assignmentId, studentId)));
+    }
+  });
+});

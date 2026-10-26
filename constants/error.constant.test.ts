@@ -12,6 +12,7 @@ describe("ERROR_MESSAGES", () => {
       "assignmentNotFound",
       "assignmentStudentSubmitted",
       "classNotFound",
+      "fileNotFound",
       "fileTooLarge",
       "internal",
       "invalidCredentials",

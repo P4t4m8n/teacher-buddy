@@ -9,6 +9,7 @@ export const ERROR_MESSAGES = {
   invalidJson: "גוף הבקשה אינו תקין",
   invalidFormData: "הבקשה אינה תקינה",
   fileTooLarge: "הקובץ גדול מדי, ניתן להעלות עד 4 מגה-בייט",
+  fileNotFound: "הקובץ לא נמצא",
   unsupportedFile: "ניתן להעלות קובץ PDF או תמונה (JPG, PNG, WebP) בלבד",
   classNotFound: "הכיתה לא נמצאה",
   studentNotFound: "התלמיד לא נמצא",

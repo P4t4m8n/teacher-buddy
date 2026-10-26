@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanFileName, detectFileType } from "./file";
+import { cleanFileName, detectFileType, getFileHeaders } from "./file";
 
 const bytes = (...values: number[]): Uint8Array => new Uint8Array(values);
 const ascii = (text: string): number[] => [...text].map((char: string) => char.charCodeAt(0));
@@ -62,5 +62,64 @@ describe("cleanFileName", () => {
 
   it("cuts a long name to 255 characters", () => {
     expect(cleanFileName("א".repeat(400))).toHaveLength(255);
+  });
+});
+
+describe("getFileHeaders", () => {
+  const headers = (name: string, mimeType: string = "application/pdf", size: number = 10): Record<string, string> =>
+    getFileHeaders({ name, mimeType, size });
+
+  it.each(["application/pdf", "image/png", "image/jpeg", "image/webp"])("shows %s in the page, with its own type", (mimeType) => {
+    const result = headers("a.x", mimeType);
+
+    expect(result["Content-Type"]).toBe(mimeType);
+    expect(result["Content-Disposition"]).toMatch(/^inline;/);
+  });
+
+  it.each(["text/html", "image/svg+xml", "application/javascript", "image/gif", "application/octet-stream", "", "APPLICATION/PDF"])(
+    "never shows %j in the page: it is a download of unknown type",
+    (mimeType) => {
+      const result = headers("a.x", mimeType);
+
+      expect(result["Content-Type"]).toBe("application/octet-stream");
+      expect(result["Content-Disposition"]).toMatch(/^attachment;/);
+    },
+  );
+
+  it("stops the browser from guessing the type, keeps the file out of every cache, and gives the size", () => {
+    const result = headers("a.pdf", "application/pdf", 1234);
+
+    expect(result["X-Content-Type-Options"]).toBe("nosniff");
+    expect(result["Cache-Control"]).toBe("private, no-store");
+    expect(result["Content-Length"]).toBe("1234");
+  });
+
+  it("gives a plain name and the real name, encoded", () => {
+    expect(headers("work.pdf")["Content-Disposition"]).toBe(`inline; filename="work.pdf"; filename*=UTF-8''work.pdf`);
+    expect(headers("עבודה של נועה.pdf")["Content-Disposition"]).toBe(
+      `inline; filename="_____ __ ____.pdf"; filename*=UTF-8''${encodeURIComponent("עבודה של נועה.pdf")}`,
+    );
+  });
+
+  it("round-trips the real name", () => {
+    const name = `a b'c(d)e*f"g%h;i,j.pdf`;
+    const match = /filename\*=UTF-8''(.+)$/.exec(headers(name)["Content-Disposition"]);
+
+    expect(decodeURIComponent(match?.[1] ?? "")).toBe(name);
+    expect(match?.[1]).not.toMatch(/['()*"; ,]/);
+  });
+
+  it("cannot be used to add a header or end the name early", () => {
+    const result = headers('a"; filename="evil.exe\r\nSet-Cookie: x=1');
+
+    expect(result["Content-Disposition"]).not.toMatch(/[\r\n]/);
+    expect(result["Content-Disposition"].match(/^inline; filename="([^"]*)"; filename\*=/)?.[1]).toBe(
+      "a_; filename=_evil.exe__Set-Cookie: x=1",
+    );
+    expect(Object.keys(result)).not.toContain("Set-Cookie");
+  });
+
+  it("does not fail for a name with half of a character", () => {
+    expect(() => headers("a\uD800.pdf")).not.toThrow();
   });
 });
