@@ -3,7 +3,7 @@ import { ERROR_MESSAGES } from "../constants/error.constant";
 import { WRITE_OTHER_SEED, WRITE_SEED } from "../prisma/seed-data";
 import type { TAssignmentStudent, TTeacherAssignment } from "../types/assignment.type";
 import type { TStudent } from "../types/student.type";
-import { getStudentList, signInAs, signToken, submitPart, UNKNOWN_TEACHER_ID, withTestDb } from "./helpers";
+import { getSeededStudentList, signInAs, signToken, submitPart, UNKNOWN_TEACHER_ID, withTestDb } from "./helpers";
 
 const ASSIGNMENTS_URL = "/api/assignments";
 const GRADE_MESSAGE = "הציון חייב להיות מספר שלם בין 0 ל-100";
@@ -35,7 +35,7 @@ const setup = async (
   request: APIRequestContext,
 ): Promise<{ students: TStudent[]; assignment: TTeacherAssignment }> => {
   await signInAs(request, WRITE_SEED);
-  const students: TStudent[] = await getStudentList(request);
+  const students: TStudent[] = await getSeededStudentList(request, WRITE_SEED);
   const assignment: TTeacherAssignment = await createAssignment(request, students.map(({ id }) => id));
   await submitPart(assignment.id, students[0].id, { submittedAt: "2030-06-01T10:00:00Z", grade: null, mimeType: "application/pdf" });
   return { students, assignment };
@@ -198,7 +198,7 @@ test.describe("PUT /api/assignments/[id]/students/[studentId]/grade: saving a gr
 
   test("works for a student whose file was uploaded with the file endpoint", async ({ request }) => {
     await signInAs(request, WRITE_SEED);
-    const students: TStudent[] = await getStudentList(request);
+    const students: TStudent[] = await getSeededStudentList(request, WRITE_SEED);
     const assignment: TTeacherAssignment = await createAssignment(request, [students[0].id]);
     const pdf = { name: "work.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-1.7 work") };
     await request.put(`${ASSIGNMENTS_URL}/${assignment.id}/students/${students[0].id}/file`, { multipart: { file: pdf } });
@@ -295,7 +295,7 @@ test.describe("PUT /api/assignments/[id]/students/[studentId]/grade: not found",
 
   test("returns the same 404 for a student of the teacher who is not in the assignment", async ({ request }) => {
     await signInAs(request, WRITE_SEED);
-    const students: TStudent[] = await getStudentList(request);
+    const students: TStudent[] = await getSeededStudentList(request, WRITE_SEED);
     const assignment: TTeacherAssignment = await createAssignment(request, [students[0].id]);
 
     await expectNotFound(await grade(request, assignment.id, students[1].id, { grade: 90 }));

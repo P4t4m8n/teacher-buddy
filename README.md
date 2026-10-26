@@ -200,7 +200,7 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   (root)/dashboard/students/[id]/edit    Edit-student page, filled from the database; shares one form (StudentForm) with the add page
   (root)/dashboard/layout.tsx            The header, the tab bar (students | assignments) and the page frame, shared by every dashboard page
   (root)/dashboard/assignments           The teacher's assignments list from the database (name, due date, number of students, how many submitted), latest due date first, with an add button
-  (root)/dashboard/assignments/new       Add-assignment form: title, students (a checklist grouped by class, with a shortcut per class), due date and the rich text description (the form is built, saving is not yet)
+  (root)/dashboard/assignments/new       Add-assignment form: title, students (a checklist grouped by class, with a shortcut per class), due date and the rich text description. It saves through `POST /api/assignments`: the server's Hebrew messages show under each field (or as one message for other errors), the button is disabled while saving, and a save goes back to the list. After a save the form is empty again when the page is opened later, and a draft that was not saved is kept
   (root)/dashboard/assignments/[id]      Assignment page from the database: its details, and its students with their status; a student's button opens the same modal, with the checked file (a PDF in a frame, or an image), the grade and an upload field (the modal does not save yet). A missing assignment, another teacher's or a malformed id all show the same not-found page
   (root)/dashboard/assignments/[id]/edit Edit-assignment form, the same form as the add page, filled from the database (saving is not yet). The same not-found page for a missing, foreign or malformed id.
   api/auth/...       Auth endpoints
@@ -208,7 +208,7 @@ app/                 Pages (page.tsx) and route handlers (route.ts) only
   api/classes        Classes endpoint
 components/          UI components, grouped by feature (auth, dashboard, students, assignments, ui)
 helpers/             Small pure helpers (button styles, date format)
-hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useDeleteStudent, useFilePreview, useModal, useDisclosure)
+hooks/               Client-side state and logic (useSignIn, useSignOut, useStudentForm, useAssignmentForm, useDeleteStudent, useFilePreview, useModal, useDisclosure)
 services/            Server services (auth.service.ts) and client API services
 schemas/             zod schemas
 types/               Shared TypeScript types

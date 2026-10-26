@@ -3,7 +3,7 @@ import { ERROR_MESSAGES } from "../constants/error.constant";
 import { WRITE_OTHER_SEED, WRITE_SEED } from "../prisma/seed-data";
 import type { TTeacherAssignment } from "../types/assignment.type";
 import type { TStudent } from "../types/student.type";
-import { getStudentList, signInAs, signToken, submitPart, UNKNOWN_TEACHER_ID, withTestDb } from "./helpers";
+import { getSeededStudentList, getStudentList, signInAs, signToken, submitPart, UNKNOWN_TEACHER_ID, withTestDb } from "./helpers";
 
 const ASSIGNMENTS_URL = "/api/assignments";
 
@@ -36,7 +36,7 @@ const read = async (request: APIRequestContext, id: string): Promise<TTeacherAss
 // The two students of the write teacher, and an assignment given to the first one.
 const setup = async (request: APIRequestContext): Promise<{ students: TStudent[]; assignment: TTeacherAssignment }> => {
   await signInAs(request, WRITE_SEED);
-  const students: TStudent[] = await getStudentList(request);
+  const students: TStudent[] = await getSeededStudentList(request, WRITE_SEED);
   return { students, assignment: await create(request, [students[0].id]) };
 };
 
@@ -295,7 +295,7 @@ test.describe("DELETE /api/assignments/[id]", () => {
 
     await request.delete(`${ASSIGNMENTS_URL}/${assignment.id}`);
 
-    expect((await getStudentList(request)).map(({ id }) => id).sort()).toEqual(students.map(({ id }) => id).sort());
+    expect((await getSeededStudentList(request, WRITE_SEED)).map(({ id }) => id).sort()).toEqual(students.map(({ id }) => id).sort());
   });
 
   test("returns 404 when it is deleted again", async ({ request }) => {

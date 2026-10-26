@@ -3,7 +3,7 @@ import { ERROR_MESSAGES } from "../constants/error.constant";
 import { WRITE_OTHER_SEED, WRITE_SEED } from "../prisma/seed-data";
 import type { TAssignmentStudent, TTeacherAssignment } from "../types/assignment.type";
 import type { TStudent } from "../types/student.type";
-import { getStudentList, signInAs, signToken, submitPart, UNKNOWN_TEACHER_ID, withTestDb } from "./helpers";
+import { getSeededStudentList, signInAs, signToken, submitPart, UNKNOWN_TEACHER_ID, withTestDb } from "./helpers";
 
 const ASSIGNMENTS_URL = "/api/assignments";
 const MAX_FILE_SIZE = 4 * 1024 * 1024;
@@ -57,7 +57,7 @@ const setup = async (
   request: APIRequestContext,
 ): Promise<{ students: TStudent[]; assignment: TTeacherAssignment }> => {
   await signInAs(request, WRITE_SEED);
-  const students: TStudent[] = await getStudentList(request);
+  const students: TStudent[] = await getSeededStudentList(request, WRITE_SEED);
   return { students, assignment: await createAssignment(request, students.map(({ id }) => id)) };
 };
 
@@ -399,7 +399,7 @@ test.describe("PUT /api/assignments/[id]/students/[studentId]/file: not found", 
 
   test("returns the same 404 for a student of the teacher who is not in the assignment", async ({ request }) => {
     await signInAs(request, WRITE_SEED);
-    const students: TStudent[] = await getStudentList(request);
+    const students: TStudent[] = await getSeededStudentList(request, WRITE_SEED);
     const assignment: TTeacherAssignment = await createAssignment(request, [students[0].id]);
 
     const response = await upload(request, assignment.id, students[1].id, pdfFile());
@@ -590,7 +590,7 @@ test.describe("GET /api/assignments/[id]/students/[studentId]/file: not found", 
 
   test("returns the same 404 for a student who is not in the assignment", async ({ request }) => {
     await signInAs(request, WRITE_SEED);
-    const students: TStudent[] = await getStudentList(request);
+    const students: TStudent[] = await getSeededStudentList(request, WRITE_SEED);
     const assignment: TTeacherAssignment = await createAssignment(request, [students[0].id]);
     await upload(request, assignment.id, students[0].id, pdfFile());
 

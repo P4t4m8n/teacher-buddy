@@ -4,6 +4,7 @@ import { WRITE_OTHER_SEED, WRITE_SEED } from "../prisma/seed-data";
 import type { TAssignmentListItem, TTeacherAssignment } from "../types/assignment.type";
 import type { TStudent } from "../types/student.type";
 import {
+  getSeededStudentList,
   getStudentList,
   randomLetters,
   signInAs,
@@ -48,7 +49,7 @@ const list = async (request: APIRequestContext): Promise<TAssignmentListItem[]> 
 
 const writeStudents = async (request: APIRequestContext): Promise<TStudent[]> => {
   await signInAs(request, WRITE_SEED);
-  return getStudentList(request);
+  return getSeededStudentList(request, WRITE_SEED);
 };
 
 const readStoredDescription = (assignmentId: string): Promise<string> =>

@@ -40,6 +40,13 @@ export const getStudentList = async (request: APIRequestContext): Promise<TStude
   return (await response.json()).students;
 };
 
+// Only the students that the seed gave to a teacher. Tests that add or remove students of the same write
+// teacher change the full list for a moment, so tests that need a fixed set of students use this one.
+export const getSeededStudentList = async (request: APIRequestContext, seed: TSeedTeacher): Promise<TStudent[]> => {
+  const names = new Set<string>(seed.classes.flatMap(({ students }) => students.map(({ name }) => name)));
+  return (await getStudentList(request)).filter(({ name }) => names.has(name));
+};
+
 // The assignment list of the signed-in teacher: what the list page shows, in the order it shows it.
 export const getAssignmentList = async (request: APIRequestContext): Promise<TAssignmentListItem[]> => {
   const response = await getWithRetry(request, "/api/assignments");
