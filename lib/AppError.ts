@@ -42,6 +42,10 @@ export class AppError extends Error {
     return new AppError(ERROR_MESSAGES.fileNotFound, 404);
   }
 
+  static gradeNeedsFile(): AppError {
+    return new AppError(ERROR_MESSAGES.gradeNeedsFile, 409);
+  }
+
   static classNotFound(): AppError {
     return new AppError(ERROR_MESSAGES.classNotFound, 404);
   }

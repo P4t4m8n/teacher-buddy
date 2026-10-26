@@ -14,6 +14,7 @@ describe("ERROR_MESSAGES", () => {
       "classNotFound",
       "fileNotFound",
       "fileTooLarge",
+      "gradeNeedsFile",
       "internal",
       "invalidCredentials",
       "invalidFormData",

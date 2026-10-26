@@ -4,7 +4,7 @@ import { AppError } from "@/lib/AppError";
 import { prisma } from "@/lib/db";
 import { cleanFileName, detectFileType, type TUploadMimeType } from "@/lib/file";
 import { isUuid } from "@/lib/uuid";
-import { deriveStatus } from "@/helpers/assignment";
+import { canGrade, deriveStatus } from "@/helpers/assignment";
 import { ASSIGNMENT_PART_SELECT, toAssignmentStudent } from "@/services/assignment.mapper";
 import type { TAssignmentStudent } from "@/types/assignment.type";
 
@@ -31,6 +31,35 @@ export const getSubmissionFile = async (
   if (!file) throw AppError.fileNotFound();
 
   return file;
+};
+
+// Saves the grade of one student's part, or clears it with null. A grade needs an uploaded file (409 without
+// one), and it moves the status with it: a grade makes the part CHECKED, and clearing it makes it SUBMITTED
+// again. The status is never chosen by the request. The same 404 as the upload for a part that is not found.
+export const gradeSubmission = async (
+  teacherId: string,
+  assignmentId: string,
+  studentId: string,
+  grade: number | null,
+): Promise<TAssignmentStudent> => {
+  if (!isUuid(assignmentId) || !isUuid(studentId)) throw AppError.assignmentNotFound();
+
+  // The teacher is in the filter, so another teacher's part is never read or changed.
+  const part = await prisma.assignmentStudent.findFirst({
+    where: { assignmentId, studentId, assignment: { teacherId } },
+    select: { id: true, file: { select: { id: true } } },
+  });
+  if (!part) throw AppError.assignmentNotFound();
+
+  const hasFile: boolean = part.file !== null;
+  if (grade !== null && !canGrade(hasFile)) throw AppError.gradeNeedsFile();
+
+  const row = await prisma.assignmentStudent.update({
+    where: { id: part.id },
+    data: { grade, status: deriveStatus(hasFile, grade) },
+    select: ASSIGNMENT_PART_SELECT,
+  });
+  return toAssignmentStudent(assignmentId, row);
 };
 
 // Saves the checked assignment the teacher uploads for one student. The first file makes the part SUBMITTED.

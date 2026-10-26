@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
   upsert: vi.fn(),
   findUniqueOrThrow: vi.fn(),
   fileFindFirst: vi.fn(),
+  partFindFirst: vi.fn(),
+  partUpdate: vi.fn(),
 }));
 
 vi.mock("server-only", () => ({}));
@@ -24,11 +26,12 @@ vi.mock("@/lib/db", () => {
     prisma: {
       $transaction: (run: (client: typeof tx) => Promise<unknown>) => run(tx),
       submissionFile: { findFirst: mocks.fileFindFirst },
+      assignmentStudent: { findFirst: mocks.partFindFirst, update: mocks.partUpdate },
     },
   };
 });
 
-import { getSubmissionFile, uploadSubmission } from "./submission.service";
+import { getSubmissionFile, gradeSubmission, uploadSubmission } from "./submission.service";
 
 const TEACHER_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
 const ASSIGNMENT_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f90";
@@ -239,5 +242,114 @@ describe("getSubmissionFile", () => {
     mocks.fileFindFirst.mockRejectedValue(failure);
 
     await expect(getSubmissionFile(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID)).rejects.toBe(failure);
+  });
+});
+
+describe("gradeSubmission", () => {
+  const withFile = { id: PART_ID, file: { id: "f1" } };
+  const withoutFile = { id: PART_ID, file: null };
+
+  it.each([
+    ["the assignment id", "abc", STUDENT_ID],
+    ["the student id", ASSIGNMENT_ID, "abc"],
+    ["both ids", "' OR 1=1 --", ""],
+  ])("is a 404 when %s is not a uuid, without touching the database", async (_label, assignmentId, studentId) => {
+    await expectAppError(gradeSubmission(TEACHER_ID, assignmentId, studentId, 90), AppError.assignmentNotFound());
+
+    expect(mocks.partFindFirst).not.toHaveBeenCalled();
+  });
+
+  it("looks for the part of this teacher's assignment only", async () => {
+    mocks.partFindFirst.mockResolvedValue(withFile);
+    mocks.partUpdate.mockResolvedValue(partRow({ status: "CHECKED", grade: 90 }));
+
+    await gradeSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, 90);
+
+    expect(mocks.partFindFirst).toHaveBeenCalledWith({
+      where: { assignmentId: ASSIGNMENT_ID, studentId: STUDENT_ID, assignment: { teacherId: TEACHER_ID } },
+      select: { id: true, file: { select: { id: true } } },
+    });
+  });
+
+  it("is a 404 when there is no such part, and saves nothing", async () => {
+    mocks.partFindFirst.mockResolvedValue(null);
+
+    await expectAppError(gradeSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, 90), AppError.assignmentNotFound());
+
+    expect(mocks.partUpdate).not.toHaveBeenCalled();
+  });
+
+  it.each([0, 55, 100])("saves the grade %i and makes the part CHECKED", async (grade) => {
+    mocks.partFindFirst.mockResolvedValue(withFile);
+    mocks.partUpdate.mockResolvedValue(partRow({ status: "CHECKED", grade }));
+
+    await gradeSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, grade);
+
+    expect(mocks.partUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: PART_ID }, data: { grade, status: "CHECKED" } }),
+    );
+  });
+
+  it("clears the grade and makes the part SUBMITTED again", async () => {
+    mocks.partFindFirst.mockResolvedValue(withFile);
+    mocks.partUpdate.mockResolvedValue(partRow());
+
+    await gradeSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, null);
+
+    expect(mocks.partUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: PART_ID }, data: { grade: null, status: "SUBMITTED" } }),
+    );
+  });
+
+  it.each([0, 55, 100])("is a 409 for a grade of %i when no file was uploaded, and saves nothing", async (grade) => {
+    mocks.partFindFirst.mockResolvedValue(withoutFile);
+
+    await expectAppError(gradeSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, grade), AppError.gradeNeedsFile());
+
+    expect(mocks.partUpdate).not.toHaveBeenCalled();
+  });
+
+  it("lets a part with no file keep no grade: clearing is fine, and the part stays TODO", async () => {
+    mocks.partFindFirst.mockResolvedValue(withoutFile);
+    mocks.partUpdate.mockResolvedValue(partRow({ status: "TODO", grade: null, submittedAt: null, file: null }));
+
+    await gradeSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, null);
+
+    expect(mocks.partUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { grade: null, status: "TODO" } }),
+    );
+  });
+
+  it("never changes the file or the date of the upload", async () => {
+    mocks.partFindFirst.mockResolvedValue(withFile);
+    mocks.partUpdate.mockResolvedValue(partRow({ status: "CHECKED", grade: 80 }));
+
+    await gradeSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, 80);
+
+    expect(Object.keys(mocks.partUpdate.mock.calls[0][0].data).sort()).toEqual(["grade", "status"]);
+  });
+
+  it("gives back the part as the client reads it, with no bytes", async () => {
+    mocks.partFindFirst.mockResolvedValue(withFile);
+    mocks.partUpdate.mockResolvedValue(partRow({ status: "CHECKED", grade: 91 }));
+
+    expect(await gradeSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, 91)).toEqual({
+      studentId: STUDENT_ID,
+      name: "נועה לוי",
+      className: "כיתה ג׳",
+      status: "CHECKED",
+      submittedAt: "2026-10-25",
+      grade: 91,
+      file: { name: "עבודה.pdf", kind: "pdf", url: `/api/assignments/${ASSIGNMENT_ID}/students/${STUDENT_ID}/file` },
+    });
+    expect(mocks.partUpdate.mock.calls[0][0].select.file).toEqual({ select: { name: true, mimeType: true } });
+  });
+
+  it("does not hide database errors", async () => {
+    mocks.partFindFirst.mockResolvedValue(withFile);
+    const failure = new Error("connection lost");
+    mocks.partUpdate.mockRejectedValue(failure);
+
+    await expect(gradeSubmission(TEACHER_ID, ASSIGNMENT_ID, STUDENT_ID, 90)).rejects.toBe(failure);
   });
 });

@@ -104,3 +104,12 @@ export type TDeleteAssignmentResponse = {
 export type TUploadSubmissionResponse = {
   student: TAssignmentStudent;
 };
+
+// The grade of one student's part: a whole number from 0 to 100, or null to clear it.
+export type TUpdateGradeDto = {
+  grade: number | null;
+};
+
+export type TUpdateGradeResponse = {
+  student: TAssignmentStudent;
+};

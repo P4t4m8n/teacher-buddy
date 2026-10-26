@@ -10,6 +10,7 @@ export const ERROR_MESSAGES = {
   invalidFormData: "הבקשה אינה תקינה",
   fileTooLarge: "הקובץ גדול מדי, ניתן להעלות עד 4 מגה-בייט",
   fileNotFound: "הקובץ לא נמצא",
+  gradeNeedsFile: "ניתן לתת ציון רק אחרי שהועלתה מטלה לתלמיד",
   unsupportedFile: "ניתן להעלות קובץ PDF או תמונה (JPG, PNG, WebP) בלבד",
   classNotFound: "הכיתה לא נמצאה",
   studentNotFound: "התלמיד לא נמצא",
