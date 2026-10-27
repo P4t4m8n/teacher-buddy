@@ -1,12 +1,12 @@
 import { ERROR_MESSAGES } from "@/constants/error.constant";
 import type { TApiFieldErrors } from "@/types/api.type";
 
-// Every error the backend throws on purpose. A service throws it, and handleRouteError turns it
+// Every error the backend throws on purpose (it is a deliberate toss). A service throws it, and handleRouteError turns it
 // into the response: `status` is the HTTP status and `message` is the Hebrew text for the client.
 export class AppError extends Error {
   readonly status: number;
   readonly fields?: TApiFieldErrors;
-  // For a 429: how long the client must wait, sent as the Retry-After header.
+  // For a 429: how long the client must wait, sent as the Retry-After header (time to sit on the naughty step).
   readonly retryAfterSeconds?: number;
 
   constructor(message: string, status: number, fields?: TApiFieldErrors, retryAfterSeconds?: number) {
@@ -73,7 +73,7 @@ export class AppError extends Error {
     return new AppError(ERROR_MESSAGES.assignmentStudentSubmitted, 409);
   }
 
-  // For failures the client cannot fix, like a missing config value. `detail` is for the log only:
+  // For failures the client cannot fix, like a missing config value. `detail` is for the log only (our diary):
   // handleRouteError never sends the message of a 5xx error to the client.
   static internal(detail: string): AppError {
     return new AppError(detail, 500);

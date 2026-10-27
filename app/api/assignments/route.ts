@@ -18,11 +18,11 @@ export async function GET(): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    // The session is checked before the body, so an unauthenticated request is always a 401.
+    // The session is checked before the body, so an unauthenticated request is always a 401, even in a very convincing hat.
     const teacher: TSessionTeacher = await requireSessionTeacher();
     const dto: TCreateAssignmentDto = await parseBody(req, createAssignmentSchema);
 
-    // The teacher id comes from the verified session, never from the body.
+    // The teacher id comes from the verified session, never from the body: the body is a stranger with a clipboard, so never trust it.
     const assignment: TTeacherAssignment = await createAssignment(teacher.id, dto);
     return NextResponse.json({ assignment }, { status: 201 });
   } catch (error: unknown) {

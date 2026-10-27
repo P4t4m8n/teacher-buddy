@@ -19,15 +19,15 @@ export const ASSIGNMENT_STATUS_LABELS: Record<TAssignmentStatus, string> = {
   CHECKED: "נבדקה",
 };
 
-// What the file picker offers. The server checks the real type of the file again.
+// What the file picker offers. The server checks the real type of the file again, so no costume fools it.
 export const FILE_ACCEPT = ".pdf,image/jpeg,image/png,image/webp";
 
-// The most a teacher can upload for one student, 4 MB: a request over 4.5 MB is refused by Vercel, so this
-// leaves room for the rest of the request. The server checks it again.
+// The most a teacher can upload for one student, 4 MB: a request over 4.5 MB is bounced by Vercel, so this
+// leaves room for the rest of the request luggage. The server checks it again.
 export const MAX_FILE_SIZE = 4 * 1024 * 1024;
 
-// The grade is a whole number in this range, or empty while the assignment was not checked yet.
-// The server checks it again.
+// The grade is a whole number in this range, or empty while the assignment waits for its red pen.
+// The server checks it again (it trusts nobody's arithmetic).
 export const MIN_GRADE = 0;
 export const MAX_GRADE = 100;
 

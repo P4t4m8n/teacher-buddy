@@ -15,7 +15,7 @@ const HEADER_CELL_CLASSES =
   "bg-slate-50 px-4 py-3 text-start text-xs font-semibold tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400";
 
 export default function StudentAssignments({ assignments }: TStudentAssignmentsProps) {
-  // Only the id is kept, so the modal always shows the current data of the page, also after it was refreshed.
+  // Only the id is kept, so the modal always shows what the page knows right now, even after a refresh (fresh data, never leftovers).
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected: TStudentAssignment | null = assignments.find(({ id }: TStudentAssignment) => id === selectedId) ?? null;
 
@@ -46,7 +46,7 @@ export default function StudentAssignments({ assignments }: TStudentAssignmentsP
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {assignments.map((assignment: TStudentAssignment) => (
-              // The whole row opens the modal. The button inside is for the keyboard and screen readers.
+              // The whole row opens the modal, a giant button in disguise. The button inside is for the keyboard and screen readers.
               <tr
                 key={assignment.id}
                 onClick={() => setSelectedId(assignment.id)}

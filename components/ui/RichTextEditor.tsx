@@ -9,13 +9,13 @@ import { trimTrailingEmptyParagraphs } from "@/helpers/richText";
 type TRichTextEditorProps = {
   label: string;
   name: string;
-  // The starting content, as HTML.
+  // The starting content, as HTML (the dough before it is baked).
   defaultValue?: string;
   errors?: string[];
 };
 
-// Only what the toolbar can do. Everything else is switched off, so pasted content with other
-// formatting (links, code, quotes...) is reduced to what the toolbar offers.
+// Only what the toolbar can do. Everything else is switched off at the mains, so pasted content with other
+// formatting (links, code, quotes...) is shrunk down to what the toolbar offers, like a suitcase at airport check-in.
 const EXTENSIONS = [
   StarterKit.configure({
     heading: { levels: [2, 3] },
@@ -25,18 +25,18 @@ const EXTENSIONS = [
     horizontalRule: false,
     link: false,
     strike: false,
-    // Left on: after a heading or a list that is the last block, the editor keeps an empty paragraph, so there is a line below to click into.
+    // Left on: after a heading or a list that is the last block, the editor keeps an empty paragraph, a little doormat, so there is a line below to click into.
     underline: false,
   }),
 ];
 
-// A click in the empty area under the last line puts the caret on a new empty line there, whatever the last block is.
+// A click in the empty area under the last line puts the caret on a new empty line there, whatever the last block is (the caret loves a fresh page).
 const continueBelowLastBlock = (editor: Editor, event: React.MouseEvent<HTMLDivElement>): void => {
   const root: HTMLElement = editor.view.dom;
   const target = event.target as Node;
-  // A click on a block is a click on that text. Only the empty area around the blocks is "below".
+  // A click on a block is a click on that text. Only the empty no-man's-land around the blocks is "below".
   if (target !== root && !target.contains(root)) return;
-  // A selection made by dragging from the text down into the empty area also ends as a click here. It is not one.
+  // A selection made by dragging from the text down into the empty area also ends as a click here. It is not one, just a click in a trench coat.
   if (!editor.state.selection.empty) return;
   const lastBlock: Element | null = root.lastElementChild;
   if (!lastBlock || event.clientY <= lastBlock.getBoundingClientRect().bottom) return;
@@ -61,7 +61,7 @@ export const RichTextEditor = ({
   const editor = useEditor({
     extensions: EXTENSIONS,
     content: defaultValue,
-    // The editor needs the browser. so it is created after the page loads to prevent hydration issues.
+    // The editor needs the browser. so it is created after the page loads to prevent hydration issues (it arrives fashionably late on purpose).
     immediatelyRender: false,
     onUpdate: ({ editor: current }) =>
       setHtml(current.isEmpty ? "" : trimTrailingEmptyParagraphs(current.getHTML())),
@@ -70,8 +70,8 @@ export const RichTextEditor = ({
         role: "textbox",
         "aria-multiline": "true",
         "aria-labelledby": labelId,
-        // The extra space at the bottom is the area to click below the last line (see continueBelowLastBlock): without it,
-        // a long text leaves only a few pixels under its last line.
+        // The extra space at the bottom is the landing pad to click below the last line (see continueBelowLastBlock): without it,
+        // a long text leaves only a few pixels under its last line, about the size of a crumb.
         class: "rich-text min-h-40 px-3 pt-2.5 pb-10 text-base outline-none",
       },
     },

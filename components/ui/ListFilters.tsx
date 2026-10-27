@@ -9,7 +9,7 @@ import type { TListFilter, TListFilterOption } from "@/types/list.type";
 
 type TListFiltersProps = {
   basePath: string;
-  // The search in the address now (already checked by the server).
+  // The search in the address right now (already inspected by the server, stamped and approved).
   search: string;
   searchLabel: string;
   searchPlaceholder: string;
@@ -18,7 +18,7 @@ type TListFiltersProps = {
 
 type TFilterSelectProps = {
   filter: TListFilter;
-  // What the select shows: it can be ahead of filter.value while the new address is loading.
+  // What the select shows: it can run ahead of filter.value while the new address is still loading (eager beaver).
   value: string;
   onChange: (name: string, value: string) => void;
 };
@@ -70,7 +70,7 @@ export default function ListFilters({ basePath, search, searchLabel, searchPlace
   );
 }
 
-// The label is linked by id, not wrapped around the select: a wrapping label would also carry the text of every option.
+// The label is linked by id, not wrapped around the select: a wrapping label would also carry the text of every option, like a bag full of extra luggage.
 const FilterSelect = ({ filter, value, onChange }: TFilterSelectProps) => {
   const id: string = useId();
 

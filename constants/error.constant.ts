@@ -1,7 +1,7 @@
-// ***** No imports in this file on purpose: proxy.ts imports it, and the proxy must never pull in  server-only code such as Prisma or Argon2.*****
-// server-only code such as Prisma or Argon2.
+// ***** NO IMPORTS in this file, on purpose: proxy.ts imports it, and the proxy must never pull in  server-only code such as Prisma or Argon2 (they are heavy sleepers).*****
+// Do not invite server-only code such as Prisma or Argon2 to this party.
 
-// Every message the API sends to the client. All of them are Hebrew.
+// Every message the API sends to the client. All of them are Hebrew, no exceptions.
 export const ERROR_MESSAGES = {
   unauthorized: "נדרשת התחברות למערכת",
   invalidCredentials: "שם או תעודת זהות שגויים",
@@ -19,6 +19,6 @@ export const ERROR_MESSAGES = {
   assignmentStudentSubmitted: "לא ניתן להסיר מהמטלה תלמיד שכבר הגיש אותה",
   studentExists: "תלמיד בשם הזה ועם אותו מספר טלפון כבר קיים",
   internal: "אירעה שגיאה בשרת, נסו שוב מאוחר יותר",
-  // Only used by the client, when the request never got an answer from the server.
+  // Only used by the client, when the request never got an answer from the server (it was left on read).
   network: "לא ניתן להתחבר לשרת, בדקו את החיבור ונסו שוב",
 } as const;

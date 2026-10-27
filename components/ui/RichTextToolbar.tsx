@@ -6,7 +6,7 @@ import { useEditorState } from "@tiptap/react";
 type TToolbarButton = {
   key: string;
   label: string;
-  // The visible symbol. The label is what screen readers read.
+  // The visible symbol. The label is what screen readers read, so it gets to be the chatty one.
   symbol: string;
   className?: string;
   isActive?: (editor: Editor) => boolean;
@@ -77,7 +77,7 @@ type TRichTextToolbarProps = {
 };
 
 export default function RichTextToolbar({ editor }: TRichTextToolbarProps) {
-  // The toolbar only re-renders when one of these flags changes, not on every keystroke.
+  // The toolbar only re-renders when one of these flags changes, not on every keystroke (it refuses to jump at each tap).
   const state: Record<string, TButtonState> = useEditorState({
     editor,
     selector: ({ editor: current }) =>

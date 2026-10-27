@@ -1,6 +1,6 @@
 import { DEMO_TEACHER } from "../constants/demo.constant";
 
-// Plain data, no database imports: shared by the seed script and the e2e tests.
+// Plain data, no database imports (it stays light on its feet): shared by the seed script and the e2e tests.
 
 export type TSeedStudent = {
   name: string;
@@ -12,20 +12,20 @@ export type TSeedClass = {
   students: TSeedStudent[];
 };
 
-// One student's part of a seeded assignment.
+// One student's slice of a seeded assignment.
 export type TSeedAssignmentPart = {
   student: string;
-  // yyyy-mm-dd of the upload. Missing means the student did not submit (TODO).
+  // yyyy-mm-dd of the upload. Missing means the student did not submit (TODO), the dog ate it.
   submittedAt?: string;
-  // Only with submittedAt: a grade needs an uploaded file.
+  // Only with submittedAt: a grade needs an uploaded file, no file means nothing to mark.
   grade?: number;
 };
 
 export type TSeedAssignment = {
   title: string;
-  // HTML, as the rich text editor makes it.
+  // HTML, exactly as the rich text editor bakes it.
   description: string;
-  // yyyy-mm-dd
+  // yyyy-mm-dd, circle it in red
   dueDate: string;
   parts: TSeedAssignmentPart[];
 };
@@ -65,10 +65,10 @@ export const DEMO_SEED: TSeedTeacher = {
         { name: "רוני אזולאי", phone: "058-8889900" },
       ],
     },
-    // A class with no students, so deleting a class can be tested later.
+    // A class with no students, so deleting a class can be tested later (a very quiet classroom).
     { name: "י'1", students: [] },
   ],
-  // Every status is here: TODO, SUBMITTED (no grade) and CHECKED (a grade). One submit is after the due date.
+  // Every status is here: TODO, SUBMITTED (no grade) and CHECKED (a grade). One submit is after the due date, fashionably late.
   assignments: [
     {
       title: "עבודה על המהפכה התעשייתית",
@@ -111,7 +111,7 @@ export const DEMO_SEED: TSeedTeacher = {
   ],
 };
 
-// A second teacher, so tests can verify a teacher never sees another teacher's data.
+// A second teacher, so tests can verify a teacher never sees another teacher's data (no peeking over the fence).
 export const OTHER_SEED: TSeedTeacher = {
   name: "יוסי מזרחי",
   idNumber: "111222333",
@@ -124,7 +124,7 @@ export const OTHER_SEED: TSeedTeacher = {
       ],
     },
   ],
-  // One assignment, so tests can check that a teacher only sees their own.
+  // One assignment, so tests can check that a teacher only sees their own homework pile.
   assignments: [
     {
       title: "קריאה: פרק ראשון",
@@ -135,7 +135,7 @@ export const OTHER_SEED: TSeedTeacher = {
   ],
 };
 
-// A third teacher whose data the write tests (create student, later edit and delete) change freely, so the read-only tests that count rows for the other teachers keep passing.
+// A third teacher whose data the write tests (create student, later edit and delete) may scribble on freely, so the read-only tests that count rows for the other teachers keep passing.
 export const WRITE_SEED: TSeedTeacher = {
   name: "נעמה שרון",
   idNumber: "444555666",
@@ -145,7 +145,7 @@ export const WRITE_SEED: TSeedTeacher = {
   ],
 };
 
-// A second teacher the write tests can change freely, for tests that need two teachers to create data.
+// A second teacher the write tests can change freely, for tests that need two teachers to create data (a doubles match).
 export const WRITE_OTHER_SEED: TSeedTeacher = {
   name: "רונית אביב",
   idNumber: "777888999",
@@ -154,7 +154,7 @@ export const WRITE_OTHER_SEED: TSeedTeacher = {
 
 export const SEED_TEACHERS: TSeedTeacher[] = [DEMO_SEED, OTHER_SEED, WRITE_SEED, WRITE_OTHER_SEED];
 
-// More data for the demo teacher, so the lists of the demo have more than one page: with DEMO_SEED she has 45 students and 45 assignments (3 pages of 20, 20 and 5).
+// More data for the demo teacher, so the lists of the demo have more than one page (a demo with extra helpings): with DEMO_SEED she has 45 students and 45 assignments (3 pages of 20, 20 and 5).
 export type TSeedExtra = {
   classes: TSeedClass[];
   assignments: TSeedAssignment[];
@@ -173,8 +173,8 @@ const EXTRA_SUBJECTS: string[] = ["חשבון", "עברית", "אנגלית", "�
 const EXTRA_KINDS: string[] = ["תרגיל", "חיבור", "סיכום", "פרויקט", "עבודה"];
 const EXTRA_ASSIGNMENT_COUNT = 41;
 
-// The same first name is never paired with the same last name twice: the last name moves one step for every
-// round of the first names, so the 35 names are all different.
+// The same first name is never paired with the same last name twice: the last name shuffles one step along for every
+// round of the first names, like a slow dance, so the 35 names are all different.
 const extraName = (index: number): string =>
   `${EXTRA_FIRST_NAMES[index % 12]} ${EXTRA_LAST_NAMES[(index * 5 + Math.floor(index / 12)) % 12]}`;
 
@@ -197,7 +197,7 @@ const extraClasses = (): TSeedClass[] => {
 };
 
 // Assignment number n is given to 2 to 6 students, starting at a different place of the list of all the students, and
-// its parts go through every state: not submitted, submitted, and checked with a grade (some of them late).
+// its parts go through every state: not submitted, submitted, and checked with a grade (some of them late, with excuses).
 const extraAssignments = (allStudents: string[]): TSeedAssignment[] =>
   Array.from({ length: EXTRA_ASSIGNMENT_COUNT }, (_, index): TSeedAssignment => {
     const dueDate: string = addDays("2026-09-01", index * 4);

@@ -6,7 +6,7 @@ type TStudentPageProps = {
   params: Promise<{ id: string }>;
 };
 
-// The session cookie and the params are request-time reads, so they sit behind Suspense.
+// The session cookie and the params are request-time reads, so they sit behind Suspense (no Suspense, no page: the build gets grumpy).
 export default function StudentPage({ params }: TStudentPageProps) {
   return (
     <Suspense fallback={<StudentPageSkeleton />}>

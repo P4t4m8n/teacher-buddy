@@ -12,7 +12,7 @@ type TStudentRouteContext = {
 
 export async function GET(_req: NextRequest, { params }: TStudentRouteContext): Promise<NextResponse> {
   try {
-    // The session is checked before the id, so an unauthenticated request is always a 401.
+    // The session is checked before the id, so a stranger with no session always gets a 401, however confidently they wave an id around.
     const teacher: TSessionTeacher = await requireSessionTeacher();
     const { id } = await params;
 
@@ -29,7 +29,7 @@ export async function PUT(req: NextRequest, { params }: TStudentRouteContext): P
     const { id } = await params;
     const dto: TUpdateStudentDto = await parseBody(req, updateStudentSchema);
 
-    // The teacher id comes from the verified session, never from the body.
+    // The teacher id comes from the verified session, never from the body (a body will happily claim to be anyone).
     const student: TStudent = await updateStudent(teacher.id, id, dto);
     return NextResponse.json({ student }, { status: 200 });
   } catch (error: unknown) {

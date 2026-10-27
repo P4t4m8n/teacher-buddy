@@ -1,4 +1,4 @@
-// Israeli phones are stored in one format, so the same phone is always the same text: 10 digits as xxx-xxxxxxx (mobile: 050-1234567) and 9 digits as xx-xxxxxxx (landline: 03-1234567).
+// Israeli phones are stored in one format, so the same phone is always the same text (no outfit changes): 10 digits as xxx-xxxxxxx (mobile: 050-1234567) and 9 digits as xx-xxxxxxx (landline: 03-1234567).
 export const normalizePhone = (phone: string): string => {
   const digits: string = phone.replace(/\D/g, "");
   if (digits.length !== 9 && digits.length !== 10) return phone;
@@ -7,7 +7,7 @@ export const normalizePhone = (phone: string): string => {
   return `${digits.slice(0, codeLength)}-${digits.slice(codeLength)}`;
 };
 
-// What a phone search looks for.
+// What a phone search goes sniffing for.
 export const getPhoneSearchTerms = (search: string): string[] => {
   if (!/^[\d\s-]+$/.test(search)) return [search];
 

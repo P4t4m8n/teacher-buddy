@@ -41,7 +41,7 @@ export default function DeleteAssignmentButton({ assignment }: TDeleteAssignment
           למחוק את <strong>{assignment.title}</strong>? המטלה תוסר מכל התלמידים שקיבלו אותה, ולא ניתן לשחזר אותה.
         </p>
 
-        {/* Students who submitted have a file and maybe a grade, which are deleted too: a stronger warning. */}
+        {/* Students who submitted have a file and maybe a grade, which are deleted too: a stronger warning, with extra exclamation energy. */}
         {assignment.submittedCount > 0 && (
           <p
             role="note"

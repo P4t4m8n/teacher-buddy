@@ -36,7 +36,7 @@ export default function AssignmentSummary({ assignment }: TAssignmentSummaryProp
 
       <div className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">תיאור המטלה</h2>
-        {/* The description was cleaned on the server when it was saved (sanitizeRichText). */}
+        {/* The description was already given a bath on the server when it was saved (sanitizeRichText). */}
         <div className="rich-text text-sm" dangerouslySetInnerHTML={{ __html: assignment.description }} />
       </div>
     </section>

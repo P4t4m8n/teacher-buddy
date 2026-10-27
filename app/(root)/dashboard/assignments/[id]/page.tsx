@@ -6,7 +6,7 @@ type TAssignmentPageProps = {
   params: Promise<{ id: string }>;
 };
 
-// The session cookie and the params are request-time reads, so they sit behind Suspense.
+// The session cookie and the params are request-time reads, so they sit behind Suspense, politely waiting in the queue.
 export default function AssignmentPage({ params }: TAssignmentPageProps) {
   return (
     <Suspense fallback={<AssignmentPageSkeleton />}>

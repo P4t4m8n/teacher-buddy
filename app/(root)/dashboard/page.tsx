@@ -7,8 +7,8 @@ type TDashboardPageProps = {
   searchParams: Promise<TSearchParams>;
 };
 
-// Reading the session cookie and the search params are request-time reads, so they live behind a Suspense boundary
-// The skeleton is the only part prerendered, the rest streams in.
+// Reading the session cookie and the search params are request-time reads, so they live behind a Suspense boundary (the velvet rope).
+// The skeleton is the only part prerendered, the rest streams in like a slow but dramatic parade.
 export default function DashboardPage({ searchParams }: TDashboardPageProps) {
   return (
     <Suspense fallback={<DashboardSkeleton />}>

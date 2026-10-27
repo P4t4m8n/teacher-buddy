@@ -8,14 +8,14 @@ import {
 } from "@/constants/auth.constant";
 import { ERROR_MESSAGES } from "@/constants/error.constant";
 
-// session-expired must stay public: it is the way out for a cookie the proxy cannot tell is stale.
+// session-expired must stay public: it is the emergency exit for a cookie the proxy cannot tell is stale.
 const PUBLIC_API_PATHS: string[] = [
   "/api/auth/login",
   "/api/auth/logout",
   SESSION_EXPIRED_PATH,
 ];
 
-// Checks signature and expiry only (no DB). Handlers and pages still validate the session themselves.
+// Checks signature and expiry only (no DB, just a quick squint at the badge). Handlers and pages still validate the session themselves.
 const hasValidSession = async (token: string | undefined): Promise<boolean> => {
   const secret: string | undefined = process.env.JWT_SECRET;
   if (!token || !secret) return false;
@@ -38,7 +38,7 @@ const rejectUnauthenticated = (
     ? NextResponse.json({ error: ERROR_MESSAGES.unauthorized }, { status: 401 })
     : NextResponse.redirect(new URL(AUTH_PAGE, request.url));
 
-  // Drop a forged or expired cookie so it cannot cause redirect loops.
+  // Drop a forged or expired cookie so it cannot send us spinning in redirect loops.
   if (token) response.cookies.delete(SESSION_COOKIE);
   return response;
 };
@@ -62,7 +62,7 @@ export async function proxy(request: NextRequest): Promise<NextResponse> {
 
   if (!hasSession) return rejectUnauthenticated(request, token);
 
-  // The app has no home page.
+  // The app has no home page, just a very friendly doormat pointing to the dashboard.
   if (pathname === "/") {
     return NextResponse.redirect(new URL(DASHBOARD_PAGE, request.url));
   }

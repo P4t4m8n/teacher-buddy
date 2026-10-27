@@ -12,12 +12,12 @@ type TGradeRouteContext = {
 
 export async function PUT(req: NextRequest, { params }: TGradeRouteContext): Promise<NextResponse> {
   try {
-    // The session is checked before the ids and the body, so an unauthenticated request is always a 401.
+    // The session is checked before the ids and the body, so an unauthenticated request is always a 401, long before it can browse the shelves.
     const teacher: TSessionTeacher = await requireSessionTeacher();
     const { id, studentId } = await params;
     const { grade }: TUpdateGradeDto = await parseBody(req, updateGradeSchema);
 
-    // The teacher id comes from the verified session, never from the body.
+    // The teacher id comes from the verified session, never from the body: we read the ID card, not the sticky note.
     const student: TAssignmentStudent = await gradeSubmission(teacher.id, id, studentId, grade);
     return NextResponse.json({ student }, { status: 200 });
   } catch (error: unknown) {

@@ -19,7 +19,7 @@ const prisma = new PrismaClient({
 });
 
 async function seedClasses(teacherId: string, seed: TSeedTeacher): Promise<void> {
-  // Only seed sample data once so re-running the seed never duplicates rows.
+  // Only seed sample data once so re-running the seed never duplicates rows (no double helpings).
   if ((await prisma.class.count({ where: { teacherId } })) > 0) {
     console.log(`"${seed.name}" already has classes, skipping them.`);
     return;
@@ -53,7 +53,7 @@ const toSeedPart = (part: TSeedAssignmentPart, studentId: string) => {
     grade,
     status: deriveStatus(submitted, grade),
     submittedAt: part.submittedAt ? new Date(`${part.submittedAt}T10:00:00.000Z`) : null,
-    // The sample file is what makes a submitted part real: it can be opened and previewed.
+    // The sample file is what makes a submitted part real: it can be opened and previewed. Proof of homework!
     file: submitted
       ? { create: { name: "עבודה.pdf", mimeType: "application/pdf", ...toSeedFile() } }
       : undefined,
@@ -65,7 +65,7 @@ const toSeedFile = (): { size: number; data: Uint8Array<ArrayBuffer> } => {
   return { size: data.byteLength, data };
 };
 
-// The assignments of a teacher are seeded on their own, once, so a database that already has classes and
+// The assignments of a teacher are seeded on their own, once (they fly solo), so a database that already has classes and
 // students (and no assignments) gets them too.
 async function seedAssignments(teacherId: string, seed: TSeedTeacher): Promise<void> {
   if (!seed.assignments?.length) return;
@@ -105,7 +105,7 @@ async function createAssignment(
   });
 }
 
-// The extra demo data (see DEMO_EXTRA) is added on top of what the demo teacher already has, so it works on a database that was seeded before it existed.
+// The extra demo data (see DEMO_EXTRA) is sprinkled on top of what the demo teacher already has, so it works on a database that was seeded before it existed.
 async function seedExtras(teacherId: string, teacherName: string, extra: TSeedExtra): Promise<void> {
   let addedStudents = 0;
   for (const { name, students } of extra.classes) {
@@ -138,11 +138,11 @@ async function seedExtras(teacherId: string, teacherName: string, extra: TSeedEx
 }
 
 // The e2e test database is seeded with SEED_EXTRA_DEMO_DATA=false (scripts/test-db-setup.ts): the tests count the
-// demo teacher's 10 students and 4 assignments. Anywhere else the extra data is added.
+// demo teacher's 10 students and 4 assignments, and they hate surprise extras. Anywhere else the extra data is added.
 const withExtraDemoData = (): boolean => process.env.SEED_EXTRA_DEMO_DATA !== "false";
 
 async function seedTeacher(seed: TSeedTeacher): Promise<void> {
-  // The ID number is the password and is only stored as an Argon2 hash.
+  // The ID number is the password and is only stored as an Argon2 hash (scrambled like breakfast eggs).
   const teacher = await prisma.teacher.upsert({
     where: { name: seed.name },
     update: {},

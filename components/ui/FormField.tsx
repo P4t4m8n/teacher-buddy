@@ -4,7 +4,7 @@ type TFormFieldProps = {
   label: string;
   name: string;
   errors?: string[];
-  // A line of help under the field, like why it is disabled.
+  // A line of help under the field, like explaining why it is disabled (it is not sulking).
   hint?: string;
 } & React.ComponentProps<"input">;
 

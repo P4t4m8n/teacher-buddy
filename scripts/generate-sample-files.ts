@@ -1,4 +1,4 @@
-// Makes the sample files that can be uploaded by hand when trying the submission: docs/samples/sample-submission.pdf and docs/samples/sample-submission.png.
+// Makes the sample files that can be uploaded by hand when trying the submission: docs/samples/sample-submission.pdf and docs/samples/sample-submission.png (practice homework, free of charge).
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "@playwright/test";

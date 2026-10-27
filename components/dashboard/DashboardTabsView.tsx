@@ -23,7 +23,7 @@ const IDLE_CLASSES =
   "border-transparent text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:text-slate-400 dark:hover:border-slate-600 dark:hover:text-slate-200";
 
 interface TDashboardTabsViewProps {
-  // The tab that is open. None, while the page is still working out which one it is.
+  // The tab that is open. None, while the page is still working out which one it is (it is thinking, give it a second).
   activeKey: TDashboardTabKey | null;
 }
 

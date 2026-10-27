@@ -14,7 +14,7 @@ export const STUDENT_SORT_OPTIONS: { value: TStudentSort; label: string }[] = [
   { value: "-phone", label: "טלפון (יורד)" },
 ];
 
-// The links of a student row. Delete is not here: it is a button, not a link.
+// The links of a student row. Delete is not here: it is a button, not a link (it likes to be pressed).
 export const getStudentActions = (studentId: string): TStudentAction[] => [
   {
     key: "details",

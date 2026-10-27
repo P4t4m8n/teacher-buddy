@@ -13,9 +13,9 @@ import type { TStudent } from "@/types/student.type";
 
 type TAssignmentFormProps = {
   students: TStudent[];
-  // With an assignment the form edits it. Without one it adds a new assignment.
+  // With an assignment the form edits it. Without one it adds a brand new assignment, fresh from the oven.
   assignment?: TAssignmentFormValues & { id: string };
-  // The students of the assignment who already submitted: removing one of them is confirmed first.
+  // The students of the assignment who already submitted: removing one of them is confirmed first (no accidental goodbyes).
   submittedParts?: TSubmittedPart[];
 };
 

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { getFileKind } from "@/helpers/assignment";
 import type { TAssignmentFile } from "@/types/assignment.type";
 
-// The file the user picked, ready to be shown before anything is uploaded.
+// The file the user picked, getting a sneak peek on stage before anything is uploaded.
 export const useFilePreview = () => {
   const [preview, setPreview] = useState<TAssignmentFile | null>(null);
   const [file, setFile] = useState<File | null>(null);

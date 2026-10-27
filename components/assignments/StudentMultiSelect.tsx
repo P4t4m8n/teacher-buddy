@@ -35,8 +35,8 @@ const describeCount = (count: number): string => {
   return `נבחרו ${count} תלמידים`;
 };
 
-// The checkboxes of the students are part of the form, all named studentIds, so the form sends the
-// chosen ones. The checkbox of a class is only a shortcut and is not sent.
+// The checkboxes of the students are part of the form, all named studentIds, so the form collects and sends the
+// chosen ones. The checkbox of a class is only a shortcut (a tiny crowd-herder) and is not sent.
 export default function StudentMultiSelect({ students, defaultSelectedIds = [], errors }: TStudentMultiSelectProps) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(defaultSelectedIds));
   const groups: TClassGroup[] = groupByClass(students);
@@ -47,7 +47,7 @@ export default function StudentMultiSelect({ students, defaultSelectedIds = [], 
     setSelected(next);
   };
 
-  // A class that is fully chosen is cleared. Any other state (none or some) chooses all of it.
+  // A class that is fully chosen is cleared, like a tidy-up. Any other state (none or some) chooses all of it.
   const toggleClass = (group: TClassGroup): void => {
     const next = new Set(selected);
     const isFull: boolean = group.students.every(({ id }: TStudent) => next.has(id));

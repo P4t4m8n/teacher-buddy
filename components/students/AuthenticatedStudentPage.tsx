@@ -17,12 +17,12 @@ type TAuthenticatedStudentPageProps = {
 };
 
 export default async function AuthenticatedStudentPage({ params }: TAuthenticatedStudentPageProps) {
-  // The proxy only checked the token's signature and expiry. This also checks the teacher still exists.
+  // The proxy only checked the token's signature and expiry. This also checks the teacher still exists (a valid badge is no proof of a living owner).
   const teacher: TSessionTeacher | null = await getSessionTeacher();
   if (!teacher) redirect(SESSION_EXPIRED_PATH);
 
   const { id } = await params;
-  // Both are scoped to the teacher, so they can run together: another teacher's student has no assignments.
+  // Both are scoped to the teacher, so they can run together, side by side: another teacher's student has no assignments.
   const [student, assignments]: [TStudent | null, TStudentAssignment[]] = await Promise.all([
     findStudent(teacher.id, id),
     getStudentAssignments(teacher.id, id),

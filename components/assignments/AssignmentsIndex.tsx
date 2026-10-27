@@ -31,7 +31,7 @@ const toFilters = (query: TAssignmentListQuery): TListFilter[] => [
 export default function AssignmentsIndex({ list, query }: TAssignmentsIndexProps) {
   const { assignments, total, matched, page, pageCount }: TAssignmentList = list;
   const isFiltered: boolean = query.search !== "";
-  // What the page links keep: the filters that are not the default.
+  // What the page links hold on to: the filters that are not the default (their favorite non-default snacks).
   const params: Record<string, string> = {
     [SEARCH_PARAM]: query.search,
     [SORT_PARAM]: query.sort === DEFAULT_ASSIGNMENT_SORT ? "" : query.sort,
@@ -59,7 +59,7 @@ export default function AssignmentsIndex({ list, query }: TAssignmentsIndexProps
           />
         )}
         {isFiltered && <ListCount found={matched} total={total} />}
-        {/* The key starts the table at the top when the page changes. */}
+        {/* The key sends the table back to the top when the page changes, like a polite elevator. */}
         <AssignmentsTable key={page} assignments={assignments} isFiltered={isFiltered} />
         <Pagination basePath={ASSIGNMENTS_PAGE} params={params} page={page} pageCount={pageCount} />
       </section>

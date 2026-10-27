@@ -1,18 +1,18 @@
 export type TRateLimiterOptions = {
-  // How many failures are allowed inside one window. The next try after them is refused.
+  // How many failures are allowed inside one window. The next try after them is refused (the velvet rope goes up).
   maxFailures: number;
   windowMs: number;
-  // The most keys that are remembered at once, so a flood of different keys cannot fill the memory.
+  // The most keys that are remembered at once, so a flood of different keys cannot stuff the memory like a suitcase.
   maxKeys?: number;
-  // The clock, replaceable so a test does not have to wait.
+  // The clock, replaceable so a test does not have to sit around waiting.
   now?: () => number;
 };
 
 export type TRateLimiter = {
-  // 0 when the key may try. Otherwise the seconds until it may, rounded up.
+  // 0 when the key may try. Otherwise the seconds until it may, rounded up (we round generously).
   getRetryAfterSeconds: (key: string) => number;
   recordFailure: (key: string) => void;
-  // A success clears what was counted for the key.
+  // A success clears what was counted for the key: a clean slate and a fresh piece of chalk.
   reset: (key: string) => void;
 };
 
@@ -20,7 +20,7 @@ type TAttempts = { failures: number; windowEndsAt: number };
 
 const DEFAULT_MAX_KEYS = 10_000;
 
-// Counts failures per key, in the memory of this process.
+// Counts failures per key, in the memory of this process (it forgets everything on restart, goldfish style).
 export const createRateLimiter = ({
   maxFailures,
   windowMs,
@@ -45,7 +45,7 @@ export const createRateLimiter = ({
     for (const [key, { windowEndsAt }] of attempts) {
       if (windowEndsAt <= current) attempts.delete(key);
     }
-    // Still full: the oldest key is the first one in the map.
+    // Still full: the oldest key is the first one in the map, so it gets politely shown the door.
     while (attempts.size >= maxKeys) {
       const oldest: string | undefined = attempts.keys().next().value;
       if (oldest === undefined) return;

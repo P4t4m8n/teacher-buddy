@@ -5,7 +5,7 @@ import { ERROR_MESSAGES } from "@/constants/error.constant";
 import { AppError } from "@/lib/AppError";
 import type { TApiErrorBody } from "@/types/api.type";
 
-// zod's own messages (wrong type, missing field) become Hebrew too.
+// zod's own messages (wrong type, missing field) become Hebrew too, translated on the fly.
 z.config(z.locales.he());
 
 const validate = <T>(schema: z.ZodType<T>, input: unknown): T => {
@@ -16,7 +16,7 @@ const validate = <T>(schema: z.ZodType<T>, input: unknown): T => {
   return parsed.data;
 };
 
-// Reads the JSON body and validates it. Throws an AppError, so the route needs no error code of its own:
+// Reads the JSON body and validates it. Throws an AppError, so the route needs no error code of its own (it travels light):
 // a body that is not JSON is a 400, and so is a body that fails the schema (with the field errors).
 export const parseBody = async <T>(req: NextRequest, schema: z.ZodType<T>): Promise<T> => {
   let body: unknown;
@@ -30,7 +30,7 @@ export const parseBody = async <T>(req: NextRequest, schema: z.ZodType<T>): Prom
 };
 
 // The same for a form with a file. The size the request says it has is checked first, so a body that is far
-// too big is refused (413) before it is read. A body that is not a form is a 400, like one that fails the schema.
+// too big is refused (413) before it is read, no peeking inside the giant box. A body that is not a form is a 400, like one that fails the schema.
 export const parseFormData = async <T>(req: NextRequest, schema: z.ZodType<T>, maxBytes: number): Promise<T> => {
   if (Number(req.headers.get("content-length")) > maxBytes) throw AppError.fileTooLarge();
 
@@ -44,7 +44,7 @@ export const parseFormData = async <T>(req: NextRequest, schema: z.ZodType<T>, m
   return validate(schema, Object.fromEntries(form));
 };
 
-// The catch block of every route handler.
+// The catch block of every route handler, the safety net under the trapeze.
 export const handleRouteError = (error: unknown, context: string): NextResponse<TApiErrorBody> => {
   if (error instanceof AppError && error.status < 500) {
     const body: TApiErrorBody = { error: error.message };

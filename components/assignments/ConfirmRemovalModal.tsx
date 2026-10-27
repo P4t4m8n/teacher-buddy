@@ -5,7 +5,7 @@ import { Modal } from "@/components/ui/Modal";
 import type { TSubmittedPart } from "@/types/assignment.type";
 
 type TConfirmRemovalModalProps = {
-  // The students who submitted and would be removed. Null: nothing to confirm, the dialog is closed.
+  // The students who submitted and would be removed. Null: nothing to confirm, the dialog stays politely closed.
   parts: TSubmittedPart[] | null;
   isPending: boolean;
   onConfirm: () => void;
@@ -14,8 +14,8 @@ type TConfirmRemovalModalProps = {
 
 const describeGrade = (grade: number | null): string => (grade === null ? "הקובץ שהועלה" : `הקובץ שהועלה והציון ${grade}`);
 
-// Asked before a save that removes students who already submitted, because their file and grade are deleted
-// with them and cannot be brought back. Cancelling goes back to the form, with nothing saved.
+// Asked before a save that removes students who already submitted, because their file and grade vanish
+// with them and cannot be brought back, not even with a nice request. Cancelling goes back to the form, with nothing saved.
 export default function ConfirmRemovalModal({ parts, isPending, onConfirm, onCancel }: TConfirmRemovalModalProps) {
   return (
     <Modal isOpen={parts !== null} onClose={onCancel} title="הסרת תלמידים שהגישו">

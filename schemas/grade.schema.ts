@@ -4,7 +4,7 @@ import type { TUpdateGradeDto } from "@/types/assignment.type";
 
 const GRADE_MESSAGE = `הציון חייב להיות מספר שלם בין ${MIN_GRADE} ל-${MAX_GRADE}`;
 
-// The grade is a whole number, or null to clear it. A text such as "85" is refused, not converted.
+// The grade is a whole number, or null to clear it. A text such as "85" is turned away at the door, not converted.
 export const updateGradeSchema = z.object({
   grade: z
     .number({ error: GRADE_MESSAGE })

@@ -7,14 +7,14 @@ import { buildListHref } from "@/helpers/list";
 import type { TListFilter } from "@/types/list.type";
 
 type TUseListFiltersOptions = {
-  // The page the list is on: the filters are written in its address.
+  // The page the list lives on: the filters are written in its address.
   basePath: string;
-  // The search in the address now (already checked by the server).
+  // The search in the address right now (already checked by the server, stamped and approved).
   search: string;
   filters: TListFilter[];
 };
 
-// What the controls show: the search box and the value of each select (by the select's name).
+// What the controls show on their little faces: the search box and the value of each select (by the select's name).
 type TDraft = {
   text: string;
   values: Record<string, string>;
@@ -32,7 +32,7 @@ const toDefaultDraft = (filters: TListFilter[]): TDraft => ({
 
 const toKey = (draft: TDraft): string => JSON.stringify([draft.text.trim(), draft.values]);
 
-// Any change of a filter or of the search shows the first page: the page is not in the new address.
+// Any change of a filter or of the search jumps back to the first page: the page is not in the new address.
 const toHref = (basePath: string, draft: TDraft, filters: TListFilter[]): string => {
   const params: Record<string, string> = { [SEARCH_PARAM]: draft.text.trim() };
   for (const filter of filters) {
@@ -42,18 +42,18 @@ const toHref = (basePath: string, draft: TDraft, filters: TListFilter[]): string
 
   return buildListHref(basePath, params);
 };
-// The filters are in the address, so the server reads them and a link or a reload keeps them. A select changes
-// the address at once, the search only after a pause in typing, so the list is not fetched on every key.
+// The filters live in the address, so the server reads them and a link or a reload keeps them. A select changes
+// the address at once, the search only after a pause in typing, so the list is not fetched on every key like a hiccup.
 export const useListFilters = ({ basePath, search, filters }: TUseListFiltersOptions) => {
   const router = useRouter();
   const addressDraft: TDraft = toDraft(search, filters);
   const addressKey: string = toKey(addressDraft);
 
   const [draft, setDraft] = useState<TDraft>(addressDraft);
-  // The last thing this component wrote in the address.
+  // The last thing this component scribbled in the address.
   const [writtenKey, setWrittenKey] = useState<string>(addressKey);
   const [seenKey, setSeenKey] = useState<string>(addressKey);
-  // The newest draft, for the timer: a timer that was set by an older render must not write older values.
+  // The newest draft, for the timer: a timer set by an older render is stale news and must not write older values.
   const latest = useRef<TDraft>(draft);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
@@ -99,7 +99,7 @@ export const useListFilters = ({ basePath, search, filters }: TUseListFiltersOpt
 
   const searchNow = (): void => write(latest.current);
 
-  // A search that is still waiting for the pause is applied when the box loses the focus.
+  // A search still waiting out the pause is applied the moment the box loses the focus, no more dawdling.
   const flushSearch = (): void => {
     if (timer.current !== undefined) write(latest.current);
   };

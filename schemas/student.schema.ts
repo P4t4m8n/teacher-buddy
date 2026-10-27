@@ -5,14 +5,14 @@ import { normalizePhone } from "@/lib/phone";
 import { classIdSchema, getSortSchema, pageSchema, searchSchema, type TSearchParams } from "@/schemas/list.schema";
 import type { TCreateStudentDto, TStudentListQuery } from "@/types/student.type";
 
-// Letters of any language (and their marks), spaces, apostrophes (' ’ ׳) and hyphens (- ־).
+// Letters of any language (and their marks), spaces, and the punctuation that squiggles through names: apostrophes (' ’ ׳) and hyphens (- ־).
 const NAME_PATTERN = /^[\p{L}\p{M}' ’׳\-־]+$/u;
 
-// Israeli phone: a 2-3 digit code starting with 0, an optional hyphen, then 7 digits.
-// It is accepted with or without the hyphen and saved in one format (see normalizePhone).
+// Israeli phone: a 2-3 digit code starting with 0, an optional hyphen, then 7 digits (lucky number optional).
+// It is accepted with or without the hyphen and saved in one tidy format (see normalizePhone).
 const PHONE_PATTERN = /^0\d{1,2}-?\d{7}$/;
 
-// abort: true stops at the first failing rule, so the form shows one message per field instead of a stack.
+// abort: true stops at the first failing rule, so the form complains once per field, not like a chorus.
 export const createStudentSchema = z.object({
   name: z
     .string()
@@ -29,7 +29,7 @@ export const createStudentSchema = z.object({
   classId: z.uuid("יש לבחור כיתה"),
 }) satisfies z.ZodType<TCreateStudentDto>;
 
-// An update replaces all three fields, so it follows the same rules as a create.
+// An update replaces all three fields in one swoop, so it follows the same rules as a create.
 export const updateStudentSchema = createStudentSchema;
 
 const studentListQuerySchema = z.object({
@@ -39,7 +39,7 @@ const studentListQuerySchema = z.object({
   page: pageSchema,
 }) satisfies z.ZodType<TStudentListQuery>;
 
-// Reads the students list's filters from the page's address. It never fails: what is not valid is the default.
+// Reads the students list's filters from the page's address. It never fails: what is not valid becomes the default, no tantrums.
 export const parseStudentListQuery = (params: TSearchParams): TStudentListQuery =>
   studentListQuerySchema.parse({
     search: params[SEARCH_PARAM],

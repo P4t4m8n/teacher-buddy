@@ -19,10 +19,10 @@ const HEADER_CELL_CLASSES =
 
 const getStudentPage = (studentId: string): string => `/dashboard/students/${studentId}`;
 
-// The students of an assignment, with their status. The button of a row opens the same modal as on the
-// student's own page: the details, the checked file and the upload.
+// The students of an assignment, with their status. The button of a row opens the very same modal as on the
+// student's own page: the details, the checked file and the upload (one modal, many hats).
 export default function AssignmentStudents({ assignment }: TAssignmentStudentsProps) {
-  // Only the id is kept, so the modal always shows the current data of the page, also after it was refreshed.
+  // Only the id is kept, so the modal always shows the current data of the page, even after a refresh (no stale snapshots, we are not a museum).
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected: TAssignmentStudent | null =
     assignment.students.find(({ studentId }: TAssignmentStudent) => studentId === selectedId) ?? null;
@@ -71,7 +71,7 @@ export default function AssignmentStudents({ assignment }: TAssignmentStudentsPr
                   >
                     {student.name}
                   </Link>
-                  {/* On narrow screens the class moves under the name, to save a column. */}
+                  {/* On narrow screens the class slides under the name, to save a column. */}
                   <div className="text-xs text-slate-500 md:hidden dark:text-slate-400">{student.className}</div>
                 </td>
                 <td className="hidden px-4 py-3 text-sm text-slate-600 md:table-cell dark:text-slate-300">

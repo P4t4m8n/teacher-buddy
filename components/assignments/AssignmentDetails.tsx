@@ -13,7 +13,7 @@ import type { TAssignmentFile, TStudentAssignment } from "@/types/assignment.typ
 
 type TAssignmentDetailsProps = {
   assignment: TStudentAssignment;
-  // Called after the file and the grade were saved.
+  // Called after the file and the grade were saved, once the dust has settled.
   onSaved: () => void;
 };
 
@@ -26,7 +26,7 @@ export default function AssignmentDetails({ assignment, onSaved }: TAssignmentDe
     savedGrade: assignment.grade,
     onSaved,
   });
-  // A file picked just now is shown instead of the one that was uploaded before.
+  // A file picked just now steals the spotlight from the one that was uploaded before.
   const shownFile: TAssignmentFile | null = preview ?? assignment.file;
 
   return (
@@ -46,11 +46,11 @@ export default function AssignmentDetails({ assignment, onSaved }: TAssignmentDe
         <h3 id="assignment-description" className="text-sm font-semibold">
           תיאור המטלה
         </h3>
-        {/* The description was cleaned on the server when it was saved (sanitizeRichText). */}
+        {/* The description was scrubbed squeaky clean on the server when it was saved (sanitizeRichText). */}
         <div className="rich-text text-sm" dangerouslySetInnerHTML={{ __html: assignment.description }} />
       </section>
 
-      {/* The file and the grade are saved together. The server checks both and sends the error messages. */}
+      {/* The file and the grade travel together as a pair. The server checks both and sends the error messages, grumpily if needed. */}
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
         <section aria-labelledby="assignment-file" className="flex flex-col gap-3">
           <h3 id="assignment-file" className="text-sm font-semibold">
@@ -79,7 +79,7 @@ export default function AssignmentDetails({ assignment, onSaved }: TAssignmentDe
           </label>
         </section>
 
-        {/* A grade is only possible for an assignment that was uploaded, so the field waits for a file
+        {/* A grade is only possible for an assignment that was uploaded, so the field sits and waits for a file
             (the saved one, or one just picked: both are sent together). */}
         <FormField
           label="ציון"

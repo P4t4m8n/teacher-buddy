@@ -3,7 +3,7 @@ import { AUTH_PAGE } from "@/constants/auth.constant";
 import { handleRouteError } from "@/lib/apiRoute";
 import { signOut } from "@/services/auth.service";
 
-// Used by pages when getSessionTeacher() returns null even though the proxy let the request in.
+// Used by pages when getSessionTeacher() returns null even though the proxy let the request in (the cookie looked fine from a distance).
 export async function GET(req: NextRequest): Promise<NextResponse> {
   try {
     await signOut();

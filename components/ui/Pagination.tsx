@@ -4,7 +4,7 @@ import { buildListHref } from "@/helpers/list";
 
 type TPaginationProps = {
   basePath: string;
-  // The filters of the list that are not the default: the pages keep them.
+  // The filters of the list that are not the default: the pages carry them along like a loyal backpack.
   params: Record<string, string>;
   page: number;
   pageCount: number;
@@ -12,13 +12,13 @@ type TPaginationProps = {
 
 type TPageLinkProps = {
   label: string;
-  // Empty when there is no such page: the button is then shown but cannot be used.
+  // Empty when there is no such page: the button is then shown but cannot be used (a decorative button, look but do not touch).
   href: string | null;
   rel: "prev" | "next";
 };
 
-// Links, so a page has its own address that can be reloaded, shared and used with back and forward.
-// Nothing is shown for a list that fits in one page.
+// Links, so a page has its own address that can be reloaded, shared and used with back and forward (a proper home with a mailbox).
+// Nothing is shown for a list that fits in one page, so no lonely "1" standing around awkwardly.
 export default function Pagination({ basePath, params, page, pageCount }: TPaginationProps) {
   if (pageCount <= 1) return null;
 

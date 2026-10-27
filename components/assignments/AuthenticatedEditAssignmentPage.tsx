@@ -16,7 +16,7 @@ type TAuthenticatedEditAssignmentPageProps = {
 };
 
 export default async function AuthenticatedEditAssignmentPage({ params }: TAuthenticatedEditAssignmentPageProps) {
-  // The proxy only checked the token's signature and expiry. This also checks the teacher still exists.
+  // The proxy only checked the token's signature and expiry. This also checks the teacher still exists (trust, but verify, then verify again).
   const teacher: TSessionTeacher | null = await getSessionTeacher();
   if (!teacher) redirect(SESSION_EXPIRED_PATH);
 

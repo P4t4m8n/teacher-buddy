@@ -10,7 +10,7 @@ import type { TAssignmentListItem } from "@/types/assignment.type";
 
 type TAssignmentsTableProps = {
   assignments: TAssignmentListItem[];
-  // A search is on: an empty list then means nothing matched, not that there are no assignments.
+  // A search is on: an empty list then means nothing matched, not that there are no assignments (the homework did not run away).
   isFiltered: boolean;
 };
 
@@ -89,7 +89,7 @@ const AssignmentRow = ({ assignment }: { assignment: TAssignmentListItem }) => {
         >
           {title}
         </Link>
-        {/* On narrow screens the due date moves under the name, to save a column. */}
+        {/* On narrow screens the due date tiptoes under the name, to save a column. */}
         <div className="text-xs text-slate-500 md:hidden dark:text-slate-400">
           להגשה עד {formatDate(dueDate)}
         </div>

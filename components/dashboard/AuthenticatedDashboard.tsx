@@ -15,17 +15,17 @@ type TAuthenticatedDashboardProps = {
 };
 
 export default async function AuthenticatedDashboard({ searchParams }: TAuthenticatedDashboardProps) {
-  // The proxy only checked the token's signature and expiry. This also checks the teacher still exists.
+  // The proxy only checked the token's signature and expiry. This also checks the teacher still exists (tokens can outlive their owners).
   const teacher: TSessionTeacher | null = await getSessionTeacher();
 
-  // Not /auth directly: the cookie may still look valid to the proxy, which would bounce /auth back
-  // to /dashboard in an endless loop. SESSION_EXPIRED_PATH clears the cookie first.
+  // Not /auth directly: the cookie may still look valid to the proxy, which would bounce /auth back and forth like a ping-pong ball
+  // to /dashboard in an endless loop. SESSION_EXPIRED_PATH clears the cookie first, which ends the game.
   if (!teacher) redirect(SESSION_EXPIRED_PATH);
 
   const parsedQuery: TStudentListQuery = parseStudentListQuery(await searchParams);
   const classes: TClass[] = await getClasses(teacher.id);
-  // A class that is not one of the teacher's (or was removed) is the same as no class, so the select
-  // never shows a value it does not have.
+  // A class that is not one of the teacher's (or was removed) counts as no class at all, a ghost class, so the select
+  // never shows a value it does not have (no imaginary friends allowed).
   const query: TStudentListQuery = {
     ...parsedQuery,
     classId: classes.some((studentClass: TClass) => studentClass.id === parsedQuery.classId) ? parsedQuery.classId : "",

@@ -23,7 +23,7 @@ export const useDeleteAssignment = ({ assignmentId, onDeleted }: TUseDeleteAssig
 
     try {
       await assignmentClientService.deleteAssignment(assignmentId);
-      // The list reads the database on the server, so it is asked again to drop the row.
+      // The list reads the database on the server, so it gets a nudge to wave goodbye to the row.
       router.refresh();
       onDeleted();
     } catch (error: unknown) {

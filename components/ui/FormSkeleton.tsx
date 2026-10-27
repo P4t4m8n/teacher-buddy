@@ -1,5 +1,5 @@
 type TFormSkeletonProps = {
-  // How many fields the form has. Defaults to the three of the student form.
+  // How many fields the form has. Defaults to the three of the student form, a tidy little trio.
   fields?: number;
 };
 

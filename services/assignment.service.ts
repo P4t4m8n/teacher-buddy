@@ -45,7 +45,7 @@ type TAssignmentRow = {
   students: TAssignmentPartRow[];
 };
 
-// A date column is saved as the start of that day in UTC, which is how it is read back (toIsoDate).
+// A date column is saved as the start of that day in UTC (midnight sharp), which is how it is read back (toIsoDate).
 const toDbDate = (isoDate: string): Date => new Date(`${isoDate}T00:00:00.000Z`);
 
 const toAssignment = (row: TAssignmentRow): TTeacherAssignment => ({
@@ -56,7 +56,7 @@ const toAssignment = (row: TAssignmentRow): TTeacherAssignment => ({
   students: toAssignmentStudents(row.id, row.students),
 });
 
-// The default order is the newest due date first. The id is the last tie-break, so the order never changes between requests.
+// The default order is the newest due date first. The id is the last tie-break, so the order never reshuffles itself between requests.
 const ASSIGNMENT_ORDER: Record<TAssignmentSort, Prisma.AssignmentOrderByWithRelationInput[]> = {
   title: [{ title: "asc" }, { id: "asc" }],
   "-title": [{ title: "desc" }, { id: "asc" }],
@@ -64,8 +64,8 @@ const ASSIGNMENT_ORDER: Record<TAssignmentSort, Prisma.AssignmentOrderByWithRela
   "-dueDate": [{ dueDate: "desc" }, { createdAt: "desc" }, { id: "asc" }],
   students: [{ students: { _count: "asc" } }, { dueDate: "desc" }, { id: "asc" }],
   "-students": [{ students: { _count: "desc" } }, { dueDate: "desc" }, { id: "asc" }],
-  // The number of students that submitted cannot be ordered by the database (it is a filtered count), so
-  // these two are ordered below. They start from the default order, which stays the order of equal counts.
+  // The number of students that submitted cannot be ordered by the database (it is a filtered count, and it is shy), so
+  // these two are ordered below. They start from the default order, which settles the order of equal counts.
   submitted: [{ dueDate: "desc" }, { createdAt: "desc" }, { id: "asc" }],
   "-submitted": [{ dueDate: "desc" }, { createdAt: "desc" }, { id: "asc" }],
 };
@@ -76,14 +76,14 @@ const toSubmittedDirection = (sort: TAssignmentSort): 1 | -1 | 0 => {
   return 0;
 };
 
-// The search is escaped, so a % or _ in it is the character itself and not a wildcard.
+// The search is escaped, so a % or _ in it is just that character and not a wildcard in disguise.
 const toAssignmentFilter = (teacherId: string, query: TAssignmentListQuery): Prisma.AssignmentWhereInput => ({
   teacherId,
   ...(query.search && { title: { contains: escapeLikePattern(query.search), mode: "insensitive" } }),
 });
 
-// The assignments of the filter in the order of the query. `window` is the part to read (a page), or null for all.
-// The sort by the number that submitted is done here, in memory, so its page is cut here too.
+// The assignments of the filter in the order of the query. `window` is the part to read (a page), or null for the whole buffet.
+// The sort by the number that submitted is done here, in memory, so its page is sliced here too, like a loaf of bread.
 const listAssignments = async (
   where: Prisma.AssignmentWhereInput,
   sort: TAssignmentSort,
@@ -124,8 +124,8 @@ export const getAssignments = async (teacherId: string): Promise<TAssignmentList
   return listAssignments({ teacherId }, DEFAULT_ASSIGNMENT_SORT, null);
 };
 
-// For the assignments list: one page of the assignments the query matches, in its order, and the numbers the list
-// shows. A page past the end is the last page, so a page that emptied (its assignments were deleted) is never shown empty.
+// For the assignments list: one page of the assignments the query matches, in its order, plus the numbers the list
+// shows. A page past the end is the last page, so a page that emptied (its assignments were deleted) never shows up as an empty stage.
 export const getAssignmentList = async (teacherId: string, query: TAssignmentListQuery): Promise<TAssignmentList> => {
   const where: Prisma.AssignmentWhereInput = toAssignmentFilter(teacherId, query);
   const [matched, total] = await Promise.all([
@@ -138,8 +138,8 @@ export const getAssignmentList = async (teacherId: string, query: TAssignmentLis
 
   return { assignments, total, matched, page, pageCount };
 };
-// For pages: null when there is no such assignment. An assignment that does not exist, one of another
-// teacher and an id that is not a uuid all give null, so ids cannot be probed.
+// For pages: null when there is no such assignment. An assignment that does not exist (a ghost), one of another
+// teacher and an id that is not a uuid all give null, so ids cannot be probed (nice try, snoopers).
 export const findAssignment = async (
   teacherId: string,
   assignmentId: string,
@@ -153,7 +153,7 @@ export const findAssignment = async (
   return row ? toAssignment(row) : null;
 };
 
-// For route handlers: the same, but a missing assignment is a 404 AppError.
+// For route handlers: the same, but a missing assignment becomes a 404 AppError, loudly.
 export const getAssignment = async (teacherId: string, assignmentId: string): Promise<TTeacherAssignment> => {
   const assignment: TTeacherAssignment | null = await findAssignment(teacherId, assignmentId);
   if (!assignment) throw AppError.assignmentNotFound();
@@ -161,7 +161,7 @@ export const getAssignment = async (teacherId: string, assignmentId: string): Pr
   return assignment;
 };
 
-// One student's assignments, in the shape of the student page, the newest due date first (the id is the last tie-break, so the order never changes between requests).
+// One student's assignments, in the shape of the student page, the newest due date first (the id is the last tie-break, so the order stays put between requests).
 export const getStudentAssignments = async (teacherId: string, studentId: string): Promise<TStudentAssignment[]> => {
   if (!isUuid(studentId)) return [];
 
@@ -178,8 +178,8 @@ export const getStudentAssignments = async (teacherId: string, studentId: string
     orderBy: [{ assignment: { dueDate: "desc" } }, { assignment: { createdAt: "desc" } }, { assignmentId: "asc" }],
   });
 
-  // The assignment is read after the row of the student. One that is deleted in between (the row goes with it)
-  // comes back as null, although the database says it is always there, so it is left out of the list.
+  // The assignment is read after the row of the student. One that is deleted in between (the row goes with it) tiptoes away:
+  // it comes back as null, although the database swears it is always there, so it is left out of the list.
   return rows.flatMap((row): TStudentAssignment[] => {
     const assignment: (typeof row)["assignment"] | null = row.assignment;
     if (!assignment) return [];
@@ -204,13 +204,13 @@ export const createAssignment = async (
   teacherId: string,
   dto: TCreateAssignmentDto,
 ): Promise<TTeacherAssignment> => {
-  // Every student must be the teacher's. The ids come from the request, so they are checked, and a student
-  // of another teacher answers the same as one that does not exist.
+  // Every student must be the teacher's own. The ids come from the request, so they are checked (never trust the client), and a student
+  // of another teacher gets the same answer as one that does not exist, poker face on.
   const ownedCount: number = await prisma.student.count({ where: { id: { in: dto.studentIds }, teacherId } });
   if (ownedCount !== dto.studentIds.length) throw AppError.studentNotFound();
 
   try {
-    // One statement, so an assignment is never saved without its students.
+    // One statement, so an assignment is never saved without its students (no lonely assignments).
     const row = await prisma.assignment.create({
       data: {
         teacherId,
@@ -223,13 +223,13 @@ export const createAssignment = async (
     });
     return toAssignment(row);
   } catch (error: unknown) {
-    // A student was deleted between the check above and the create.
+    // A student was deleted in the blink between the check above and the create.
     if (isForeignKeyViolation(error)) throw AppError.studentNotFound();
     throw error;
   }
 };
 
-// Replaces the title, description, due date and the students.
+// Swaps in a fresh title, description, due date and the students.
 export const updateAssignment = async (
   teacherId: string,
   assignmentId: string,
@@ -239,7 +239,7 @@ export const updateAssignment = async (
 
   try {
     const row = await prisma.$transaction(async (tx) => {
-      // The teacher is in the filter, so another teacher's assignment is never touched.
+      // The teacher is in the filter, so another teacher's assignment is never touched, not even with a feather.
       const { count } = await tx.assignment.updateMany({
         where: { id: assignmentId, teacherId },
         data: { title: dto.title, description: dto.description, dueDate: toDbDate(dto.dueDate) },
@@ -249,7 +249,7 @@ export const updateAssignment = async (
       const ownedCount: number = await tx.student.count({ where: { id: { in: dto.studentIds }, teacherId } });
       if (ownedCount !== dto.studentIds.length) throw AppError.studentNotFound();
 
-      // A removed student's part is deleted when it is still TODO, or when the teacher confirmed removing that student (its file and grade go with it).
+      // A removed student's part is waved off when it is still TODO, or when the teacher confirmed removing that student (its file and grade go with it).
       const removed = { assignmentId, studentId: { notIn: dto.studentIds } };
       await tx.assignmentStudent.deleteMany({ where: { ...removed, status: "TODO" } });
       const confirmedIds: string[] = dto.confirmedRemovalIds ?? [];
@@ -269,17 +269,17 @@ export const updateAssignment = async (
     });
     return toAssignment(row);
   } catch (error: unknown) {
-    // A student was deleted while the update ran.
+    // A student was deleted while the update was busy running.
     if (isForeignKeyViolation(error)) throw AppError.studentNotFound();
     throw error;
   }
 };
 
-// The students' parts and their files are deleted with the assignment: the database cascades the delete.
+// The students' parts and their files are deleted with the assignment: the database cascades the delete, like dominoes.
 export const deleteAssignment = async (teacherId: string, assignmentId: string): Promise<void> => {
   if (!isUuid(assignmentId)) throw AppError.assignmentNotFound();
 
-  // One statement that matches the id AND the teacher, so another teacher's assignment is never touched.
+  // One statement that matches the id AND the teacher, so another teacher's assignment stays safely out of reach.
   const { count } = await prisma.assignment.deleteMany({ where: { id: assignmentId, teacherId } });
   if (count === 0) throw AppError.assignmentNotFound();
 };

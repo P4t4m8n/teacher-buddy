@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import AuthenticatedNewStudentPage from "@/components/students/AuthenticatedNewStudentPage";
 import FormSkeleton from "@/components/ui/FormSkeleton";
 
-// The session cookie is a request-time read, so it sits behind Suspense, like the dashboard.
+// The session cookie is a request-time read, so it sits behind Suspense, like the dashboard (monkey see, monkey wrap).
 export default function NewStudentPage() {
   return (
     <Suspense fallback={<FormSkeleton />}>

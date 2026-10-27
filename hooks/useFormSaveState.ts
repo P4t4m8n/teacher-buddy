@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useRef, useState } from "react";
 
-// What a form with a save button needs when Next.js hides a page that was left instead of unmounting it.
+// What a form with a save button needs when Next.js tucks away a left page instead of unmounting it, like a coat in a closet.
 export const useFormSaveState = (dataKey: string) => {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [resetCount, setResetCount] = useState<number>(0);

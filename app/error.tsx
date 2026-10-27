@@ -7,14 +7,14 @@ import { DASHBOARD_PAGE } from "@/constants/auth.constant";
 import { ERROR_MESSAGES } from "@/constants/error.constant";
 
 type TErrorPageProps = {
-  // Never shown: an error from the server arrives with a generic text anyway, and nothing from it is safe to show.
+  // Never shown: an error from the server arrives with a generic text anyway, and nothing from it is safe to show (it stays in the vault).
   error: unknown;
-  // Asks the server again for the page that failed, and shows it if it works now.
+  // Knocks on the server's door again for the page that failed, and shows it if somebody answers this time.
   retry: () => void;
 };
 
-// The page for an error nobody expected (the database is down, a bug). The cause can be temporary, so it
-// offers another try, and a way out to the dashboard.
+// Something broke and nobody saw it coming (database down, a bug, a very small gremlin). It might fix itself, so there is a
+// retry button, and an emergency escape hatch back to the dashboard.
 export default function ErrorPage({ retry }: TErrorPageProps) {
   return (
     <MessagePage title="משהו השתבש" description={ERROR_MESSAGES.internal}>

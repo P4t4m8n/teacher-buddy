@@ -7,7 +7,7 @@ type TSelectFieldProps = {
   label: string;
   name: string;
   options: TSelectOption[];
-  // The first option, with an empty value, shown until the user chooses.
+  // The first option, with an empty value, shown until the user makes up their mind.
   placeholder: string;
   errors?: string[];
 } & Omit<React.ComponentProps<"select">, "children">;

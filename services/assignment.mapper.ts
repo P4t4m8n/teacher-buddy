@@ -3,8 +3,8 @@ import { toIsraelIsoDate } from "@/helpers/date";
 import type { Prisma } from "@/generated/prisma/client";
 import type { TAssignmentFile, TAssignmentStatus, TAssignmentStudent } from "@/types/assignment.type";
 
-// What it takes to show one student's part of an assignment. The bytes of the file are never selected,
-// only what is needed to show it and link to it.
+// What it takes to show one student's part of an assignment. The bytes of the file are never selected (too heavy to carry),
+// only what is needed to show it and link to it, like a shop window.
 export const ASSIGNMENT_PART_SELECT = {
   studentId: true,
   status: true,
@@ -19,8 +19,8 @@ export type TAssignmentPartRow = {
   status: TAssignmentStatus;
   grade: number | null;
   submittedAt: Date | null;
-  // The database says a part always has a student, but the relation is read after the part. A student who is
-  // deleted in between (the part goes with it) comes back as null, so the row is treated as gone.
+  // The database promises a part always has a student, but the relation is read after the part. A student who is
+  // deleted in between (the part goes with it) comes back as null, so the row is treated as gone with the wind.
   student: { name: string; class: { name: string } } | null;
   file: { name: string; mimeType: string } | null;
 };
@@ -38,7 +38,7 @@ export const toAssignmentFile = (
   return { name: file.name, kind: getFileKind(file.mimeType), url: getFileUrl(assignmentId, studentId) };
 };
 
-// Null for a part whose student was deleted while it was read.
+// Null for a part whose student vanished while it was being read.
 export const toAssignmentStudent = (assignmentId: string, part: TAssignmentPartRow): TAssignmentStudent | null => {
   if (!part.student) return null;
 
@@ -53,6 +53,6 @@ export const toAssignmentStudent = (assignmentId: string, part: TAssignmentPartR
   };
 };
 
-// The parts of an assignment, without the ones whose student was deleted while they were read.
+// The parts of an assignment, minus the ones whose student was deleted while they were read (no orphans allowed).
 export const toAssignmentStudents = (assignmentId: string, parts: TAssignmentPartRow[]): TAssignmentStudent[] =>
   parts.flatMap((part: TAssignmentPartRow) => toAssignmentStudent(assignmentId, part) ?? []);

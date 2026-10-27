@@ -8,15 +8,15 @@ type TDashboardLayoutProps = {
   children: React.ReactNode;
 };
 
-// The header and the tabs are shared by every dashboard page. h-dvh fixes the frame to the viewport, so a
-// page can scroll only the part it chooses (a list), never the whole page.
+// The header and the tabs are shared by every dashboard page. h-dvh pins the frame to the viewport like a butterfly on a board, so a
+// page can scroll only the part it chooses (a list), never the whole page, however much it begs.
 export default function DashboardLayout({ children }: TDashboardLayoutProps) {
   return (
     <div className="flex h-dvh flex-col">
       <Suspense fallback={<DashboardHeaderSkeleton />}>
         <DashboardHeader />
       </Suspense>
-      {/* Reading the address is a request-time read, so it sits behind Suspense. Until it is known the bar shows without an active tab. */}
+      {/* Reading the address is a request-time read, so it sits behind Suspense. Until it is known the bar shows without an active tab (shy, no highlight). */}
       <Suspense fallback={<DashboardTabsView activeKey={null} />}>
         <DashboardTabs />
       </Suspense>

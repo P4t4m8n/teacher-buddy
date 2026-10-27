@@ -4,7 +4,7 @@ import type { TUpdateGradeDto, TUpdateGradeResponse, TUploadSubmissionResponse }
 const getPartEndpoint = (assignmentId: string, studentId: string, part: "file" | "grade"): string =>
   `assignments/${assignmentId}/students/${studentId}/${part}`;
 
-// The file goes as a form (multipart): the api client sends a FormData as it is, and the browser sets the type.
+// The file goes as a form (multipart): the api client sends a FormData as it is, and the browser picks the type, no questions asked.
 const uploadFile = (assignmentId: string, studentId: string, file: File): Promise<TUploadSubmissionResponse> => {
   const form = new FormData();
   form.set("file", file);

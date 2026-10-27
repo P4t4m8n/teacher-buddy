@@ -21,14 +21,14 @@ export const Modal = ({ isOpen, onClose, title, size = "md", children }: TModalP
   const titleId: string = useId();
 
   return (
-    // A click on the backdrop does not close it, so a typed form is not lost by a stray tap.
+    // A click on the backdrop does not close it, so a typed form is not lost by a clumsy elbow or a stray tap.
     <dialog
       ref={dialogRef}
       aria-labelledby={titleId}
       onClose={onClose}
       className={`modal m-auto max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] ${SIZE_CLASSES[size]} overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 text-slate-900 shadow-2xl backdrop:bg-slate-950/50 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100`}
     >
-      {/* The content only exists while it is open, so every opening starts with a fresh form. */}
+      {/* The content only exists while it is open, so every opening starts with a fresh form (no leftovers in the fridge). */}
       {isOpen && (
         <div className="flex flex-col gap-5 p-6">
           <div className="flex items-start justify-between gap-4">

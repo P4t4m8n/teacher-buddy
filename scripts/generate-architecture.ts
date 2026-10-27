@@ -1,4 +1,4 @@
-// Reads the real imports of the project and writes the component hierarchy per page and the "who uses what" table to docs/.
+// Reads the real imports of the project and writes the component hierarchy per page and the "who uses what" table to docs/ (a family tree for files).
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
@@ -108,7 +108,7 @@ const LAYER_ORDER: TLayer[] = ["proxy", "page", "route", "component", "ui", "hoo
 
 const isClientFile = (file: string): boolean => /^\s*["']use client["']/.test(readFileSync(join(ROOT, file), "utf8"));
 
-// The client services call these endpoints with fetch, which is not an import, so the link is written here.
+// The client services call these endpoints with fetch, which is not an import (it sneaks in the back door), so the link is written here.
 const CLIENT_SERVICE_ROUTES: Record<string, string[]> = {
   "services/auth.client.service.ts": ["app/api/auth/login/route.ts", "app/api/auth/logout/route.ts"],
   "services/student.client.service.ts": ["app/api/students/route.ts", "app/api/students/[id]/route.ts"],
@@ -119,7 +119,7 @@ const CLIENT_SERVICE_ROUTES: Record<string, string[]> = {
   ],
 };
 
-// Shown on every page and called by every client service: leaving them out keeps the diagrams readable.
+// Shown on every page and called by every client service: leaving them out keeps the diagrams readable, not a bowl of spaghetti.
 const HIDDEN_FILES = new Set<string>(["services/api.client.service.ts", "services/ApiError.client.ts"]);
 
 const PAGE_TITLES: Record<string, string> = {
@@ -137,7 +137,7 @@ const PAGE_TITLES: Record<string, string> = {
 const TREE_LAYERS = new Set<TLayer>(["page", "component", "ui", "hook", "clientService", "serverService", "route"]);
 
 // From a page: down through the components it shows, their hooks, the client service, (fetch) the route handler,
-// and the server services. Only the code that runs on the way: schemas, lib, helpers and constants are in file-usage.md.
+// and the server services, like a treasure map. Only the code that runs on the way: schemas, lib, helpers and constants are in file-usage.md.
 const treeOf = (page: string): { nodes: Set<string>; edges: [string, string, boolean][] } => {
   const nodes = new Set<string>([page]);
   const edges: [string, string, boolean][] = [];
@@ -153,7 +153,7 @@ const treeOf = (page: string): { nodes: Set<string>; edges: [string, string, boo
   while (queue.length > 0) {
     const file: string = queue.shift() as string;
     for (const target of uses.get(file) ?? []) {
-      // A route handler is only reached by fetch, never by import, and a server service does not import a page.
+      // A route handler is only reached by fetch, never by import, and a server service does not import a page (it knows its place).
       if (layerOf(target) === "route") continue;
       visit(file, target, false);
     }
@@ -162,7 +162,7 @@ const treeOf = (page: string): { nodes: Set<string>; edges: [string, string, boo
   return { nodes, edges };
 };
 
-// The convention of the image link: render-diagrams.ts finds it just before the mermaid block and writes the image there.
+// The convention of the image link: render-diagrams.ts finds it just before the mermaid block and writes the image there (a tiny treasure hunt).
 const diagramBlock = (name: string, alt: string, code: string): string =>
   [`[![${alt}](./diagrams/${name}.png)](./diagrams/${name}.svg)`, "", "<details>", "<summary>Mermaid source</summary>", "", "```mermaid", code, "```", "", "</details>", ""].join("\n");
 

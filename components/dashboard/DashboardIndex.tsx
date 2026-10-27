@@ -41,7 +41,7 @@ const toFilters = (classes: TClass[], query: TStudentListQuery): TListFilter[] =
 export default function DashboardIndex({ list, classes, query }: TDashboardPageProps) {
   const { students, total, matched, page, pageCount }: TStudentList = list;
   const isFiltered: boolean = query.search !== "" || query.classId !== "";
-  // What the page links keep: the filters that are not the default.
+  // What the page links remember: the filters that are not the default (the quirky ones).
   const params: Record<string, string> = {
     [SEARCH_PARAM]: query.search,
     [CLASS_PARAM]: query.classId,
@@ -76,7 +76,7 @@ export default function DashboardIndex({ list, classes, query }: TDashboardPageP
           />
         )}
         {isFiltered && <ListCount found={matched} total={total} />}
-        {/* The key starts the table at the top when the page changes. */}
+        {/* The key starts the table at the top when the page changes, like rewinding a tape. */}
         <StudentsTable key={page} students={students} isFiltered={isFiltered} />
         <Pagination basePath={STUDENTS_PAGE} params={params} page={page} pageCount={pageCount} />
       </section>

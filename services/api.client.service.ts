@@ -13,7 +13,7 @@ type TApiService = {
 };
 type TMethod = "GET" | "POST" | "PUT" | "DELETE";
 
-// An error body is JSON from API, but a proxy or a crashed server can answer with an HTML page.
+// An error body is JSON from API, but a proxy or a crashed server can answer with a grumpy HTML page instead.
 const readErrorBody = async (res: Response): Promise<TApiErrorBody | null> => {
   try {
     return (await res.json()) as TApiErrorBody;
@@ -53,7 +53,7 @@ const ajax = async <T>(
   try {
     res = await fetch(url, options);
   } catch {
-    // The request never got an answer: the connection is down or the server is unreachable.
+    // The request never got an answer: the connection is down or the server is unreachable (shouting into the void).
     throw new ApiError(ERROR_MESSAGES.network, 0);
   }
 

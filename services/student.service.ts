@@ -24,7 +24,7 @@ const STUDENT_SELECT = {
   class: { select: { id: true, name: true } },
 } as const;
 
-// The name and the id are the last tie-breaks, so the order never changes between requests.
+// The name and the id are the last tie-breaks, so the order never wobbles between requests.
 const STUDENT_ORDER: Record<TStudentSort, Prisma.StudentOrderByWithRelationInput[]> = {
   name: [{ name: "asc" }, { id: "asc" }],
   "-name": [{ name: "desc" }, { id: "asc" }],
@@ -43,7 +43,7 @@ export const getStudents = async (teacherId: string): Promise<TStudent[]> => {
 };
 
 // The students the query matches. The teacher is always in the filter, so another teacher's class id matches
-// nothing. The search is escaped, so a % or _ in it is the character itself and not a wildcard.
+// nothing (an empty room, echo included). The search is escaped, so a % or _ in it is a plain character and no sneaky wildcard.
 const toStudentFilter = (teacherId: string, query: TStudentListQuery): Prisma.StudentWhereInput => {
   const { search, classId } = query;
   return {
@@ -60,8 +60,8 @@ const toStudentFilter = (teacherId: string, query: TStudentListQuery): Prisma.St
   };
 };
 
-// For the students list: one page of the students the query matches, in its order, and the numbers the list shows.
-// A page past the end is the last page, so a page that emptied (its students were deleted) is never shown empty.
+// For the students list: one page of the students the query matches, in its order, and the numbers the list shows off.
+// A page past the end is the last page, so a page that emptied (its students were deleted) is never an echoing empty hall.
 export const getStudentList = async (teacherId: string, query: TStudentListQuery): Promise<TStudentList> => {
   const where: Prisma.StudentWhereInput = toStudentFilter(teacherId, query);
   const [matched, total] = await Promise.all([prisma.student.count({ where }), prisma.student.count({ where: { teacherId } })]);
@@ -78,8 +78,8 @@ export const getStudentList = async (teacherId: string, query: TStudentListQuery
   return { students, total, matched, page, pageCount };
 };
 
-// For pages: null when there is no such student. A student that does not exist, one of another
-// teacher and an id that is not a uuid all give null, so ids cannot be probed.
+// For pages: null when there is no such student. A student that never existed, one of another
+// teacher and an id that is not a uuid all give null, so ids cannot be probed. Detective work not welcome.
 export const findStudent = async (teacherId: string, studentId: string): Promise<TStudent | null> => {
   if (!isUuid(studentId)) return null;
 
@@ -89,7 +89,7 @@ export const findStudent = async (teacherId: string, studentId: string): Promise
   });
 };
 
-// For route handlers: the same, but a missing student is a 404 AppError.
+// For route handlers: the same, but a missing student turns into a 404 AppError.
 export const getStudent = async (teacherId: string, studentId: string): Promise<TStudent> => {
   const student: TStudent | null = await findStudent(teacherId, studentId);
   if (!student) throw AppError.studentNotFound();
@@ -97,11 +97,11 @@ export const getStudent = async (teacherId: string, studentId: string): Promise<
   return student;
 };
 
-// The student's assignments are deleted with it: the database cascades the delete.
+// The student's assignments leave with it: the database cascades the delete, a tiny avalanche.
 export const deleteStudent = async (teacherId: string, studentId: string): Promise<void> => {
   if (!isUuid(studentId)) throw AppError.studentNotFound();
 
-  // One statement that matches the id AND the teacher, so another teacher's student is never touched.
+  // One statement that matches the id AND the teacher, so another teacher's student is never touched (hands off, other classroom).
   const { count } = await prisma.student.deleteMany({ where: { id: studentId, teacherId } });
   if (count === 0) throw AppError.studentNotFound();
 };
@@ -128,7 +128,7 @@ export const createStudent = async (
   }
 };
 
-// Replaces the student's name, phone and class. The student and the new class must both be the teacher's.
+// Swaps the student's name, phone and class. The student and the new class must both be the teacher's.
 export const updateStudent = async (
   teacherId: string,
   studentId: string,
@@ -143,7 +143,7 @@ export const updateStudent = async (
   if (!studentClass) throw AppError.classNotFound();
 
   try {
-    // The teacher is in the filter too, so another teacher's student is never touched.
+    // The teacher is in the filter too, so another teacher's student is never touched, not by a single fingertip.
     return await prisma.student.update({
       where: { id: studentId, teacherId },
       data: { name: dto.name, phone: dto.phone, classId: dto.classId },
@@ -151,7 +151,7 @@ export const updateStudent = async (
     });
   } catch (error: unknown) {
     if (isUniqueViolation(error)) throw AppError.studentExists();
-    // The student was deleted between the check above and the update.
+    // The student was deleted in the gap between the check above and the update.
     if (isRecordNotFound(error)) throw AppError.studentNotFound();
     throw error;
   }

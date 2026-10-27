@@ -11,7 +11,7 @@ import type { TSessionTeacher, TSignInDto } from "@/types/auth.type";
 
 const SESSION_TTL_SECONDS = 24 * 60 * 60;
 
-// Valid hash used only so an unknown name costs the same time as a wrong ID number to prevent timing attacks.
+// A valid hash used only so an unknown name costs the same time as a wrong ID number, to prevent timing attacks (no stopwatch spies).
 const DUMMY_HASH: Promise<string> = hash("dummy-id-number");
 
 type TCookieOptions = {
@@ -21,8 +21,8 @@ type TCookieOptions = {
   sameSite: "lax";
 };
 
-// Safari rejects Secure cookies over plain http (e.g. `npm start` on localhost), so the flag
-// is opt-in: set COOKIE_SECURE=true when the app is served over https.
+// Safari rejects Secure cookies over plain http (e.g. `npm start` on localhost) and sulks, so the flag
+// is opt-in: set COOKIE_SECURE=true when the app is served over https, and the cookie wears its seatbelt.
 const getCookieOptions = (): TCookieOptions => ({
   httpOnly: true,
   secure: process.env.COOKIE_SECURE === "true",
@@ -52,7 +52,7 @@ const createCookie = async (token: string): Promise<void> => {
   });
 };
 
-// A client that has failed too many times is refused before anything is read or hashed, so guessing costs the attacker the wait and costs the server nothing.
+// A client that has failed too many times is turned away before anything is read or hashed, so guessing costs the attacker the wait and costs the server nothing (the velvet rope).
 export const signIn = async (dto: TSignInDto, attemptKey: string): Promise<TSessionTeacher> => {
   const retryAfterSeconds: number = loginLimiter.getRetryAfterSeconds(attemptKey);
   if (retryAfterSeconds > 0) throw AppError.tooManyAttempts(retryAfterSeconds);
@@ -61,11 +61,11 @@ export const signIn = async (dto: TSignInDto, attemptKey: string): Promise<TSess
     where: { name: dto.name },
   });
 
-  // Always run one verify. Without a teacher, verify against the dummy hash.
+  // Always run one verify (same effort every time, like a pianist practicing scales). Without a teacher, verify against the dummy hash.
   const hashToVerify: string = teacher?.passwordHash ?? (await DUMMY_HASH);
   const isValid: boolean = await verify(hashToVerify, dto.idNumber);
 
-  // Same error for unknown name and wrong ID number.
+  // Same error for unknown name and wrong ID number, so no hints leak out.
   if (!teacher || !isValid) {
     loginLimiter.recordFailure(attemptKey);
     throw AppError.invalidCredentials();
@@ -86,7 +86,7 @@ export const signOut = async (): Promise<void> => {
   });
 };
 
-//  A missing JWT_SECRET is a config error and throws.
+//  A missing JWT_SECRET is a config error and throws a tantrum.
 export const getSessionTeacher = async (): Promise<TSessionTeacher | null> => {
   const cookieStore = await cookies();
   const token: string | undefined = cookieStore.get(SESSION_COOKIE)?.value;
@@ -113,8 +113,8 @@ export const getSessionTeacher = async (): Promise<TSessionTeacher | null> => {
   });
 };
 
-// For route handlers: the signed-in teacher, or a 401 AppError. Pages use getSessionTeacher instead,
-// because they redirect rather than answer with an error.
+// For route handlers: the signed-in teacher, or a 401 AppError (a firm "no thanks"). Pages use getSessionTeacher instead,
+// because they politely redirect rather than answer with an error.
 export const requireSessionTeacher = async (): Promise<TSessionTeacher> => {
   const teacher: TSessionTeacher | null = await getSessionTeacher();
   if (!teacher) throw AppError.unauthorized();

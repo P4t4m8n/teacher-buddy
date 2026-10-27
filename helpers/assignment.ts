@@ -8,28 +8,28 @@ import type {
   TTeacherAssignment,
 } from "@/types/assignment.type";
 
-// How a file is shown, from its type: a PDF in a frame, an image as an image, anything else only by name.
+// How a file is shown, from its type: a PDF in a frame, an image as an image, anything else only by name (mystery files get a name tag).
 export const getFileKind = (mimeType: string): TFileKind => {
   if (mimeType === "application/pdf") return "pdf";
   if (mimeType.startsWith("image/")) return "image";
   return "other";
 };
 
-// The status follows from the file and the grade, and is never chosen by hand: no file is TODO, a file with no grade is SUBMITTED (it happens when the file is uploaded), and a grade makes it CHECKED.
+// The status follows from the file and the grade, and is never chosen by hand (no pointing and picking): no file is TODO, a file with no grade is SUBMITTED (it happens when the file is uploaded), and a grade makes it CHECKED.
 export const deriveStatus = (hasFile: boolean, grade: number | null): TAssignmentStatus => {
   if (!hasFile) return "TODO";
   return grade === null ? "SUBMITTED" : "CHECKED";
 };
 
-// Whether a grade can be given: only after the assignment was submitted, which is when a file exists.
+// Whether a grade can be given: only after the assignment was submitted, which is when a file exists. No file, no gold star.
 export const canGrade = (hasFile: boolean): boolean => hasFile;
 
-// Students whose assignment was uploaded, whether it was checked afterwards or not.
+// Students whose assignment was uploaded, whether it was checked afterwards or is still waiting in line.
 export const countSubmitted = (assignment: TTeacherAssignment): number =>
   assignment.students.filter(({ status }: TAssignmentStudent) => status !== "TODO").length;
 
 // One student's part of an assignment, in the shape of the modal that shows an assignment. The title also
-// has the student's name, because the modal is opened from a list of students.
+// has the student's name, because the modal is opened from a list of students (so it can say hello properly).
 export const toStudentAssignment = (
   assignment: TTeacherAssignment,
   student: TAssignmentStudent,
@@ -45,13 +45,13 @@ export const toStudentAssignment = (
   file: student.file,
 });
 
-// The students whose assignment was uploaded: removing one of them from the assignment deletes their file and grade.
+// The students whose assignment was uploaded: removing one of them from the assignment deletes their file and grade (poof).
 export const toSubmittedParts = (assignment: TTeacherAssignment): TSubmittedPart[] =>
   assignment.students
     .filter(({ status }: TAssignmentStudent) => status !== "TODO")
     .map(({ studentId, name, grade }: TAssignmentStudent): TSubmittedPart => ({ studentId, name, grade }));
 
-// What the add and edit form starts with, for an assignment that already exists.
+// What the add and edit form starts with, for an assignment that already exists (a head start, like a pre-warmed oven).
 export const toFormValues = (assignment: TTeacherAssignment): TAssignmentFormValues => ({
   title: assignment.title,
   studentIds: assignment.students.map(({ studentId }: TAssignmentStudent) => studentId),

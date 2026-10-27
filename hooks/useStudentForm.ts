@@ -10,9 +10,9 @@ import type { TApiFieldErrors, TFormErrors } from "@/types/api.type";
 import type { TCreateStudentDto } from "@/types/student.type";
 
 type TUseStudentFormOptions = {
-  // With an id the form updates that student. Without one it creates a new student.
+  // With an id the form updates that student. Without one it welcomes a brand new student.
   studentId?: string;
-  // The saved data of the student that is edited, as text, so the form starts again when it changes.
+  // The saved data of the student being edited, as text, so the form takes it from the top when it changes.
   dataKey: string;
 };
 
@@ -45,7 +45,7 @@ export const useStudentForm = ({ studentId, dataKey }: TUseStudentFormOptions) =
     try {
       if (studentId) await studentClientService.updateStudent(studentId, dto);
       else await studentClientService.createStudent(dto);
-      // Pending stays on until the page is hidden, so the form cannot be sent twice.
+      // Pending stays on until the page is hidden, so the form cannot be sent twice, even by a twitchy finger.
       markSaved();
       router.push(DASHBOARD_PAGE);
     } catch (error: unknown) {

@@ -3,7 +3,7 @@ import type { TStudent } from "@/types/student.type";
 
 type TStudentsTableProps = {
   students: TStudent[];
-  // A search or a filter is on: an empty list then means nothing matched, not that there are no students.
+  // A search or a filter is on: an empty list then means nothing matched, not that there are no students (they are not hiding, just filtered).
   isFiltered: boolean;
 };
 
@@ -84,7 +84,7 @@ const TableRow = ({ student }: { student: TStudent }) => {
           </span>
           <div className="min-w-0">
             <div className="font-medium">{student.name}</div>
-            {/* On narrow screens the phone moves under the name, to save a column. */}
+            {/* On narrow screens the phone moves under the name, to save a column (it squeezes in like a commuter on a bus). */}
             <span
               dir="ltr"
               className="inline-block whitespace-nowrap text-xs text-slate-500 md:hidden dark:text-slate-400"

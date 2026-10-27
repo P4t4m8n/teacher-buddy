@@ -1,4 +1,4 @@
-// Draws every diagram of docs/*.md as an image: docs/diagrams/NAME.png and NAME.svg.
+// Draws every diagram of docs/*.md as an image: docs/diagrams/NAME.png and NAME.svg (crayons not included).
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -41,7 +41,7 @@ const main = async (): Promise<void> => {
   await page.setContent('<!doctype html><html><body style="margin:0;background:#fff"><div id="holder" style="display:inline-block;padding:16px"></div></body></html>');
   await page.addScriptTag({ path: MERMAID_BUNDLE });
   await page.evaluate(() => {
-    // htmlLabels off: the text is SVG text, so the .svg also shows correctly outside a browser.
+    // htmlLabels off: the text is SVG text, so the .svg also shows correctly outside a browser, out in the wild.
     (window as unknown as { mermaid: { initialize: (config: object) => void } }).mermaid.initialize({
       startOnLoad: false,
       theme: "default",

@@ -16,8 +16,8 @@ type TGlobalErrorProps = {
   retry: () => void;
 };
 
-// Only for an error in the root layout itself, which replaces the layout, so it has its own html and body.
-// The errors of the pages are handled by error.tsx, with the layout around them.
+// Only for an error in the root layout itself, which replaces the layout, so it brings its own html and body, like a snail with its own shell.
+// The errors of the pages are handled by error.tsx, still wearing the layout as a cozy sweater.
 export default function GlobalError({ retry }: TGlobalErrorProps) {
   return (
     <html lang="he" dir="rtl" className={`${heebo.variable} h-full antialiased`}>
