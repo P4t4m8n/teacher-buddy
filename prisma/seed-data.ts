@@ -157,3 +157,77 @@ export const WRITE_OTHER_SEED: TSeedTeacher = {
 };
 
 export const SEED_TEACHERS: TSeedTeacher[] = [DEMO_SEED, OTHER_SEED, WRITE_SEED, WRITE_OTHER_SEED];
+
+// More data for the demo teacher, so the lists of the demo have more than one page: with DEMO_SEED she has 45
+// students and 45 assignments (3 pages of 20, 20 and 5). It is added by the seed script next to DEMO_SEED, on top of
+// whatever the teacher already has, and a second run adds nothing (see seedExtras). The e2e test database is
+// seeded without it (SEED_EXTRA_DEMO_DATA=false, set by scripts/test-db-setup.ts), because many tests count the
+// demo teacher's 10 students and 4 assignments.
+export type TSeedExtra = {
+  classes: TSeedClass[];
+  assignments: TSeedAssignment[];
+};
+
+const EXTRA_FIRST_NAMES: string[] = ["אדם", "בר", "גל", "דור", "הילה", "ורד", "זיו", "חן", "טל", "יעל", "כרמל", "לימור"];
+const EXTRA_LAST_NAMES: string[] = ["אביטל", "בראון", "גבאי", "דוידי", "הרשקוביץ", "וינברג", "זכאי", "חדד", "טולדנו", "יוסף", "כץ", "לביא"];
+const EXTRA_CLASS_SIZES: { name: string; size: number }[] = [
+  { name: "ח'1", size: 5 },
+  { name: "ח'2", size: 5 },
+  { name: "ט'1", size: 5 },
+  { name: "ח'3", size: 10 },
+  { name: "ט'2", size: 10 },
+];
+const EXTRA_SUBJECTS: string[] = ["חשבון", "עברית", "אנגלית", "מדעים", "היסטוריה", "גאוגרפיה", "תנ\"ך", "ספרות"];
+const EXTRA_KINDS: string[] = ["תרגיל", "חיבור", "סיכום", "פרויקט", "עבודה"];
+const EXTRA_ASSIGNMENT_COUNT = 41;
+
+// The same first name is never paired with the same last name twice: the last name moves one step for every
+// round of the first names, so the 35 names are all different.
+const extraName = (index: number): string =>
+  `${EXTRA_FIRST_NAMES[index % 12]} ${EXTRA_LAST_NAMES[(index * 5 + Math.floor(index / 12)) % 12]}`;
+
+const addDays = (isoDate: string, days: number): string => {
+  const date = new Date(`${isoDate}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+const extraStudents = (): TSeedStudent[] => Array.from({ length: 35 }, (_, index) => ({ name: extraName(index), phone: `050-30${String(index + 1).padStart(5, "0")}` }));
+
+const extraClasses = (): TSeedClass[] => {
+  const students: TSeedStudent[] = extraStudents();
+  let next = 0;
+  return EXTRA_CLASS_SIZES.map(({ name, size }) => {
+    const inClass: TSeedStudent[] = students.slice(next, next + size);
+    next += size;
+    return { name, students: inClass };
+  });
+};
+
+// Assignment number n is given to 2 to 6 students, starting at a different place of the list of all the students, and
+// its parts go through every state: not submitted, submitted, and checked with a grade (some of them late).
+const extraAssignments = (allStudents: string[]): TSeedAssignment[] =>
+  Array.from({ length: EXTRA_ASSIGNMENT_COUNT }, (_, index): TSeedAssignment => {
+    const dueDate: string = addDays("2026-09-01", index * 4);
+    const partCount: number = 2 + (index % 5);
+    return {
+      title: `${EXTRA_KINDS[index % 5]} - ${EXTRA_SUBJECTS[index % 8]} (${index + 1})`,
+      description: `<p>${EXTRA_KINDS[index % 5]} ב${EXTRA_SUBJECTS[index % 8]}: יש להגיש עד התאריך שנקבע.</p>`,
+      dueDate,
+      parts: Array.from({ length: partCount }, (_, offset): TSeedAssignmentPart => {
+        const student: string = allStudents[(index * 7 + offset) % allStudents.length];
+        const state: number = (index + offset) % 4;
+        if (state === 0) return { student };
+        const submittedAt: string = addDays(dueDate, ((index + offset) % 5) - 3);
+        if (state === 1 || state === 3) return { student, submittedAt };
+        return { student, submittedAt, grade: 60 + ((index * 13 + offset * 7) % 41) };
+      }),
+    };
+  });
+
+const coreStudentNames: string[] = DEMO_SEED.classes.flatMap(({ students }) => students.map(({ name }) => name));
+
+export const DEMO_EXTRA: TSeedExtra = {
+  classes: extraClasses(),
+  assignments: extraAssignments([...coreStudentNames, ...extraStudents().map(({ name }) => name)]),
+};

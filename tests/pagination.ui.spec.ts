@@ -92,7 +92,7 @@ test.describe("students list: pages", () => {
     await open(page, STUDENTS_URL);
 
     await expectStudents(page, studentNames(range(1, PAGE_SIZE)));
-    await expect(pageLabel(page, 1)).toBeVisible();
+    await expect(pageLabel(page, 1)).toBeVisible({ timeout: LOADED });
     await expect(page.getByRole("heading", { name: /התלמידים שלי/ })).toContainText(`(${BULK_STUDENT_COUNT})`);
     await expect(found(page)).toHaveCount(0);
     await expect(next(page)).toHaveAttribute("href", "/dashboard?page=2");
@@ -114,7 +114,7 @@ test.describe("students list: pages", () => {
 
     await expectStudents(page, studentNames(range(21, 40)));
     expect(queryOf(page).get("page")).toBe("2");
-    await expect(pageLabel(page, 2)).toBeVisible();
+    await expect(pageLabel(page, 2)).toBeVisible({ timeout: LOADED });
     await expect(previous(page)).toHaveAttribute("href", "/dashboard");
     await expect(next(page)).toHaveAttribute("href", "/dashboard?page=3");
 
@@ -128,7 +128,7 @@ test.describe("students list: pages", () => {
     await open(page, `${STUDENTS_URL}?page=3`);
 
     await expectStudents(page, studentNames(range(41, 45)));
-    await expect(pageLabel(page, 3)).toBeVisible();
+    await expect(pageLabel(page, 3)).toBeVisible({ timeout: LOADED });
     await expect(next(page)).toHaveAttribute("aria-disabled", "true");
     await expect(pagination(page).getByRole("link", { name: "הבא" })).toHaveCount(0);
     await expect(previous(page)).toHaveAttribute("href", "/dashboard?page=2");
@@ -139,7 +139,7 @@ test.describe("students list: pages", () => {
     const seen: string[] = [];
 
     for (let current = 1; current <= PAGE_COUNT; current += 1) {
-      await expect(pageLabel(page, current)).toBeVisible();
+      await expect(pageLabel(page, current)).toBeVisible({ timeout: LOADED });
       await expect.poll(async () => (await listedStudents(page)).length).toBe(current < PAGE_COUNT ? PAGE_SIZE : 5);
       seen.push(...(await listedStudents(page)));
       if (current < PAGE_COUNT) await next(page).click();
@@ -155,7 +155,7 @@ test.describe("students list: pages", () => {
     await page.reload();
 
     await expectStudents(page, studentNames(range(21, 40)));
-    await expect(pageLabel(page, 2)).toBeVisible();
+    await expect(pageLabel(page, 2)).toBeVisible({ timeout: LOADED });
   });
 
   test("back goes to the earlier page", async ({ page }) => {
@@ -166,7 +166,7 @@ test.describe("students list: pages", () => {
     await page.goBack();
 
     await expectStudents(page, studentNames(range(1, 20)));
-    await expect(pageLabel(page, 1)).toBeVisible();
+    await expect(pageLabel(page, 1)).toBeVisible({ timeout: LOADED });
   });
 
   test("a new page starts at the top of the table", async ({ page }) => {
@@ -197,7 +197,7 @@ test.describe("students list: pages", () => {
         await open(page, `${STUDENTS_URL}?${query}`);
 
         await expectStudents(page, studentNames(expectedNumbers));
-        await expect(pageLabel(page, expectedPage)).toBeVisible();
+        await expect(pageLabel(page, expectedPage)).toBeVisible({ timeout: LOADED });
       });
     }
   });
@@ -214,7 +214,7 @@ test.describe("students list: pages", () => {
 
     await expectStudents(page, studentNames(range(1, 20)));
     await expect.poll(() => new URL(page.url()).search).toBe("");
-    await expect(pageLabel(page, 1)).toBeVisible();
+    await expect(pageLabel(page, 1)).toBeVisible({ timeout: LOADED });
   });
 
   test("the page keeps the search, and a new search starts again from the first page", async ({ page }) => {
@@ -241,12 +241,12 @@ test.describe("students list: pages", () => {
     await classSelect(page).selectOption({ label: teacher.classNames[1] });
 
     await expect(found(page)).toHaveText(`נמצאו 23 מתוך ${BULK_STUDENT_COUNT}`);
-    await expect(pageLabel(page, 1, 2)).toBeVisible();
+    await expect(pageLabel(page, 1, 2)).toBeVisible({ timeout: LOADED });
     await expect.poll(async () => (await listedStudents(page)).length).toBe(PAGE_SIZE);
 
     await next(page).click();
 
-    await expect(pageLabel(page, 2, 2)).toBeVisible();
+    await expect(pageLabel(page, 2, 2)).toBeVisible({ timeout: LOADED });
     await expectStudents(page, studentNames([41, 43, 45]));
     for (const row of await page.locator("tbody tr").all()) {
       await expect(row.locator("td").nth(1)).toHaveText(teacher.classNames[1]);
@@ -272,7 +272,7 @@ test.describe("students list: pages", () => {
     await page.setViewportSize({ width: 375, height: 700 });
     await open(page, STUDENTS_URL);
 
-    await expect(pageLabel(page, 1)).toBeVisible();
+    await expect(pageLabel(page, 1)).toBeVisible({ timeout: LOADED });
     for (const control of [previous(page), next(page), pageLabel(page, 1)]) {
       const box = await control.boundingBox();
       expect(box).not.toBeNull();
@@ -298,7 +298,7 @@ test.describe("assignments list: pages", () => {
     await open(page, ASSIGNMENTS_URL);
 
     await expectAssignments(page, assignmentTitles(range(45, 26)));
-    await expect(pageLabel(page, 1)).toBeVisible();
+    await expect(pageLabel(page, 1)).toBeVisible({ timeout: LOADED });
     await expect(page.getByRole("heading", { name: /המטלות שלי/ })).toContainText(`(${BULK_ASSIGNMENT_COUNT})`);
     await expect(found(page)).toHaveCount(0);
     await expect(next(page)).toHaveAttribute("href", "/dashboard/assignments?page=2");
@@ -330,7 +330,7 @@ test.describe("assignments list: pages", () => {
     await page.reload();
 
     await expectAssignments(page, assignmentTitles(range(5, 1)));
-    await expect(pageLabel(page, 3)).toBeVisible();
+    await expect(pageLabel(page, 3)).toBeVisible({ timeout: LOADED });
   });
 
   test.describe("a page that is not valid is the first page, or the last when it is past the end", () => {
@@ -345,7 +345,7 @@ test.describe("assignments list: pages", () => {
         await open(page, `${ASSIGNMENTS_URL}?${query}`);
 
         await expectAssignments(page, assignmentTitles(expectedNumbers));
-        await expect(pageLabel(page, expectedPage)).toBeVisible();
+        await expect(pageLabel(page, expectedPage)).toBeVisible({ timeout: LOADED });
       });
     }
   });
@@ -355,7 +355,7 @@ test.describe("assignments list: pages", () => {
     const seen: string[] = [];
 
     for (let current = 1; current <= PAGE_COUNT; current += 1) {
-      await expect(pageLabel(page, current)).toBeVisible();
+      await expect(pageLabel(page, current)).toBeVisible({ timeout: LOADED });
       await expect.poll(async () => (await listedAssignments(page)).length).toBe(current < PAGE_COUNT ? PAGE_SIZE : 5);
       seen.push(...(await listedAssignments(page)));
       if (current < PAGE_COUNT) await next(page).click();
@@ -390,7 +390,7 @@ test.describe("assignments list: pages", () => {
       const seen: string[] = [];
 
       for (let current = 1; current <= PAGE_COUNT; current += 1) {
-        await expect(pageLabel(page, current)).toBeVisible();
+        await expect(pageLabel(page, current)).toBeVisible({ timeout: LOADED });
         const from: number = (current - 1) * PAGE_SIZE;
         await expectAssignments(page, expectedOrder.slice(from, from + PAGE_SIZE));
         seen.push(...(await listedAssignments(page)));

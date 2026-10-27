@@ -11,7 +11,9 @@ if (testDatabaseUrl === process.env.DATABASE_URL) {
 
 // dotenv never overrides existing variables, so prisma.config.ts and the seed
 // pick up the test URL from the environment of these child processes.
-const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: testDatabaseUrl };
+// The tests count the demo teacher's 10 students and 4 assignments, so the seed leaves out her extra demo data
+// (the part that makes her lists longer than one page).
+const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: testDatabaseUrl, SEED_EXTRA_DEMO_DATA: "false" };
 
 function run(command: string): void {
   const result = spawnSync(command, { env, stdio: "inherit", shell: true });

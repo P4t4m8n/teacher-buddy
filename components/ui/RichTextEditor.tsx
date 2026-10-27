@@ -1,9 +1,11 @@
 "use client";
 
-import { EditorContent, useEditor } from "@tiptap/react";
+import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { copyRecording, describeCaret, record, recordCaret, recordStructure } from "@/components/ui/editorRecorder"; // TEMPORARY RECORDER
 import RichTextToolbar from "@/components/ui/RichTextToolbar";
+import { trimTrailingEmptyParagraphs } from "@/helpers/richText";
 
 type TRichTextEditorProps = {
   label: string;
@@ -24,11 +26,35 @@ const EXTENSIONS = [
     horizontalRule: false,
     link: false,
     strike: false,
-    // Adds an empty paragraph after a heading or a list. It would be saved as an empty <p></p>.
-    trailingNode: false,
+    // Left on: after a heading or a list that is the last block, the editor keeps an empty paragraph, so there is
+    // a line below to click into. Without it the caret can only stay in the heading or the list, and a heading or
+    // a list button then changes the text above instead of starting new text below. The empty paragraph is
+    // not saved (see trimTrailingEmptyParagraphs).
     underline: false,
   }),
 ];
+
+// A click in the empty area under the last line puts the caret on a new empty line there, whatever the last block is.
+// Without it the caret can only stay at the end of the last block, so a heading or list button then changes the text
+// above (the text became the first list item, and what was typed went into it), when the teacher meant to start
+// new text below it. An empty last line is not saved (see trimTrailingEmptyParagraphs).
+const continueBelowLastBlock = (editor: Editor, event: React.MouseEvent<HTMLDivElement>): void => {
+  const root: HTMLElement = editor.view.dom;
+  const target = event.target as Node;
+  // A click on a block is a click on that text. Only the empty area around the blocks is "below".
+  if (target !== root && !target.contains(root)) return;
+  // A selection made by dragging from the text down into the empty area also ends as a click here. It is not one.
+  if (!editor.state.selection.empty) return;
+  const lastBlock: Element | null = root.lastElementChild;
+  if (!lastBlock || event.clientY <= lastBlock.getBoundingClientRect().bottom) return;
+
+  const last = editor.state.doc.lastChild;
+  if (last?.type.name === "paragraph" && last.content.size === 0) {
+    editor.commands.focus("end");
+    return;
+  }
+  editor.chain().insertContentAt(editor.state.doc.content.size, { type: "paragraph" }).focus("end").run();
+};
 
 export const RichTextEditor = ({
   label,
@@ -45,16 +71,41 @@ export const RichTextEditor = ({
     // The editor needs the browser. so it is created after the page loads to prevent hydration issues.
     immediatelyRender: false,
     onUpdate: ({ editor: current }) =>
-      setHtml(current.isEmpty ? "" : current.getHTML()),
+      setHtml(current.isEmpty ? "" : trimTrailingEmptyParagraphs(current.getHTML())),
     editorProps: {
       attributes: {
         role: "textbox",
         "aria-multiline": "true",
         "aria-labelledby": labelId,
-        class: "rich-text min-h-40 px-3 py-2.5 text-base outline-none",
+        // The extra space at the bottom is the area to click below the last line (see continueBelowLastBlock): without it,
+        // a long text leaves only a few pixels under its last line.
+        class: "rich-text min-h-40 px-3 pt-2.5 pb-10 text-base outline-none",
       },
     },
   });
+
+  // TEMPORARY RECORDER START
+  const [copyState, setCopyState] = useState<string>("");
+  useEffect(() => {
+    if (!editor) return;
+    const onCaret = (): void => recordCaret(editor);
+    const onText = (): void => recordStructure(editor);
+    editor.on("selectionUpdate", onCaret);
+    editor.on("update", onText);
+    return () => {
+      editor.off("selectionUpdate", onCaret);
+      editor.off("update", onText);
+    };
+  }, [editor]);
+  const handleCopy = async (): Promise<void> => {
+    try {
+      await copyRecording();
+      setCopyState("הועתק, אפשר להדביק בצ׳אט");
+    } catch {
+      setCopyState("ההעתקה נכשלה");
+    }
+  };
+  // TEMPORARY RECORDER END
 
   return (
     <div className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
@@ -66,10 +117,30 @@ export const RichTextEditor = ({
         className="rounded-lg border border-slate-300 bg-white font-normal text-slate-900 transition focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/20 aria-invalid:border-red-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
       >
         {editor && <RichTextToolbar editor={editor} />}
-        <div className="min-h-40">
+        <div
+          className="min-h-40"
+          onClick={(event) => editor && continueBelowLastBlock(editor, event)}
+          onMouseDownCapture={(event) => {
+            // TEMPORARY RECORDER
+            const target = event.target as HTMLElement;
+            record(`mouse down at y=${Math.round(event.clientY)} on <${target.tagName}> ${JSON.stringify((target.textContent ?? "").slice(0, 20))}`);
+          }}
+          onKeyDownCapture={(event) => {
+            // TEMPORARY RECORDER
+            if (editor && /^(Enter|Backspace|Delete|Arrow\w+|Home|End|Tab)$/.test(event.key)) record(`key ${event.key}: ${describeCaret(editor)}`);
+          }}
+        >
           <EditorContent editor={editor} />
         </div>
       </div>
+      {/* TEMPORARY RECORDER START */}
+      <div className="flex items-center gap-3 rounded-lg border border-dashed border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <button type="button" onClick={handleCopy} className="rounded border border-amber-500 bg-white px-2 py-1 font-semibold">
+          העתק לוג (זמני)
+        </button>
+        <span>{copyState}</span>
+      </div>
+      {/* TEMPORARY RECORDER END */}
       <input type="hidden" name={name} value={html} />
       {errors?.map((message: string) => (
         <span

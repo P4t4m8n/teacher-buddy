@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { detectFileType } from "@/lib/file";
 import { createSamplePdf } from "./sample-pdf";
-import { SEED_TEACHERS, type TSeedTeacher } from "./seed-data";
+import { PAGE_SIZE } from "../constants/list.constant";
+import { DEMO_EXTRA, DEMO_SEED, SEED_TEACHERS, type TSeedAssignment, type TSeedStudent, type TSeedTeacher } from "./seed-data";
 
 const text = (bytes: Uint8Array): string => Array.from(bytes, (byte: number) => String.fromCharCode(byte)).join("");
 
@@ -103,5 +104,141 @@ describe("the seed assignments", () => {
       const titles: string[] = (assignments ?? []).map(({ title }) => title);
       expect(new Set(titles).size).toBe(titles.length);
     }
+  });
+});
+
+const coreStudents: TSeedStudent[] = DEMO_SEED.classes.flatMap(({ students }) => students);
+const extraStudents: TSeedStudent[] = DEMO_EXTRA.classes.flatMap(({ students }) => students);
+const allStudents: TSeedStudent[] = [...coreStudents, ...extraStudents];
+const coreAssignments: TSeedAssignment[] = DEMO_SEED.assignments ?? [];
+const allAssignments: TSeedAssignment[] = [...coreAssignments, ...DEMO_EXTRA.assignments];
+
+describe("the demo teacher's data: the core part, which the e2e tests count", () => {
+  it("is still 10 students and 4 assignments, so the tests that count them keep passing", () => {
+    expect(coreStudents).toHaveLength(10);
+    expect(coreAssignments).toHaveLength(4);
+  });
+
+  it("is not changed by the extra data: DEMO_SEED has none of it", () => {
+    const coreNames = new Set<string>(coreStudents.map(({ name }) => name));
+
+    expect(extraStudents.some(({ name }) => coreNames.has(name))).toBe(false);
+    expect(DEMO_SEED.classes.map(({ name }) => name)).toEqual(["ח'1", "ח'2", "ט'1", "י'1"]);
+  });
+
+  it("is the only data of the demo teacher that the seed list has: the extra part is added by the seed script", () => {
+    expect(SEED_TEACHERS[0]).toBe(DEMO_SEED);
+  });
+});
+
+describe("the demo teacher's data: with the extra part", () => {
+  it("has 45 students and 45 assignments, so each list has more than one page", () => {
+    expect(allStudents).toHaveLength(45);
+    expect(allAssignments).toHaveLength(45);
+    expect(Math.ceil(allStudents.length / PAGE_SIZE)).toBeGreaterThan(1);
+    expect(Math.ceil(allAssignments.length / PAGE_SIZE)).toBeGreaterThan(1);
+  });
+
+  it("has students that are all different: by name, and by phone", () => {
+    expect(new Set(allStudents.map(({ name }) => name)).size).toBe(45);
+    expect(new Set(allStudents.map(({ phone }) => phone)).size).toBe(45);
+  });
+
+  it("has phones in the format the app saves", () => {
+    for (const { phone } of allStudents) expect(phone).toMatch(/^0\d{1,2}-\d{7}$/);
+  });
+
+  it("has names the student form accepts: letters, spaces, and nothing else", () => {
+    for (const { name } of extraStudents) {
+      expect(name).toMatch(/^[\p{L}\p{M}' \-]+$/u);
+      expect(name.length).toBeGreaterThanOrEqual(2);
+      expect(name.length).toBeLessThanOrEqual(60);
+    }
+  });
+
+  it("puts the extra students in classes, adding to the demo teacher's classes and to new ones", () => {
+    const names: string[] = DEMO_EXTRA.classes.map(({ name }) => name);
+
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).toEqual(expect.arrayContaining(["ח'1", "ח'2", "ט'1", "ח'3", "ט'2"]));
+    expect(DEMO_EXTRA.classes.every(({ students }) => students.length > 0)).toBe(true);
+  });
+
+  it("does not use the class that is empty on purpose, so deleting a class can still be tried", () => {
+    expect(DEMO_EXTRA.classes.map(({ name }) => name)).not.toContain("י'1");
+  });
+
+  it("has assignments with different titles", () => {
+    expect(new Set(allAssignments.map(({ title }) => title)).size).toBe(45);
+  });
+
+  it("has assignments with a real due date, and a title and a description that the form accepts", () => {
+    for (const { title, description, dueDate } of DEMO_EXTRA.assignments) {
+      expect(dueDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(Number.isNaN(new Date(`${dueDate}T00:00:00.000Z`).getTime())).toBe(false);
+      expect(title.length).toBeGreaterThanOrEqual(2);
+      expect(title.length).toBeLessThanOrEqual(100);
+      expect(description).toMatch(/^<p>[^<]+<\/p>$/);
+    }
+  });
+
+  it("has due dates that are all different, so the order by date is clear", () => {
+    expect(new Set(DEMO_EXTRA.assignments.map(({ dueDate }) => dueDate)).size).toBe(DEMO_EXTRA.assignments.length);
+  });
+
+  it("gives every assignment to students that exist, each at most once, and at least one", () => {
+    const known = new Set<string>(allStudents.map(({ name }) => name));
+
+    for (const { title, parts } of DEMO_EXTRA.assignments) {
+      expect(parts.length, title).toBeGreaterThan(0);
+      expect(parts.length, title).toBeLessThanOrEqual(6);
+      expect(new Set(parts.map(({ student }) => student)).size, title).toBe(parts.length);
+      for (const { student } of parts) expect(known.has(student), `${title}: ${student}`).toBe(true);
+    }
+  });
+
+  it("never has a grade without an upload, and has grades from 0 to 100 that are whole numbers", () => {
+    for (const { parts } of DEMO_EXTRA.assignments) {
+      for (const { submittedAt, grade } of parts) {
+        if (grade === undefined) continue;
+        expect(submittedAt).toBeDefined();
+        expect(Number.isInteger(grade)).toBe(true);
+        expect(grade).toBeGreaterThanOrEqual(0);
+        expect(grade).toBeLessThanOrEqual(100);
+      }
+    }
+  });
+
+  it("has uploads on real days", () => {
+    for (const { parts } of DEMO_EXTRA.assignments) {
+      for (const { submittedAt } of parts) {
+        if (submittedAt === undefined) continue;
+        expect(new Date(`${submittedAt}T00:00:00.000Z`).toISOString().startsWith(submittedAt)).toBe(true);
+      }
+    }
+  });
+
+  it("has every state: not submitted, submitted and checked", () => {
+    const parts = DEMO_EXTRA.assignments.flatMap((assignment) => assignment.parts);
+
+    expect(parts.some(({ submittedAt }) => submittedAt === undefined)).toBe(true);
+    expect(parts.some(({ submittedAt, grade }) => submittedAt !== undefined && grade === undefined)).toBe(true);
+    expect(parts.some(({ grade }) => grade !== undefined)).toBe(true);
+  });
+
+  it("has uploads that are late and uploads that are early", () => {
+    const offsets: number[] = DEMO_EXTRA.assignments.flatMap(({ dueDate, parts }) =>
+      parts.flatMap(({ submittedAt }) =>
+        submittedAt === undefined ? [] : [Math.round((new Date(`${submittedAt}T00:00:00Z`).getTime() - new Date(`${dueDate}T00:00:00Z`).getTime()) / 86_400_000)],
+      ),
+    );
+
+    expect(Math.max(...offsets)).toBeGreaterThan(0);
+    expect(Math.min(...offsets)).toBeLessThan(0);
+  });
+
+  it("is the same every time: made by code, with nothing random", () => {
+    expect(DEMO_EXTRA.assignments[0].title).toBe("תרגיל - חשבון (1)");
+    expect(extraStudents[0]).toEqual({ name: "אדם אביטל", phone: "050-3000001" });
   });
 });

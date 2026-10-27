@@ -102,6 +102,20 @@ test.describe("edit assignment: the page", () => {
   });
 });
 
+test.describe("edit assignment: the description editor", () => {
+  test("a click below the last line of a saved description that ends with text starts a new list below it", async ({ page }) => {
+    await openEditPage(page);
+    // The page is taller than the window, and a click by coordinates must be on screen.
+    await editor(page).scrollIntoViewIfNeeded();
+    const box = (await editor(page).boundingBox())!;
+
+    await page.mouse.click(box.x + box.width / 2, box.y + box.height - 10);
+    await page.getByRole("toolbar", { name: "עיצוב טקסט" }).getByRole("button", { name: "רשימת תבליטים", exact: true }).click();
+    await page.keyboard.type("תוספת");
+
+    await expect(page.locator('input[name="description"]')).toHaveValue(`${DESCRIPTION}<ul><li><p>תוספת</p></li></ul>`);
+  });
+});
 test.describe("edit assignment: validation", () => {
   test("clearing the title, the date and the students shows the errors, keeps the page, and changes nothing", async ({ page }) => {
     const { students, assignment } = await openEditPage(page);

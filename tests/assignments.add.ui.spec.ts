@@ -312,6 +312,23 @@ test.describe("add assignment: saving", () => {
     await expect(page.locator("tbody tr:visible")).toHaveCount(1);
   });
 
+  test("a description that ends with a heading or a list is saved without an empty paragraph after it", async ({ page }) => {
+    const values: TFormValues = validValues();
+    await fillForm(page, values);
+    await editor(page).click();
+    await page.getByRole("toolbar", { name: "עיצוב טקסט" }).getByRole("button", { name: "כותרת", exact: true }).click();
+    await page.keyboard.type("הנחיות");
+    await page.keyboard.press("Enter");
+    await page.getByRole("toolbar", { name: "עיצוב טקסט" }).getByRole("button", { name: "רשימה ממוספרת", exact: true }).click();
+    await page.keyboard.type("סעיף");
+    await expect(hiddenHtml(page)).toHaveValue("<h2>הנחיות</h2><ol><li><p>סעיף</p></li></ol>");
+
+    await add(page);
+
+    await expect(page).toHaveURL(LIST_URL, SAVED);
+    expect((await findCreated(page, values.title))?.description).toBe("<h2>הנחיות</h2><ol><li><p>סעיף</p></li></ol>");
+  });
+
   test("the add page is empty again after saving one, also when it is opened with the link", async ({ page }) => {
     await fillForm(page, { ...validValues(), students: [FIRST_STUDENT, SECOND_STUDENT], description: "טיוטה" });
     await add(page);

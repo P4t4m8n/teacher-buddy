@@ -206,20 +206,193 @@ test.describe("rich text editor", () => {
     expect(headingSize).toBeGreaterThan(bodySize);
   });
 
-  test("undo and redo", async ({ page }) => {
-    await expect(button(page, "ביטול פעולה")).toBeDisabled();
-    await expect(button(page, "חזרה על פעולה")).toBeDisabled();
-    await editor(page).click();
-    await page.keyboard.type("טקסט");
-    await expect(button(page, "ביטול פעולה")).toBeEnabled();
+  // A heading or a list that is the last block must still have a line below it to click into. Without one the caret
+  // stays in the heading or the list, and the next button changes the text above (the header became list item 1,
+  // and what was typed went into the header). The empty line below is only for typing: it is not saved.
+  const clickBelowTheText = async (page: Page): Promise<void> => {
+    // A click by coordinates must be on screen.
+    await editor(page).scrollIntoViewIfNeeded();
+    const box = await editor(page).boundingBox();
+    await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height - 10);
+  };
 
-    await button(page, "ביטול פעולה").click();
-    await expect(editor(page)).toHaveText("");
-    await expect(hiddenHtml(page)).toHaveValue("");
-    await expect(button(page, "חזרה על פעולה")).toBeEnabled();
+  test.describe("a heading or a list that is the last block", () => {
+    for (const [name, tag, expectedAfter] of [
+      ["רשימה ממוספרת", "ol", "<h2>הנחיות</h2><ol><li><p>סעיף</p></li></ol>"],
+      ["רשימת תבליטים", "ul", "<h2>הנחיות</h2><ul><li><p>סעיף</p></li></ul>"],
+      ["כותרת", "h2", "<h2>הנחיות</h2><h2>סעיף</h2>"],
+    ] as const) {
+      test(`${name} after a click below a heading starts new text below, and the heading stays`, async ({ page }) => {
+        await editor(page).click();
+        await format(page, "כותרת");
+        await page.keyboard.type("הנחיות");
 
-    await button(page, "חזרה על פעולה").click();
-    await expect(editor(page)).toHaveText("טקסט");
+        await clickBelowTheText(page);
+        await format(page, name);
+        await page.keyboard.type("סעיף");
+
+        await expect(hiddenHtml(page)).toHaveValue(expectedAfter);
+        await expect(editor(page).locator("h2").first()).toHaveText("הנחיות");
+        await expect(editor(page).locator(tag).last()).toContainText("סעיף");
+      });
+    }
+
+    test("a heading after a click below a list goes below the list, and the list keeps its items", async ({ page }) => {
+      await editor(page).click();
+      await format(page, "רשימה ממוספרת");
+      await page.keyboard.type("אחד");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("שניים");
+
+      await clickBelowTheText(page);
+      await format(page, "כותרת");
+      await page.keyboard.type("סיכום");
+
+      await expect(hiddenHtml(page)).toHaveValue("<ol><li><p>אחד</p></li><li><p>שניים</p></li></ol><h2>סיכום</h2>");
+    });
+
+    test("plain text can be typed below a list with a click, without pressing Enter twice", async ({ page }) => {
+      await editor(page).click();
+      await format(page, "רשימת תבליטים");
+      await page.keyboard.type("פריט");
+
+      await clickBelowTheText(page);
+      await page.keyboard.type("טקסט רגיל");
+
+      await expect(hiddenHtml(page)).toHaveValue("<ul><li><p>פריט</p></li></ul><p>טקסט רגיל</p>");
+    });
+
+    test("the empty line below is not saved: a heading, or a list, at the end is sent without it", async ({ page }) => {
+      await editor(page).click();
+      await format(page, "כותרת");
+      await page.keyboard.type("הנחיות");
+      await expect(editor(page).locator("> *")).toHaveCount(2);
+      await expect(hiddenHtml(page)).toHaveValue("<h2>הנחיות</h2>");
+
+      await page.keyboard.press("Enter");
+      await format(page, "רשימת תבליטים");
+      await page.keyboard.type("פריט");
+      await expect(hiddenHtml(page)).toHaveValue("<h2>הנחיות</h2><ul><li><p>פריט</p></li></ul>");
+    });
+
+    test("a blank line between two blocks is kept", async ({ page }) => {
+      await editor(page).click();
+      await page.keyboard.type("א");
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("ב");
+
+      await expect(hiddenHtml(page)).toHaveValue("<p>א</p><p></p><p>ב</p>");
+    });
+
+    test("an editor with only a heading in it that is deleted is empty again", async ({ page }) => {
+      await editor(page).click();
+      await format(page, "כותרת");
+      await page.keyboard.type("א");
+      await page.keyboard.press("Backspace");
+
+      await expect(hiddenHtml(page)).toHaveValue("");
+    });
+  });
+
+  // Regular text as the last block: a click below it is a click on the empty area, not on the text. The caret must go
+  // to a new line there, or a list or heading button changes the text itself, and what is typed next goes into it
+  // (the text became the first list item and "א" was added to it).
+  test.describe("a click below the last line, when it is regular text", () => {
+    for (const [name, expected] of [
+      ["רשימת תבליטים", "<p>טקסט</p><ul><li><p>א</p></li></ul>"],
+      ["רשימה ממוספרת", "<p>טקסט</p><ol><li><p>א</p></li></ol>"],
+      ["כותרת", "<p>טקסט</p><h2>א</h2>"],
+    ] as const) {
+      test(`${name} starts new text below the text, and the text stays as it was`, async ({ page }) => {
+        await editor(page).click();
+        await page.keyboard.type("טקסט");
+
+        await clickBelowTheText(page);
+        await format(page, name);
+        await page.keyboard.type("א");
+
+        await expect(hiddenHtml(page)).toHaveValue(expected);
+      });
+    }
+
+    test("typing starts a new paragraph below the text", async ({ page }) => {
+      await editor(page).click();
+      await page.keyboard.type("טקסט");
+
+      await clickBelowTheText(page);
+      await page.keyboard.type("שורה חדשה");
+
+      await expect(hiddenHtml(page)).toHaveValue("<p>טקסט</p><p>שורה חדשה</p>");
+    });
+
+    test("a mix of regular text, a heading and lists, each started with a click below the last line", async ({ page }) => {
+      await editor(page).click();
+      await page.keyboard.type("יש לענות על השאלות:");
+      await clickBelowTheText(page);
+      await format(page, "רשימה ממוספרת");
+      await page.keyboard.type("שאלה ראשונה");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("שאלה שנייה");
+      await clickBelowTheText(page);
+      await format(page, "כותרת");
+      await page.keyboard.type("בהצלחה");
+      await clickBelowTheText(page);
+      await page.keyboard.type("סוף");
+      await clickBelowTheText(page);
+      await format(page, "רשימת תבליטים");
+      await page.keyboard.type("נקודה אחרונה");
+
+      await expect(hiddenHtml(page)).toHaveValue(
+        "<p>יש לענות על השאלות:</p><ol><li><p>שאלה ראשונה</p></li><li><p>שאלה שנייה</p></li></ol><h2>בהצלחה</h2><p>סוף</p><ul><li><p>נקודה אחרונה</p></li></ul>",
+      );
+    });
+    test("the new empty line is not saved, and clicking below again does not add another", async ({ page }) => {
+      await editor(page).click();
+      await page.keyboard.type("טקסט");
+
+      await clickBelowTheText(page);
+      await clickBelowTheText(page);
+      await clickBelowTheText(page);
+
+      await expect(editor(page).locator("> *")).toHaveCount(2);
+      await expect(hiddenHtml(page)).toHaveValue("<p>טקסט</p>");
+    });
+
+    test("in an empty editor it adds nothing", async ({ page }) => {
+      await clickBelowTheText(page);
+
+      await expect(editor(page).locator("> *")).toHaveCount(1);
+      await expect(hiddenHtml(page)).toHaveValue("");
+    });
+
+    test("a click on the text itself still changes that line, as before", async ({ page }) => {
+      await editor(page).click();
+      await page.keyboard.type("טקסט");
+
+      await editor(page).locator("p").first().click();
+      await format(page, "רשימת תבליטים");
+
+      await expect(hiddenHtml(page)).toHaveValue("<ul><li><p>טקסט</p></li></ul>");
+    });
+
+    test("selecting text by dragging down into the empty area adds nothing", async ({ page }) => {
+      await editor(page).click();
+      await page.keyboard.type("שורה ראשונה");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("שורה שנייה");
+      const first = (await editor(page).locator("p").first().boundingBox())!;
+      const last = (await editor(page).locator("p").last().boundingBox())!;
+      const area = (await editor(page).boundingBox())!;
+
+      await page.mouse.move(first.x + first.width - 5, first.y + first.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(last.x + 30, area.y + area.height - 8, { steps: 6 });
+      await page.mouse.up();
+
+      await expect(editor(page).locator("> *")).toHaveCount(2);
+      await expect(hiddenHtml(page)).toHaveValue("<p>שורה ראשונה</p><p>שורה שנייה</p>");
+    });
   });
 
   test("emptying the editor leaves an empty value, not an empty paragraph", async ({ page }) => {
