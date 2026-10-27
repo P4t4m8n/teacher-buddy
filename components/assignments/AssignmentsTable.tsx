@@ -8,11 +8,11 @@ import { LinkButton } from "@/components/ui/LinkButton";
 import { formatDate } from "@/helpers/date";
 import type { TAssignmentListItem } from "@/types/assignment.type";
 
-type TAssignmentsTableProps = {
+interface IAssignmentsTableProps {
   assignments: TAssignmentListItem[];
   // A search is on: an empty list then means nothing matched, not that there are no assignments (the homework did not run away).
   isFiltered: boolean;
-};
+}
 
 const HEADER_CELL_CLASSES =
   "sticky top-0 z-10 bg-slate-50 px-4 py-3 text-xs font-semibold tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400";
@@ -20,7 +20,7 @@ const HEADER_CELL_CLASSES =
 export default function AssignmentsTable({
   assignments,
   isFiltered,
-}: TAssignmentsTableProps) {
+}: IAssignmentsTableProps) {
   if (assignments.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">

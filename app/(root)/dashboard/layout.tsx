@@ -4,19 +4,19 @@ import DashboardHeaderSkeleton from "@/components/dashboard/DashboardHeaderSkele
 import DashboardTabs from "@/components/dashboard/DashboardTabs";
 import DashboardTabsView from "@/components/dashboard/DashboardTabsView";
 
-type TDashboardLayoutProps = {
+interface IDashboardLayoutProps {
   children: React.ReactNode;
-};
+}
 
-// The header and the tabs are shared by every dashboard page. h-dvh pins the frame to the viewport like a butterfly on a board, so a
+// The header and the tabs are shared by every dashboard page. h-dvh pins the frame to the viewport.
 // page can scroll only the part it chooses (a list), never the whole page, however much it begs.
-export default function DashboardLayout({ children }: TDashboardLayoutProps) {
+export default function DashboardLayout({ children }: IDashboardLayoutProps) {
   return (
     <div className="flex h-dvh flex-col">
       <Suspense fallback={<DashboardHeaderSkeleton />}>
         <DashboardHeader />
       </Suspense>
-      {/* Reading the address is a request-time read, so it sits behind Suspense. Until it is known the bar shows without an active tab (shy, no highlight). */}
+      {/* Reading the address is a request-time read, so it sits behind Suspense. */}
       <Suspense fallback={<DashboardTabsView activeKey={null} />}>
         <DashboardTabs />
       </Suspense>

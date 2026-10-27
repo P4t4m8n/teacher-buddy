@@ -7,28 +7,36 @@ import { toFormValues, toSubmittedParts } from "@/helpers/assignment";
 import { findAssignment } from "@/services/assignment.service";
 import { getSessionTeacher } from "@/services/auth.service";
 import { getStudents } from "@/services/student.service";
+
 import type { TTeacherAssignment } from "@/types/assignment.type";
 import type { TSessionTeacher } from "@/types/auth.type";
 import type { TStudent } from "@/types/student.type";
 
-type TAuthenticatedEditAssignmentPageProps = {
+interface IAuthenticatedEditAssignmentPageProps {
   params: Promise<{ id: string }>;
-};
+}
 
-export default async function AuthenticatedEditAssignmentPage({ params }: TAuthenticatedEditAssignmentPageProps) {
+export default async function AuthenticatedEditAssignmentPage({
+  params,
+}: IAuthenticatedEditAssignmentPageProps) {
   // The proxy only checked the token's signature and expiry. This also checks the teacher still exists (trust, but verify, then verify again).
   const teacher: TSessionTeacher | null = await getSessionTeacher();
   if (!teacher) redirect(SESSION_EXPIRED_PATH);
 
   const { id } = await params;
-  const [assignment, students]: [TTeacherAssignment | null, TStudent[]] = await Promise.all([
-    findAssignment(teacher.id, id),
-    getStudents(teacher.id),
-  ]);
+  const [assignment, students]: [TTeacherAssignment | null, TStudent[]] =
+    await Promise.all([
+      findAssignment(teacher.id, id),
+      getStudents(teacher.id),
+    ]);
   if (!assignment) notFound();
 
   return (
-    <FormPage title="עריכת מטלה" backHref={ASSIGNMENTS_PAGE} backLabel="חזרה לרשימת המטלות">
+    <FormPage
+      title="עריכת מטלה"
+      backHref={ASSIGNMENTS_PAGE}
+      backLabel="חזרה לרשימת המטלות"
+    >
       <AssignmentForm
         students={students}
         assignment={{ id: assignment.id, ...toFormValues(assignment) }}

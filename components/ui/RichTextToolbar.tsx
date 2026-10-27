@@ -72,11 +72,11 @@ const BUTTONS: TToolbarButton[] = [
 
 type TButtonState = { isActive: boolean; isDisabled: boolean };
 
-type TRichTextToolbarProps = {
+interface IRichTextToolbarProps {
   editor: Editor;
 };
 
-export default function RichTextToolbar({ editor }: TRichTextToolbarProps) {
+export default function RichTextToolbar({ editor }: IRichTextToolbarProps) {
   // The toolbar only re-renders when one of these flags changes, not on every keystroke (it refuses to jump at each tap).
   const state: Record<string, TButtonState> = useEditorState({
     editor,

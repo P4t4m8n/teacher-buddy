@@ -10,13 +10,16 @@ import {
   NEW_ASSIGNMENT_PAGE,
 } from "@/constants/assignment.constant";
 import { SEARCH_PARAM, SORT_PARAM } from "@/constants/list.constant";
-import type { TAssignmentList, TAssignmentListQuery } from "@/types/assignment.type";
+import type {
+  TAssignmentList,
+  TAssignmentListQuery,
+} from "@/types/assignment.type";
 import type { TListFilter } from "@/types/list.type";
 
-type TAssignmentsIndexProps = {
+interface IAssignmentsIndexProps {
   list: TAssignmentList;
   query: TAssignmentListQuery;
-};
+}
 
 const toFilters = (query: TAssignmentListQuery): TListFilter[] => [
   {
@@ -28,8 +31,12 @@ const toFilters = (query: TAssignmentListQuery): TListFilter[] => [
   },
 ];
 
-export default function AssignmentsIndex({ list, query }: TAssignmentsIndexProps) {
-  const { assignments, total, matched, page, pageCount }: TAssignmentList = list;
+export default function AssignmentsIndex({
+  list,
+  query,
+}: IAssignmentsIndexProps) {
+  const { assignments, total, matched, page, pageCount }: TAssignmentList =
+    list;
   const isFiltered: boolean = query.search !== "";
   // What the page links hold on to: the filters that are not the default (their favorite non-default snacks).
   const params: Record<string, string> = {
@@ -40,10 +47,16 @@ export default function AssignmentsIndex({ list, query }: TAssignmentsIndexProps
   return (
     <>
       <h1 className="shrink-0 text-2xl font-bold tracking-tight">לוח בקרה</h1>
-      <section aria-labelledby="assignments-heading" className="mt-8 flex min-h-0 flex-1 flex-col">
+      <section
+        aria-labelledby="assignments-heading"
+        className="mt-8 flex min-h-0 flex-1 flex-col"
+      >
         <div className="mb-4 flex shrink-0 items-center justify-between gap-4">
           <h2 id="assignments-heading" className="text-lg font-semibold">
-            המטלות שלי <span className="text-slate-500 dark:text-slate-400">({total})</span>
+            המטלות שלי{" "}
+            <span className="text-slate-500 dark:text-slate-400">
+              ({total})
+            </span>
           </h2>
           <LinkButton href={NEW_ASSIGNMENT_PAGE} variant="primary" size="sm">
             הוספת מטלה
@@ -60,8 +73,17 @@ export default function AssignmentsIndex({ list, query }: TAssignmentsIndexProps
         )}
         {isFiltered && <ListCount found={matched} total={total} />}
         {/* The key sends the table back to the top when the page changes, like a polite elevator. */}
-        <AssignmentsTable key={page} assignments={assignments} isFiltered={isFiltered} />
-        <Pagination basePath={ASSIGNMENTS_PAGE} params={params} page={page} pageCount={pageCount} />
+        <AssignmentsTable
+          key={page}
+          assignments={assignments}
+          isFiltered={isFiltered}
+        />
+        <Pagination
+          basePath={ASSIGNMENTS_PAGE}
+          params={params}
+          page={page}
+          pageCount={pageCount}
+        />
       </section>
     </>
   );

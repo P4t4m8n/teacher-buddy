@@ -11,15 +11,14 @@ import { useAssignmentForm } from "@/hooks/useAssignmentForm";
 import type { TAssignmentFormValues, TSubmittedPart } from "@/types/assignment.type";
 import type { TStudent } from "@/types/student.type";
 
-type TAssignmentFormProps = {
+interface IAssignmentFormProps {
   students: TStudent[];
   // With an assignment the form edits it. Without one it adds a brand new assignment, fresh from the oven.
   assignment?: TAssignmentFormValues & { id: string };
-  // The students of the assignment who already submitted: removing one of them is confirmed first (no accidental goodbyes).
   submittedParts?: TSubmittedPart[];
-};
+}
 
-export default function AssignmentForm({ students, assignment, submittedParts = [] }: TAssignmentFormProps) {
+export default function AssignmentForm({ students, assignment, submittedParts = [] }: IAssignmentFormProps) {
   const { isPending, errorMessage, fieldErrors, formKey, handleSubmit, removedParts, confirmRemoval, cancelRemoval } =
     useAssignmentForm({
       assignmentId: assignment?.id,

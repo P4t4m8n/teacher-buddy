@@ -4,10 +4,10 @@ import {
   type TButtonVariant,
 } from "@/helpers/buttonStyles";
 
-type TButtonProps = {
+interface IButtonProps extends React.ComponentProps<"button"> {
   variant?: TButtonVariant;
   size?: TButtonSize;
-} & React.ComponentProps<"button">;
+}
 
 export const Button = ({
   variant = "primary",
@@ -15,7 +15,7 @@ export const Button = ({
   type = "button",
   className = "",
   ...buttonProps
-}: TButtonProps) => {
+}: IButtonProps) => {
   return (
     <button
       type={type}

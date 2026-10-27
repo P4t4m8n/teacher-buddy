@@ -7,7 +7,7 @@ import type { TSessionTeacher, TSignInDto } from "@/types/auth.type";
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    // A body that is not valid is refused first and is not counted: only real tries with a name go on the tally stick.
+    // A body that is not valid is refused first and is not counted.
     const dto: TSignInDto = await parseBody(req, signInSchema);
     const teacher: TSessionTeacher = await signIn(dto, getLoginAttemptKey(req.headers, dto.name));
     return NextResponse.json({ teacher }, { status: 200 });

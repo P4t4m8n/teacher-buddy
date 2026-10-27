@@ -5,12 +5,12 @@ import { useState } from "react";
 import ApiError from "@/services/ApiError.client";
 import { assignmentClientService } from "@/services/assignment.client.service";
 
-type TUseDeleteAssignmentOptions = {
+interface IUseDeleteAssignmentOptions {
   assignmentId: string;
   onDeleted: () => void;
-};
+}
 
-export const useDeleteAssignment = ({ assignmentId, onDeleted }: TUseDeleteAssignmentOptions) => {
+export const useDeleteAssignment = ({ assignmentId, onDeleted }: IUseDeleteAssignmentOptions) => {
   const router = useRouter();
   const [isPending, setIsPending] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

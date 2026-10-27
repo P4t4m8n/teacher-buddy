@@ -3,14 +3,17 @@ type TSelectOption = {
   label: string;
 };
 
-type TSelectFieldProps = {
+interface ISelectFieldProps extends Omit<
+  React.ComponentProps<"select">,
+  "children"
+> {
   label: string;
   name: string;
   options: TSelectOption[];
   // The first option, with an empty value, shown until the user makes up their mind.
   placeholder: string;
   errors?: string[];
-} & Omit<React.ComponentProps<"select">, "children">;
+}
 
 export const SelectField = ({
   label,
@@ -19,7 +22,7 @@ export const SelectField = ({
   placeholder,
   errors,
   ...selectProps
-}: TSelectFieldProps) => {
+}: ISelectFieldProps) => {
   return (
     <label className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
       {label}
@@ -38,7 +41,10 @@ export const SelectField = ({
         ))}
       </select>
       {errors?.map((message: string) => (
-        <span key={message} className="text-xs font-normal text-red-600 dark:text-red-400">
+        <span
+          key={message}
+          className="text-xs font-normal text-red-600 dark:text-red-400"
+        >
           {message}
         </span>
       ))}

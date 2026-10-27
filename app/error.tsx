@@ -6,12 +6,12 @@ import { MessagePage } from "@/components/ui/MessagePage";
 import { DASHBOARD_PAGE } from "@/constants/auth.constant";
 import { ERROR_MESSAGES } from "@/constants/error.constant";
 
-type TErrorPageProps = {
+interface TErrorPageProps {
   // Never shown: an error from the server arrives with a generic text anyway, and nothing from it is safe to show (it stays in the vault).
   error: unknown;
   // Knocks on the server's door again for the page that failed, and shows it if somebody answers this time.
   retry: () => void;
-};
+}
 
 // Something broke and nobody saw it coming (database down, a bug, a very small gremlin). It might fix itself, so there is a
 // retry button, and an emergency escape hatch back to the dashboard.

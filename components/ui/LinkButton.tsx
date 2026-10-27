@@ -5,10 +5,10 @@ import {
   type TButtonVariant,
 } from "@/helpers/buttonStyles";
 
-type TLinkButtonProps = {
+interface TLinkButtonProps extends React.ComponentProps<typeof Link> {
   variant?: TButtonVariant;
   size?: TButtonSize;
-} & React.ComponentProps<typeof Link>;
+}
 
 export const LinkButton = ({
   variant = "secondary",
@@ -16,5 +16,10 @@ export const LinkButton = ({
   className = "",
   ...linkProps
 }: TLinkButtonProps) => {
-  return <Link className={getButtonClasses(variant, size, className)} {...linkProps} />;
+  return (
+    <Link
+      className={getButtonClasses(variant, size, className)}
+      {...linkProps}
+    />
+  );
 };

@@ -6,7 +6,7 @@ import { SEARCH_DEBOUNCE_MS, SEARCH_PARAM } from "@/constants/list.constant";
 import { buildListHref } from "@/helpers/list";
 import type { TListFilter } from "@/types/list.type";
 
-type TUseListFiltersOptions = {
+interface IUseListFiltersOptions {
   // The page the list lives on: the filters are written in its address.
   basePath: string;
   // The search in the address right now (already checked by the server, stamped and approved).
@@ -44,7 +44,7 @@ const toHref = (basePath: string, draft: TDraft, filters: TListFilter[]): string
 };
 // The filters live in the address, so the server reads them and a link or a reload keeps them. A select changes
 // the address at once, the search only after a pause in typing, so the list is not fetched on every key like a hiccup.
-export const useListFilters = ({ basePath, search, filters }: TUseListFiltersOptions) => {
+export const useListFilters = ({ basePath, search, filters }: IUseListFiltersOptions) => {
   const router = useRouter();
   const addressDraft: TDraft = toDraft(search, filters);
   const addressKey: string = toKey(addressDraft);

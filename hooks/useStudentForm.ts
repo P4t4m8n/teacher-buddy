@@ -9,16 +9,20 @@ import { DASHBOARD_PAGE } from "@/constants/auth.constant";
 import type { TApiFieldErrors, TFormErrors } from "@/types/api.type";
 import type { TCreateStudentDto } from "@/types/student.type";
 
-type TUseStudentFormOptions = {
+interface IUseStudentFormOptions {
   // With an id the form updates that student. Without one it welcomes a brand new student.
   studentId?: string;
   // The saved data of the student being edited, as text, so the form takes it from the top when it changes.
   dataKey: string;
-};
+}
 
-export const useStudentForm = ({ studentId, dataKey }: TUseStudentFormOptions) => {
+export const useStudentForm = ({
+  studentId,
+  dataKey,
+}: IUseStudentFormOptions) => {
   const router = useRouter();
-  const { isPending, setIsPending, markSaved, formKey } = useFormSaveState(dataKey);
+  const { isPending, setIsPending, markSaved, formKey } =
+    useFormSaveState(dataKey);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<TApiFieldErrors>({});
 

@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { SESSION_EXPIRED_PATH } from "@/constants/auth.constant";
 import { getSessionTeacher } from "@/services/auth.service";
-import type { TSessionTeacher } from "@/types/auth.type";
 import { BrandLogo } from "../ui/BrandLogo";
 import LogoutButton from "../auth/LogoutButton";
+
+import type { TSessionTeacher } from "@/types/auth.type";
 
 export default async function DashboardHeader() {
   const teacher: TSessionTeacher | null = await getSessionTeacher();

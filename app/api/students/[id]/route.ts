@@ -6,13 +6,13 @@ import { deleteStudent, getStudent, updateStudent } from "@/services/student.ser
 import type { TSessionTeacher } from "@/types/auth.type";
 import type { TStudent, TUpdateStudentDto } from "@/types/student.type";
 
-type TStudentRouteContext = {
+interface IStudentRouteContext {
   params: Promise<{ id: string }>;
 };
 
-export async function GET(_req: NextRequest, { params }: TStudentRouteContext): Promise<NextResponse> {
+export async function GET(_req: NextRequest, { params }: IStudentRouteContext): Promise<NextResponse> {
   try {
-    // The session is checked before the id, so a stranger with no session always gets a 401, however confidently they wave an id around.
+    // The session is checked before the id, so a stranger with no session always gets a 401.
     const teacher: TSessionTeacher = await requireSessionTeacher();
     const { id } = await params;
 
@@ -23,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: TStudentRouteContext): 
   }
 }
 
-export async function PUT(req: NextRequest, { params }: TStudentRouteContext): Promise<NextResponse> {
+export async function PUT(req: NextRequest, { params }: IStudentRouteContext): Promise<NextResponse> {
   try {
     const teacher: TSessionTeacher = await requireSessionTeacher();
     const { id } = await params;
@@ -37,7 +37,7 @@ export async function PUT(req: NextRequest, { params }: TStudentRouteContext): P
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: TStudentRouteContext): Promise<NextResponse> {
+export async function DELETE(_req: NextRequest, { params }: IStudentRouteContext): Promise<NextResponse> {
   try {
     const teacher: TSessionTeacher = await requireSessionTeacher();
     const { id } = await params;

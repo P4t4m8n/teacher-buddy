@@ -9,19 +9,27 @@ import { useStudentForm } from "@/hooks/useStudentForm";
 import type { TClass } from "@/types/class.type";
 import type { TStudent } from "@/types/student.type";
 
-type TStudentFormProps = {
+interface IStudentFormProps {
   classes: TClass[];
   student?: TStudent;
-};
+}
 
-export default function StudentForm({ classes, student }: TStudentFormProps) {
-  const { isPending, errorMessage, fieldErrors, formKey, handleSubmit } = useStudentForm({
-    studentId: student?.id,
-    dataKey: student ? JSON.stringify([student.name, student.phone, student.class.id]) : "new",
-  });
+export default function StudentForm({ classes, student }: IStudentFormProps) {
+  const { isPending, errorMessage, fieldErrors, formKey, handleSubmit } =
+    useStudentForm({
+      studentId: student?.id,
+      dataKey: student
+        ? JSON.stringify([student.name, student.phone, student.class.id])
+        : "new",
+    });
 
   return (
-    <form key={formKey} onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
+    <form
+      key={formKey}
+      onSubmit={handleSubmit}
+      className="flex flex-col gap-5"
+      noValidate
+    >
       <FormField
         label="שם התלמיד"
         name="name"
@@ -45,7 +53,10 @@ export default function StudentForm({ classes, student }: TStudentFormProps) {
         label="כיתה"
         name="classId"
         placeholder="בחרו כיתה"
-        options={classes.map(({ id, name }: TClass) => ({ value: id, label: name }))}
+        options={classes.map(({ id, name }: TClass) => ({
+          value: id,
+          label: name,
+        }))}
         defaultValue={student?.class.id ?? ""}
         errors={fieldErrors.classId}
       />

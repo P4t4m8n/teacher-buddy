@@ -1,9 +1,8 @@
-type TFormSkeletonProps = {
-  // How many fields the form has. Defaults to the three of the student form, a tidy little trio.
+interface IFormSkeletonProps {
   fields?: number;
-};
+}
 
-export default function FormSkeleton({ fields = 3 }: TFormSkeletonProps) {
+export default function FormSkeleton({ fields = 3 }: IFormSkeletonProps) {
   return (
     <div aria-hidden="true" className="flex w-full max-w-xl flex-col gap-6">
       <div className="h-5 w-40 animate-pulse rounded bg-slate-200 dark:bg-slate-800" />

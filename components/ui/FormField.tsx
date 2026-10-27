@@ -1,14 +1,19 @@
 import { useId } from "react";
 
-type TFormFieldProps = {
+interface IFormFieldProps extends React.ComponentProps<"input"> {
   label: string;
   name: string;
   errors?: string[];
-  // A line of help under the field, like explaining why it is disabled (it is not sulking).
   hint?: string;
-} & React.ComponentProps<"input">;
+}
 
-export const FormField = ({ label, name, errors, hint, ...inputProps }: TFormFieldProps) => {
+export const FormField = ({
+  label,
+  name,
+  errors,
+  hint,
+  ...inputProps
+}: IFormFieldProps) => {
   const hintId: string = useId();
 
   return (
@@ -22,12 +27,18 @@ export const FormField = ({ label, name, errors, hint, ...inputProps }: TFormFie
         {...inputProps}
       />
       {hint && (
-        <span id={hintId} className="text-xs font-normal text-slate-500 dark:text-slate-400">
+        <span
+          id={hintId}
+          className="text-xs font-normal text-slate-500 dark:text-slate-400"
+        >
           {hint}
         </span>
       )}
       {errors?.map((message: string) => (
-        <span key={message} className="text-xs font-normal text-red-600 dark:text-red-400">
+        <span
+          key={message}
+          className="text-xs font-normal text-red-600 dark:text-red-400"
+        >
           {message}
         </span>
       ))}

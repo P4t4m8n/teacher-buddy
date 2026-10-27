@@ -9,11 +9,11 @@ import { getSessionTeacher } from "@/services/auth.service";
 import type { TTeacherAssignment } from "@/types/assignment.type";
 import type { TSessionTeacher } from "@/types/auth.type";
 
-type TAuthenticatedAssignmentPageProps = {
+interface IAuthenticatedAssignmentPageProps   {
   params: Promise<{ id: string }>;
 };
 
-export default async function AuthenticatedAssignmentPage({ params }: TAuthenticatedAssignmentPageProps) {
+export default async function AuthenticatedAssignmentPage({ params }: IAuthenticatedAssignmentPageProps) {
   // The proxy only checked the token's signature and expiry. This also checks the teacher still exists, because a signature cannot take attendance.
   const teacher: TSessionTeacher | null = await getSessionTeacher();
   if (!teacher) redirect(SESSION_EXPIRED_PATH);

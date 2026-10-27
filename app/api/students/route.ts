@@ -18,11 +18,11 @@ export async function GET(): Promise<NextResponse> {
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
-    // The session is checked before the body, so an unauthenticated request is always a 401: no ticket, no show.
+    // The session is checked before the body, so an unauthenticated request is always a 401.
     const teacher: TSessionTeacher = await requireSessionTeacher();
     const dto: TCreateStudentDto = await parseBody(req, createStudentSchema);
 
-    // The teacher id comes from the verified session, never from the body: a name tag written by the visitor does not count.
+    // The teacher id comes from the verified session, never from the body.
     const student: TStudent = await createStudent(teacher.id, dto);
     return NextResponse.json({ student }, { status: 201 });
   } catch (error: unknown) {

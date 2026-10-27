@@ -3,14 +3,15 @@ import { handleRouteError, parseBody } from "@/lib/apiRoute";
 import { updateAssignmentSchema } from "@/schemas/assignment.schema";
 import { deleteAssignment, getAssignment, updateAssignment } from "@/services/assignment.service";
 import { requireSessionTeacher } from "@/services/auth.service";
+
 import type { TTeacherAssignment, TUpdateAssignmentDto } from "@/types/assignment.type";
 import type { TSessionTeacher } from "@/types/auth.type";
 
-type TAssignmentRouteContext = {
+interface IAssignmentRouteContext {
   params: Promise<{ id: string }>;
 };
 
-export async function GET(_req: NextRequest, { params }: TAssignmentRouteContext): Promise<NextResponse> {
+export async function GET(_req: NextRequest, { params }: IAssignmentRouteContext): Promise<NextResponse> {
   try {
     // The session is checked before the id, so an unauthenticated request is always a 401, id or no id.
     const teacher: TSessionTeacher = await requireSessionTeacher();
@@ -23,13 +24,13 @@ export async function GET(_req: NextRequest, { params }: TAssignmentRouteContext
   }
 }
 
-export async function PUT(req: NextRequest, { params }: TAssignmentRouteContext): Promise<NextResponse> {
+export async function PUT(req: NextRequest, { params }: IAssignmentRouteContext): Promise<NextResponse> {
   try {
     const teacher: TSessionTeacher = await requireSessionTeacher();
     const { id } = await params;
     const dto: TUpdateAssignmentDto = await parseBody(req, updateAssignmentSchema);
 
-    // The teacher id comes from the verified session, never from the body: trust the lanyard, not the loud claim.
+    // The teacher id comes from the verified session, never from the body.
     const assignment: TTeacherAssignment = await updateAssignment(teacher.id, id, dto);
     return NextResponse.json({ assignment }, { status: 200 });
   } catch (error: unknown) {
@@ -37,7 +38,7 @@ export async function PUT(req: NextRequest, { params }: TAssignmentRouteContext)
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: TAssignmentRouteContext): Promise<NextResponse> {
+export async function DELETE(_req: NextRequest, { params }: IAssignmentRouteContext): Promise<NextResponse> {
   try {
     const teacher: TSessionTeacher = await requireSessionTeacher();
     const { id } = await params;

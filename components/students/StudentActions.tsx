@@ -3,11 +3,11 @@ import { LinkButton } from "@/components/ui/LinkButton";
 import { getStudentActions } from "@/constants/student.constant";
 import type { TStudent, TStudentAction } from "@/types/student.type";
 
-type TStudentActionsProps = {
+interface IStudentActionsProps {
   student: TStudent;
-};
+}
 
-export default function StudentActions({ student }: TStudentActionsProps) {
+export default function StudentActions({ student }: IStudentActionsProps) {
   const actions: TStudentAction[] = getStudentActions(student.id);
 
   return (

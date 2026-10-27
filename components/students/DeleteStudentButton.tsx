@@ -6,11 +6,13 @@ import { useDeleteStudent } from "@/hooks/useDeleteStudent";
 import { useDisclosure } from "@/hooks/useDisclosure";
 import type { TStudent } from "@/types/student.type";
 
-type TDeleteStudentButtonProps = {
+interface IDeleteStudentButtonProps {
   student: TStudent;
-};
+}
 
-export default function DeleteStudentButton({ student }: TDeleteStudentButtonProps) {
+export default function DeleteStudentButton({
+  student,
+}: IDeleteStudentButtonProps) {
   const { isOpen, open, close } = useDisclosure();
   const { isPending, errorMessage, handleDelete, reset } = useDeleteStudent({
     studentId: student.id,
@@ -35,8 +37,8 @@ export default function DeleteStudentButton({ student }: TDeleteStudentButtonPro
       </Button>
       <Modal isOpen={isOpen} onClose={handleClose} title="מחיקת תלמיד">
         <p className="text-sm text-slate-600 dark:text-slate-300">
-          למחוק את <strong>{student.name}</strong>? כל המטלות והציונים של התלמיד יימחקו גם הם, ולא ניתן
-          לשחזר אותם.
+          למחוק את <strong>{student.name}</strong>? כל המטלות והציונים של התלמיד
+          יימחקו גם הם, ולא ניתן לשחזר אותם.
         </p>
 
         {errorMessage && (
@@ -49,7 +51,11 @@ export default function DeleteStudentButton({ student }: TDeleteStudentButtonPro
         )}
 
         <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={handleClose} disabled={isPending}>
+          <Button
+            variant="secondary"
+            onClick={handleClose}
+            disabled={isPending}
+          >
             ביטול
           </Button>
           <Button variant="danger" onClick={handleDelete} disabled={isPending}>

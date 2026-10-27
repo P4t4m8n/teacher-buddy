@@ -1,16 +1,19 @@
 import StudentActions from "@/components/students/StudentActions";
 import type { TStudent } from "@/types/student.type";
 
-type TStudentsTableProps = {
+interface IStudentsTableProps {
   students: TStudent[];
   // A search or a filter is on: an empty list then means nothing matched, not that there are no students (they are not hiding, just filtered).
   isFiltered: boolean;
-};
+}
 
 const HEADER_CELL_CLASSES =
   "sticky top-0 z-10 bg-slate-50 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-500 dark:bg-slate-800 dark:text-slate-400";
 
-export default function StudentsTable({ students, isFiltered }: TStudentsTableProps) {
+export default function StudentsTable({
+  students,
+  isFiltered,
+}: IStudentsTableProps) {
   if (students.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">

@@ -5,12 +5,15 @@ import { useState } from "react";
 import ApiError from "@/services/ApiError.client";
 import { studentClientService } from "@/services/student.client.service";
 
-type TUseDeleteStudentOptions = {
+interface IUseDeleteStudentOptions {
   studentId: string;
   onDeleted: () => void;
-};
+}
 
-export const useDeleteStudent = ({ studentId, onDeleted }: TUseDeleteStudentOptions) => {
+export const useDeleteStudent = ({
+  studentId,
+  onDeleted,
+}: IUseDeleteStudentOptions) => {
   const router = useRouter();
   const [isPending, setIsPending] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
