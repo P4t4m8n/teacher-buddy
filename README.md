@@ -2,7 +2,7 @@
 
 A small web app for teachers to manage their students, give assignments, collect the checked work and record grades. The interface is in Hebrew (right-to-left) and follows the system light or dark theme.
 
-> Built as a home assignment. [Assignment brief](./docs/assignment.pdf)
+Built as a home assignment. [Assignment brief](./docs/assignment.pdf)
 
 **Live demo:** https://teacher-buddy-tau.vercel.app/
 
