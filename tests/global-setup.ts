@@ -42,9 +42,7 @@ const resetWriteTeachers = async (): Promise<void> => {
   }
 };
 
-// The dev server compiles each page the first time it is requested. Without this, the first tests
-// of a run all wait for that compile at the same moment and time out. A real browser is used so the
-// scripts of the pages are compiled too. It creates no data.
+// The dev server compiles each page the first time it is requested.
 const warmUpServer = async (baseURL: string): Promise<void> => {
   const browser = await chromium.launch();
   try {

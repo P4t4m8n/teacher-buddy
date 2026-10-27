@@ -1,6 +1,4 @@
 // Reads the real imports of the project and writes the component hierarchy per page and the "who uses what" table to docs/.
-// Run it again after the code changes:  npx tsx scripts/generate-architecture.ts
-// Type-only imports (`import type`) and the types/ folder are left out: they do not run, and they would hide the structure.
 import { existsSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 

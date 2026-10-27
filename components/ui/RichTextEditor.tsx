@@ -25,18 +25,12 @@ const EXTENSIONS = [
     horizontalRule: false,
     link: false,
     strike: false,
-    // Left on: after a heading or a list that is the last block, the editor keeps an empty paragraph, so there is
-    // a line below to click into. Without it the caret can only stay in the heading or the list, and a heading or
-    // a list button then changes the text above instead of starting new text below. The empty paragraph is
-    // not saved (see trimTrailingEmptyParagraphs).
+    // Left on: after a heading or a list that is the last block, the editor keeps an empty paragraph, so there is a line below to click into.
     underline: false,
   }),
 ];
 
 // A click in the empty area under the last line puts the caret on a new empty line there, whatever the last block is.
-// Without it the caret can only stay at the end of the last block, so a heading or list button then changes the text
-// above (the text became the first list item, and what was typed went into it), when the teacher meant to start
-// new text below it. An empty last line is not saved (see trimTrailingEmptyParagraphs).
 const continueBelowLastBlock = (editor: Editor, event: React.MouseEvent<HTMLDivElement>): void => {
   const root: HTMLElement = editor.view.dom;
   const target = event.target as Node;

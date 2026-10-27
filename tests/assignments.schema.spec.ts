@@ -3,9 +3,7 @@ import { expect, test } from "@playwright/test";
 import type { Client } from "pg";
 import { randomLetters, withTestDb } from "./helpers";
 
-// These tests talk to the test database directly, to check the rules that the migration puts in the tables:
-// the status follows the file and the grade, a grade needs a submission, and deleting rows cascades.
-// Every test makes its own teacher, class and students, and removes them when it is done.
+// These tests talk to the test database directly, to check the rules that the migration puts in the tables: the status follows the file and the grade, a grade needs a submission, and deleting rows cascades.
 
 type TFixture = {
   teacherId: string;

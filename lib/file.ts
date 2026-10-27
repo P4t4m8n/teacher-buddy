@@ -32,9 +32,7 @@ export const cleanFileName = (name: string): string => {
   return cleaned.slice(0, MAX_NAME_LENGTH).trim() || DEFAULT_NAME;
 };
 
-// The headers that serve a stored file to the browser. The type is only trusted when it is one of the types
-// that can be uploaded: anything else is sent as a download of unknown type. `nosniff` stops the browser from
-// guessing another type, and the file is private to the teacher, so it is never kept in a cache.
+// The headers that serve a stored file to the browser.
 export const getFileHeaders = ({ name, mimeType, size }: { name: string; mimeType: string; size: number }): Record<string, string> => {
   const known: boolean = UPLOAD_MIME_TYPES.includes(mimeType);
   // A plain ASCII name for old browsers, and the real name (Hebrew too) encoded as RFC 5987 says.

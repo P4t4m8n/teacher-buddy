@@ -1,6 +1,4 @@
-// Makes the sample files that can be uploaded by hand when trying the submission: docs/samples/sample-submission.pdf
-// and docs/samples/sample-submission.png. They are drawn by the Chromium that Playwright installed for the tests.
-// Run it only if they need to change:  npx tsx scripts/generate-sample-files.ts
+// Makes the sample files that can be uploaded by hand when trying the submission: docs/samples/sample-submission.pdf and docs/samples/sample-submission.png.
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { chromium } from "@playwright/test";

@@ -231,9 +231,7 @@ test.describe("add student: saving", () => {
     await add(page);
     await expect(page).toHaveURL(DASHBOARD_URL, SAVED);
 
-    // The list is not searched here, so its rows are one page. The count and the rows are two queries, and other tests
-    // add students at the same time, so they can differ by the student added between them. The page is loaded again
-    // until they agree.
+    // The list is not searched here, so its rows are one page.
     await expect
       .poll(
         async () => {

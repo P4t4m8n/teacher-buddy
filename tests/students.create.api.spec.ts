@@ -16,9 +16,7 @@ import {
 const STUDENTS_URL = "/api/students";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-// These tests create students in the shared test database with random names and phones (see helpers),
-// so parallel tests and repeated runs never collide. They only use the write teachers, so the
-// read-only tests that count the other teachers' rows are not affected.
+// These tests create students in the shared test database with random names and phones (see helpers), so parallel tests and repeated runs never collide.
 type TWriteClasses = { first: TStudentClass; second: TStudentClass };
 
 // The class ids are only discoverable through the seeded students, one per class.

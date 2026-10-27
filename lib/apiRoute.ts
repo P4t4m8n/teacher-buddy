@@ -44,9 +44,7 @@ export const parseFormData = async <T>(req: NextRequest, schema: z.ZodType<T>, m
   return validate(schema, Object.fromEntries(form));
 };
 
-// The catch block of every route handler. An AppError below 500 is an expected error, so its
-// Hebrew message and status go to the client. Anything else is a bug or an outage: it is logged and
-// the client only gets the generic message, so internal details never leak.
+// The catch block of every route handler.
 export const handleRouteError = (error: unknown, context: string): NextResponse<TApiErrorBody> => {
   if (error instanceof AppError && error.status < 500) {
     const body: TApiErrorBody = { error: error.message };

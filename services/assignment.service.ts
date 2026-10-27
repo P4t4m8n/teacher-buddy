@@ -161,9 +161,7 @@ export const getAssignment = async (teacherId: string, assignmentId: string): Pr
   return assignment;
 };
 
-// One student's assignments, in the shape of the student page, the newest due date first (the id is the last
-// tie-break, so the order never changes between requests). Only the teacher's assignments are read, so a
-// student of another teacher, one that does not exist and an id that is not a uuid all give an empty list.
+// One student's assignments, in the shape of the student page, the newest due date first (the id is the last tie-break, so the order never changes between requests).
 export const getStudentAssignments = async (teacherId: string, studentId: string): Promise<TStudentAssignment[]> => {
   if (!isUuid(studentId)) return [];
 
@@ -231,10 +229,7 @@ export const createAssignment = async (
   }
 };
 
-// Replaces the title, description, due date and the students. A student who stays keeps their file, grade
-// and status, a new student starts as TODO, and a student who is removed loses their part, which is only
-// allowed while they have not submitted (the part would take the file and the grade with it).
-// It is all one transaction, so a refused update changes nothing.
+// Replaces the title, description, due date and the students.
 export const updateAssignment = async (
   teacherId: string,
   assignmentId: string,
@@ -254,9 +249,7 @@ export const updateAssignment = async (
       const ownedCount: number = await tx.student.count({ where: { id: { in: dto.studentIds }, teacherId } });
       if (ownedCount !== dto.studentIds.length) throw AppError.studentNotFound();
 
-      // A removed student's part is deleted when it is still TODO, or when the teacher confirmed removing that
-      // student (its file and grade go with it). Any part of a removed student that is left was submitted and not
-      // confirmed, also if it was submitted a moment ago, so the check cannot miss a file that arrived in between.
+      // A removed student's part is deleted when it is still TODO, or when the teacher confirmed removing that student (its file and grade go with it).
       const removed = { assignmentId, studentId: { notIn: dto.studentIds } };
       await tx.assignmentStudent.deleteMany({ where: { ...removed, status: "TODO" } });
       const confirmedIds: string[] = dto.confirmedRemovalIds ?? [];

@@ -206,9 +206,7 @@ test.describe("rich text editor", () => {
     expect(headingSize).toBeGreaterThan(bodySize);
   });
 
-  // A heading or a list that is the last block must still have a line below it to click into. Without one the caret
-  // stays in the heading or the list, and the next button changes the text above (the header became list item 1,
-  // and what was typed went into the header). The empty line below is only for typing: it is not saved.
+  // A heading or a list that is the last block must still have a line below it to click into.
   const clickBelowTheText = async (page: Page): Promise<void> => {
     // A click by coordinates must be on screen.
     await editor(page).scrollIntoViewIfNeeded();
@@ -295,9 +293,7 @@ test.describe("rich text editor", () => {
     });
   });
 
-  // Regular text as the last block: a click below it is a click on the empty area, not on the text. The caret must go
-  // to a new line there, or a list or heading button changes the text itself, and what is typed next goes into it
-  // (the text became the first list item and "א" was added to it).
+  // Regular text as the last block: a click below it is a click on the empty area, not on the text.
   test.describe("a click below the last line, when it is regular text", () => {
     for (const [name, expected] of [
       ["רשימת תבליטים", "<p>טקסט</p><ul><li><p>א</p></li></ul>"],

@@ -3,9 +3,7 @@ import { ERROR_MESSAGES } from "../constants/error.constant";
 import { OTHER_SEED } from "../prisma/seed-data";
 import { clientHeaders, gotoHydrated, randomLetters, TEACHER, uniqueClientIp } from "./helpers";
 
-// The limit is 5 failed tries in 15 minutes for one client address and name. Every test here is its own client
-// (its own x-forwarded-for), so the tests cannot count against each other or against the rest of the suite.
-// The end of the window cannot be waited for here (15 minutes): the clock is tested in lib/rateLimit.test.ts.
+// The limit is 5 failed tries in 15 minutes for one client address and name.
 const LOGIN_URL = "/api/auth/login";
 const MAX_FAILURES = 5;
 const WINDOW_SECONDS = 15 * 60;

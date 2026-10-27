@@ -5,9 +5,7 @@ import { DEMO_SEED, OTHER_SEED } from "../prisma/seed-data";
 import type { TStudentAssignment } from "../types/assignment.type";
 import { getAssignmentsWithStudents, getStudentList, gotoHydrated, signInAs } from "./helpers";
 
-// The list is what the seed gave to the first student of the demo teacher, so the page is only read and
-// the demo teacher is safe. Saving from the modal changes data, so it is tested with a write teacher
-// (assignments.submission.ui.spec.ts).
+// The list is what the seed gave to the first student of the demo teacher, so the page is only read and the demo teacher is safe.
 const STUDENT = DEMO_SEED.classes[0].students[0];
 
 // The student's assignments, read from the API of the assignments (a different way than the page reads them).

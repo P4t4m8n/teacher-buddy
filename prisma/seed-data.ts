@@ -12,9 +12,7 @@ export type TSeedClass = {
   students: TSeedStudent[];
 };
 
-// One student's part of a seeded assignment. The status follows from the date and the grade (deriveStatus),
-// and a part with a date also gets a small sample file, so the data never breaks the rule that a submitted
-// part has a file. The student is found by name, so it must be one of the teacher's students.
+// One student's part of a seeded assignment.
 export type TSeedAssignmentPart = {
   student: string;
   // yyyy-mm-dd of the upload. Missing means the student did not submit (TODO).
@@ -137,9 +135,7 @@ export const OTHER_SEED: TSeedTeacher = {
   ],
 };
 
-// A third teacher whose data the write tests (create student, later edit and delete) change freely,
-// so the read-only tests that count rows for the other teachers keep passing. Each class has one
-// student so the tests can find the class ids through GET /api/students.
+// A third teacher whose data the write tests (create student, later edit and delete) change freely, so the read-only tests that count rows for the other teachers keep passing.
 export const WRITE_SEED: TSeedTeacher = {
   name: "נעמה שרון",
   idNumber: "444555666",
@@ -158,11 +154,7 @@ export const WRITE_OTHER_SEED: TSeedTeacher = {
 
 export const SEED_TEACHERS: TSeedTeacher[] = [DEMO_SEED, OTHER_SEED, WRITE_SEED, WRITE_OTHER_SEED];
 
-// More data for the demo teacher, so the lists of the demo have more than one page: with DEMO_SEED she has 45
-// students and 45 assignments (3 pages of 20, 20 and 5). It is added by the seed script next to DEMO_SEED, on top of
-// whatever the teacher already has, and a second run adds nothing (see seedExtras). The e2e test database is
-// seeded without it (SEED_EXTRA_DEMO_DATA=false, set by scripts/test-db-setup.ts), because many tests count the
-// demo teacher's 10 students and 4 assignments.
+// More data for the demo teacher, so the lists of the demo have more than one page: with DEMO_SEED she has 45 students and 45 assignments (3 pages of 20, 20 and 5).
 export type TSeedExtra = {
   classes: TSeedClass[];
   assignments: TSeedAssignment[];

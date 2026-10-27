@@ -9,10 +9,7 @@ if (testDatabaseUrl === process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL_TEST must not point to the real database.");
 }
 
-// dotenv never overrides existing variables, so prisma.config.ts and the seed
-// pick up the test URL from the environment of these child processes.
-// The tests count the demo teacher's 10 students and 4 assignments, so the seed leaves out her extra demo data
-// (the part that makes her lists longer than one page).
+// dotenv never overrides existing variables, so prisma.config.ts and the seed pick up the test URL from the environment of these child processes.
 const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: testDatabaseUrl, SEED_EXTRA_DEMO_DATA: "false" };
 
 function run(command: string): void {

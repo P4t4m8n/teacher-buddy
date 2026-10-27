@@ -1,11 +1,4 @@
 // Draws every diagram of docs/*.md as an image: docs/diagrams/NAME.png and NAME.svg.
-// Run it after generate-architecture.ts:  npx tsx scripts/render-diagrams.ts
-//
-// A diagram is found by its image link, which sits right before its collapsed mermaid source:
-//   [![alt](./diagrams/NAME.png)](./diagrams/NAME.svg)
-//   <details> <summary>...</summary> ```mermaid ... ``` </details>
-// The drawing uses the Chromium that Playwright already installed for the tests. Mermaid is not a dependency of the
-// project: it is installed once into the temp folder of the machine.
 import { execSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

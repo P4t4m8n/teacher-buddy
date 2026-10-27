@@ -2,12 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { DEMO_SEED, OTHER_SEED, type TSeedTeacher } from "../prisma/seed-data";
 import { gotoHydrated, signInAs } from "./helpers";
 
-// The demo teacher is only read here, so these tests cannot affect the others. Its assignments are
-// (due date, students, how many submitted):
-//   עבודה על המהפכה התעשייתית  2026-12-15  3  2
-//   חיבור: המסע שלי            2026-11-20  2  2
-//   סיכום הספר                 2026-10-30  2  1
-//   תרגילי חשבון - פרק 4       2027-01-10  5  0
+// The demo teacher is only read here, so these tests cannot affect the others.
 const LIST_URL = "/dashboard/assignments";
 const TOTAL = 4;
 const NO_RESULTS = "לא נמצאו מטלות שמתאימות לחיפוש";

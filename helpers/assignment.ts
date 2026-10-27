@@ -15,9 +15,7 @@ export const getFileKind = (mimeType: string): TFileKind => {
   return "other";
 };
 
-// The status follows from the file and the grade, and is never chosen by hand:
-// no file is TODO, a file with no grade is SUBMITTED (it happens when the file is uploaded), and a grade
-// makes it CHECKED. A grade is only possible with a file, so a grade without one is not a state.
+// The status follows from the file and the grade, and is never chosen by hand: no file is TODO, a file with no grade is SUBMITTED (it happens when the file is uploaded), and a grade makes it CHECKED.
 export const deriveStatus = (hasFile: boolean, grade: number | null): TAssignmentStatus => {
   if (!hasFile) return "TODO";
   return grade === null ? "SUBMITTED" : "CHECKED";

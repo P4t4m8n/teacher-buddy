@@ -16,9 +16,7 @@ type TUseSubmissionFormOptions = {
   onSaved: () => void;
 };
 
-// Saves what the teacher changed in the modal of one student: a picked file, then the grade. Only what changed
-// is sent. The file goes first, because a grade needs a file (a student who did not submit can be given a
-// file and a grade in one save). The server checks both and sends the messages.
+// Saves what the teacher changed in the modal of one student: a picked file, then the grade.
 export const useSubmissionForm = ({ assignmentId, studentId, savedGrade, onSaved }: TUseSubmissionFormOptions) => {
   const router = useRouter();
   const { preview, file, handleChange } = useFilePreview();

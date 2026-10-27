@@ -105,9 +105,7 @@ async function createAssignment(
   });
 }
 
-// The extra demo data (see DEMO_EXTRA) is added on top of what the demo teacher already has, so it works on a database
-// that was seeded before it existed. Classes, students and assignments are looked up by name or title and only the
-// missing ones are added, so a second run adds nothing.
+// The extra demo data (see DEMO_EXTRA) is added on top of what the demo teacher already has, so it works on a database that was seeded before it existed.
 async function seedExtras(teacherId: string, teacherName: string, extra: TSeedExtra): Promise<void> {
   let addedStudents = 0;
   for (const { name, students } of extra.classes) {

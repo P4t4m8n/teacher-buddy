@@ -9,9 +9,7 @@ import {
   type TBulkTeacher,
 } from "./helpers";
 
-// A teacher made for this file (see createBulkTeacher) with 45 students and 45 assignments, so each list has 3 pages
-// of 20, 20 and 5. Students are "תלמיד 001".. (even numbers in the first class), assignments "מטלה 001".. where the
-// highest number is the newest due date, and number g has g % 4 students out of 3 who submitted.
+// A teacher made for this file (see createBulkTeacher) with 45 students and 45 assignments, so each list has 3 pages of 20, 20 and 5.
 const STUDENTS_URL = "/dashboard";
 const ASSIGNMENTS_URL = "/dashboard/assignments";
 const PAGE_SIZE = 20;

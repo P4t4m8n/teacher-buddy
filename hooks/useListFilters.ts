@@ -50,9 +50,7 @@ export const useListFilters = ({ basePath, search, filters }: TUseListFiltersOpt
   const addressKey: string = toKey(addressDraft);
 
   const [draft, setDraft] = useState<TDraft>(addressDraft);
-  // The last thing this component wrote in the address. When the address changes to something else (a link,
-  // back, forward) the controls follow it. When it changes to what was just written they are left alone, so
-  // what was typed or chosen while the page was loading is not lost.
+  // The last thing this component wrote in the address.
   const [writtenKey, setWrittenKey] = useState<string>(addressKey);
   const [seenKey, setSeenKey] = useState<string>(addressKey);
   // The newest draft, for the timer: a timer that was set by an older render must not write older values.
@@ -101,9 +99,7 @@ export const useListFilters = ({ basePath, search, filters }: TUseListFiltersOpt
 
   const searchNow = (): void => write(latest.current);
 
-  // A search that is still waiting for the pause is applied when the box loses the focus. Without this, a click on a
-  // link of the list right after typing would start its navigation, and the search would then replace it when the
-  // pause ends. Applied first, the click's own navigation comes after it and wins.
+  // A search that is still waiting for the pause is applied when the box loses the focus.
   const flushSearch = (): void => {
     if (timer.current !== undefined) write(latest.current);
   };

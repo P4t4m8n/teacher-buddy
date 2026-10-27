@@ -20,10 +20,7 @@ type TAttempts = { failures: number; windowEndsAt: number };
 
 const DEFAULT_MAX_KEYS = 10_000;
 
-// Counts failures per key, in the memory of this process. The window starts at the first failure and is not
-// extended by later ones: after `maxFailures` the key waits until the window ends, then starts again from zero.
-// A try that is refused is not counted, so waiting is never made longer by trying again.
-// The memory is not shared: with several servers each one counts for itself, and a restart forgets everything.
+// Counts failures per key, in the memory of this process.
 export const createRateLimiter = ({
   maxFailures,
   windowMs,

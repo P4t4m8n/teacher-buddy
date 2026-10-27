@@ -15,8 +15,6 @@ export const TEACHER = DEMO_TEACHER;
 export const UNKNOWN_TEACHER_ID = "0198f0a2-7b3c-7d4e-8f5a-1b2c3d4e5f60";
 
 // The server counts failed sign-ins per client address (x-forwarded-for) and name, and refuses a client after a few.
-// A test that signs in with a wrong ID number must be its own client, or it would count against every other test
-// that uses the same teacher, and block them. Use these headers for every such request.
 export const uniqueClientIp = (): string => `10.${randomDigits(3)}.${randomDigits(3)}.${randomDigits(3)}`;
 export const clientHeaders = (ip: string = uniqueClientIp()): Record<string, string> => ({ "x-forwarded-for": ip });
 
@@ -28,9 +26,7 @@ export const signInAs = async (request: APIRequestContext, seed: TSeedTeacher): 
   expect(login.status()).toBe(200);
 };
 
-// The dev server closes idle keep-alive connections after about 5 seconds. A test that waits longer
-// between two API calls can reuse a connection that is already closed, which fails with ECONNRESET.
-// Only for reads (GET): sending a read again is safe.
+// The dev server closes idle keep-alive connections after about 5 seconds.
 const getWithRetry = async (request: APIRequestContext, url: string): Promise<APIResponse> => {
   try {
     return await request.get(url);
@@ -40,9 +36,7 @@ const getWithRetry = async (request: APIRequestContext, url: string): Promise<AP
   }
 };
 
-// Deletes something through the API for a test that needs it to be gone (a "deleted meanwhile" case, done while
-// a page is open). It can meet the closed connection described above too. A delete cannot be sent again
-// blindly: when the first one did arrive, the second one is a 404. Either answer means that it is gone.
+// Deletes something through the API for a test that needs it to be gone (a "deleted meanwhile" case, done while a page is open).
 export const removeViaApi = async (request: APIRequestContext, url: string): Promise<void> => {
   let status: number;
   try {
@@ -248,10 +242,6 @@ export const submitStudentForm = (page: Page, label: "הוספה" | "שמירה"
   page.getByRole("button", { name: label, exact: true }).click();
 
 // A teacher made only for one test file, with many students and assignments, so a list has more than one page.
-// The demo teachers cannot be used for this: they are read by many tests and must not change.
-//   Students "תלמיד 001" to "תלמיד NNN" in two classes (an even number is in the first class), phone "050-000NNNN".
-//   Assignments "מטלה 001" to "מטלה NNN": number g is due on 2026-01-01 plus g days, is given to the first 3 students,
-//   and g % 4 of those 3 have submitted. So the newest due date is the highest number.
 export type TBulkTeacher = {
   id: string;
   name: string;

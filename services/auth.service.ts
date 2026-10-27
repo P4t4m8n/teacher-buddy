@@ -52,9 +52,7 @@ const createCookie = async (token: string): Promise<void> => {
   });
 };
 
-// A client that has failed too many times is refused before anything is read or hashed, so guessing costs the
-// attacker the wait and costs the server nothing. A failed try, also for a name that does not exist, is counted
-// the same way, and a success clears the count. `attemptKey` says who is counted (see getLoginAttemptKey).
+// A client that has failed too many times is refused before anything is read or hashed, so guessing costs the attacker the wait and costs the server nothing.
 export const signIn = async (dto: TSignInDto, attemptKey: string): Promise<TSessionTeacher> => {
   const retryAfterSeconds: number = loginLimiter.getRetryAfterSeconds(attemptKey);
   if (retryAfterSeconds > 0) throw AppError.tooManyAttempts(retryAfterSeconds);

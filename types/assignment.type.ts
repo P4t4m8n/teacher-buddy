@@ -116,9 +116,7 @@ export type TCreateAssignmentDto = {
 // An update replaces the title, description, due date and students, so it has the same shape as a create, with one
 // more field for the case of a student who already submitted being removed.
 export type TUpdateAssignmentDto = TCreateAssignmentDto & {
-  // The students who already submitted whom the teacher confirmed removing: their file and grade are deleted with
-  // them. A removed student who submitted and is not in this list stops the update (409), so a submission that
-  // arrived after the teacher looked at the page is never deleted by a confirmation that did not mention it.
+  // The students who already submitted whom the teacher confirmed removing: their file and grade are deleted with them.
   confirmedRemovalIds?: string[];
 };
 

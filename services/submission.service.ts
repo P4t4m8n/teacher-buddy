@@ -33,9 +33,7 @@ export const getSubmissionFile = async (
   return file;
 };
 
-// Saves the grade of one student's part, or clears it with null. A grade needs an uploaded file (409 without
-// one), and it moves the status with it: a grade makes the part CHECKED, and clearing it makes it SUBMITTED
-// again. The status is never chosen by the request. The same 404 as the upload for a part that is not found.
+// Saves the grade of one student's part, or clears it with null.
 export const gradeSubmission = async (
   teacherId: string,
   assignmentId: string,
@@ -66,9 +64,7 @@ export const gradeSubmission = async (
   return savedPart;
 };
 
-// Saves the checked assignment the teacher uploads for one student. The first file makes the part SUBMITTED.
-// A new file for a part that already has one replaces it and keeps the status: a CHECKED part stays CHECKED
-// with the same grade, and it is up to the teacher to change the grade. The date is the day of the last upload.
+// Saves the checked assignment the teacher uploads for one student.
 export const uploadSubmission = async (
   teacherId: string,
   assignmentId: string,

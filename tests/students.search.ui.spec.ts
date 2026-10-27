@@ -2,10 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { DEMO_SEED, OTHER_SEED, type TSeedTeacher } from "../prisma/seed-data";
 import { getClassList, gotoHydrated, signInAs } from "./helpers";
 
-// The demo teacher is only read here, so these tests cannot affect the others. Its students are:
-//   ח'1: נועה לוי 050-1234567, איתי ברק 052-7654321, מאיה אברהם 054-1112233
-//   ח'2: יובל כהן 050-2223344, תמר שפירא 052-3334455, אורי מזרחי 053-4445566
-//   ט'1: שיר דהן 054-5556677, אמיר פרץ 050-6667788, ליאור בן דוד 052-7778899, רוני אזולאי 058-8889900
+// The demo teacher is only read here, so these tests cannot affect the others.
 const DASHBOARD_URL = "/dashboard";
 const TOTAL = 10;
 const DETAILS_PREFIX = "פרטים עבור ";
