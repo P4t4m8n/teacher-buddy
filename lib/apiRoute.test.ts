@@ -236,6 +236,53 @@ describe("handleRouteError", () => {
     expect(log).toHaveBeenCalledWith("POST /api/students failed:", error);
   });
 
+  // During `next build`, Next.js prerenders GET handlers and interrupts them by rejecting cookies(). That rejection
+  // must reach Next.js, not be logged as a failure and answered with a 500.
+  describe("the errors that Next.js uses to interrupt a prerender", () => {
+    const hangingPromise = (): Error => Object.assign(new Error("During prerendering, `cookies()` rejects when the prerender is complete."), { digest: "HANGING_PROMISE_REJECTION" });
+    const redirect = (): Error => Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/auth;307;" });
+    const notFound = (): Error => Object.assign(new Error("NEXT_HTTP_ERROR_FALLBACK;404"), { digest: "NEXT_HTTP_ERROR_FALLBACK;404" });
+
+    it.each([
+      ["a hanging promise rejection", hangingPromise],
+      ["a redirect", redirect],
+      ["a not-found", notFound],
+    ])("rethrows %s, so Next.js can handle it", (_label, make) => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+      const error = make();
+
+      expect(() => handleRouteError(error, "GET /api/test")).toThrow(error);
+    });
+
+    it("does not log it as a failure", () => {
+      const log = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+      expect(() => handleRouteError(hangingPromise(), "GET /api/test")).toThrow();
+
+      expect(log).not.toHaveBeenCalled();
+    });
+
+    it("rethrows it also when another error wraps it (the one Next.js threw, not the wrapper)", () => {
+      const inner = hangingPromise();
+      const wrapped = new Error("wrapper", { cause: inner });
+
+      expect(() => handleRouteError(wrapped, "GET /api/test")).toThrow(inner);
+    });
+
+    it("still answers a real error that only looks similar: a digest that is not one of Next.js's", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+      const response = handleRouteError(Object.assign(new Error("db"), { digest: "something else" }), "GET /api/test");
+
+      expect(response.status).toBe(500);
+    });
+
+    it("still answers an expected AppError with its status", async () => {
+      const response = handleRouteError(AppError.unauthorized(), "GET /api/test");
+
+      expect(response.status).toBe(401);
+    });
+  });
   it("a plain SyntaxError is a bug, not a bad request: it is a 500", async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
 

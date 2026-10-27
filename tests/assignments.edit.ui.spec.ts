@@ -111,6 +111,8 @@ test.describe("edit assignment: the description editor", () => {
 
     await page.mouse.click(box.x + box.width / 2, box.y + box.height - 10);
     await page.getByRole("toolbar", { name: "עיצוב טקסט" }).getByRole("button", { name: "רשימת תבליטים", exact: true }).click();
+    // The toolbar gives the focus back a moment after the click. Typing before that goes below the list.
+    await expect(editor(page)).toBeFocused();
     await page.keyboard.type("תוספת");
 
     await expect(page.locator('input[name="description"]')).toHaveValue(`${DESCRIPTION}<ul><li><p>תוספת</p></li></ul>`);

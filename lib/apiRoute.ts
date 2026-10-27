@@ -1,4 +1,5 @@
 import "server-only";
+import { unstable_rethrow } from "next/navigation";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { ERROR_MESSAGES } from "@/constants/error.constant";
@@ -46,6 +47,10 @@ export const parseFormData = async <T>(req: NextRequest, schema: z.ZodType<T>, m
 
 // The catch block of every route handler, the safety net under the trapeze.
 export const handleRouteError = (error: unknown, context: string): NextResponse<TApiErrorBody> => {
+  // Next.js interrupts a prerender (the build tries one for GET handlers) by rejecting cookies() and friends. That is
+  // not a failure, so it goes back to Next.js instead of being logged here as a 500. Real errors pass through untouched.
+  unstable_rethrow(error);
+
   if (error instanceof AppError && error.status < 500) {
     const body: TApiErrorBody = { error: error.message };
     if (error.fields) body.fields = error.fields;
