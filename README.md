@@ -203,6 +203,8 @@ A grade needs an uploaded assignment. The database enforces this with two checks
 
 All ids are UUID v7. A class that still has students cannot be deleted. Deleting a student deletes that student's parts of assignments and their files (the assignment itself stays).
 
+Sample files to try the upload by hand are in [`docs/samples/`](./docs/samples): `sample-submission.pdf` and `sample-submission.png` (a one-page Hebrew homework, about 30 KB each, both accepted by the upload rules). A unit test checks the app still accepts them. They are made by `npx tsx scripts/generate-sample-files.ts`, which uses the Chromium that Playwright installed for the tests.
+
 ### The student modal
 
 The modal (on the assignment page and on the student page) is one form for one student's part: the checked file and the grade, with one save button. It uses the two endpoints above, and only sends what changed:
