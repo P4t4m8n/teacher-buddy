@@ -15,7 +15,8 @@ import {
 } from "./seed-data";
 
 const prisma = new PrismaClient({
-  adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
+  // The seed is a one-off script, so it uses the direct or session connection when there is one.
+  adapter: new PrismaPg({ connectionString: process.env.DIRECT_URL || process.env.DATABASE_URL }),
 });
 
 async function seedClasses(teacherId: string, seed: TSeedTeacher): Promise<void> {

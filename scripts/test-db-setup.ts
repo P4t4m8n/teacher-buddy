@@ -5,12 +5,18 @@ const testDatabaseUrl: string | undefined = process.env.DATABASE_URL_TEST;
 if (!testDatabaseUrl) {
   throw new Error("DATABASE_URL_TEST is required (set it in .env).");
 }
-if (testDatabaseUrl === process.env.DATABASE_URL) {
+if (testDatabaseUrl === process.env.DATABASE_URL || testDatabaseUrl === process.env.DIRECT_URL) {
   throw new Error("DATABASE_URL_TEST must not point to the real database.");
 }
 
 // dotenv never overrides existing variables (it is very polite), so prisma.config.ts and the seed pick up the test URL from the environment of these child processes.
-const env: NodeJS.ProcessEnv = { ...process.env, DATABASE_URL: testDatabaseUrl, SEED_EXTRA_DEMO_DATA: "false" };
+// DIRECT_URL is replaced too: prisma.config.ts prefers it, and `migrate reset --force` must never reach the real database.
+const env: NodeJS.ProcessEnv = {
+  ...process.env,
+  DATABASE_URL: testDatabaseUrl,
+  DIRECT_URL: testDatabaseUrl,
+  SEED_EXTRA_DEMO_DATA: "false",
+};
 
 function run(command: string): void {
   const result = spawnSync(command, { env, stdio: "inherit", shell: true });

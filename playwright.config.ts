@@ -9,6 +9,7 @@ if (!testDatabaseUrl) {
   throw new Error("DATABASE_URL_TEST is required to run the e2e tests (set it in .env).");
 }
 process.env.DATABASE_URL = testDatabaseUrl;
+process.env.DIRECT_URL = testDatabaseUrl;
 
 const PORT = 3100;
 
