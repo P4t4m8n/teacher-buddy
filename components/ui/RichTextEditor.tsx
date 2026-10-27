@@ -2,8 +2,7 @@
 
 import { EditorContent, useEditor, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useEffect, useId, useState } from "react";
-import { copyRecording, describeCaret, record, recordCaret, recordStructure } from "@/components/ui/editorRecorder"; // TEMPORARY RECORDER
+import { useId, useState } from "react";
 import RichTextToolbar from "@/components/ui/RichTextToolbar";
 import { trimTrailingEmptyParagraphs } from "@/helpers/richText";
 
@@ -84,29 +83,6 @@ export const RichTextEditor = ({
     },
   });
 
-  // TEMPORARY RECORDER START
-  const [copyState, setCopyState] = useState<string>("");
-  useEffect(() => {
-    if (!editor) return;
-    const onCaret = (): void => recordCaret(editor);
-    const onText = (): void => recordStructure(editor);
-    editor.on("selectionUpdate", onCaret);
-    editor.on("update", onText);
-    return () => {
-      editor.off("selectionUpdate", onCaret);
-      editor.off("update", onText);
-    };
-  }, [editor]);
-  const handleCopy = async (): Promise<void> => {
-    try {
-      await copyRecording();
-      setCopyState("הועתק, אפשר להדביק בצ׳אט");
-    } catch {
-      setCopyState("ההעתקה נכשלה");
-    }
-  };
-  // TEMPORARY RECORDER END
-
   return (
     <div className="flex flex-col gap-1.5 text-sm font-medium text-slate-700 dark:text-slate-300">
       <span id={labelId} onClick={() => editor?.commands.focus()}>
@@ -117,30 +93,10 @@ export const RichTextEditor = ({
         className="rounded-lg border border-slate-300 bg-white font-normal text-slate-900 transition focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-500/20 aria-invalid:border-red-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
       >
         {editor && <RichTextToolbar editor={editor} />}
-        <div
-          className="min-h-40"
-          onClick={(event) => editor && continueBelowLastBlock(editor, event)}
-          onMouseDownCapture={(event) => {
-            // TEMPORARY RECORDER
-            const target = event.target as HTMLElement;
-            record(`mouse down at y=${Math.round(event.clientY)} on <${target.tagName}> ${JSON.stringify((target.textContent ?? "").slice(0, 20))}`);
-          }}
-          onKeyDownCapture={(event) => {
-            // TEMPORARY RECORDER
-            if (editor && /^(Enter|Backspace|Delete|Arrow\w+|Home|End|Tab)$/.test(event.key)) record(`key ${event.key}: ${describeCaret(editor)}`);
-          }}
-        >
+        <div className="min-h-40" onClick={(event) => editor && continueBelowLastBlock(editor, event)}>
           <EditorContent editor={editor} />
         </div>
       </div>
-      {/* TEMPORARY RECORDER START */}
-      <div className="flex items-center gap-3 rounded-lg border border-dashed border-amber-400 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-        <button type="button" onClick={handleCopy} className="rounded border border-amber-500 bg-white px-2 py-1 font-semibold">
-          העתק לוג (זמני)
-        </button>
-        <span>{copyState}</span>
-      </div>
-      {/* TEMPORARY RECORDER END */}
       <input type="hidden" name={name} value={html} />
       {errors?.map((message: string) => (
         <span

@@ -2,7 +2,6 @@
 
 import type { Editor } from "@tiptap/react";
 import { useEditorState } from "@tiptap/react";
-import { describeCaret, record } from "@/components/ui/editorRecorder"; // TEMPORARY RECORDER
 
 type TToolbarButton = {
   key: string;
@@ -107,14 +106,7 @@ export default function RichTextToolbar({ editor }: TRichTextToolbarProps) {
           title={button.label}
           aria-pressed={button.isActive ? state[button.key].isActive : undefined}
           disabled={state[button.key].isDisabled}
-          onMouseDown={() => record(`mouse down on button ${button.key}: ${describeCaret(editor)}`)} // TEMPORARY RECORDER
-          onClick={() => {
-            // TEMPORARY RECORDER START
-            record(`BUTTON ${button.key} pressed. before: ${describeCaret(editor)} | html=${editor.getHTML()}`);
-            button.run(editor);
-            setTimeout(() => record(`BUTTON ${button.key} done. after: ${describeCaret(editor)} | html=${editor.getHTML()}`), 80);
-            // TEMPORARY RECORDER END
-          }}
+          onClick={() => button.run(editor)}
           className={`flex size-8 items-center justify-center rounded-md text-sm text-slate-700 transition hover:bg-slate-100 hover:cursor-pointer focus-visible:outline-2 focus-visible:outline-indigo-500 disabled:cursor-not-allowed disabled:opacity-40 aria-pressed:bg-indigo-100 aria-pressed:text-indigo-700 dark:text-slate-200 dark:hover:bg-slate-800 dark:aria-pressed:bg-indigo-500/20 dark:aria-pressed:text-indigo-300 ${button.className ?? ""}`}
         >
           {button.symbol}
