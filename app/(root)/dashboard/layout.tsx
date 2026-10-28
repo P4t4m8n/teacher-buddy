@@ -12,7 +12,7 @@ interface IDashboardLayoutProps {
 // page can scroll only the part it chooses (a list), never the whole page, however much it begs.
 export default function DashboardLayout({ children }: IDashboardLayoutProps) {
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex h-svh flex-col">
       <Suspense fallback={<DashboardHeaderSkeleton />}>
         <DashboardHeader />
       </Suspense>
@@ -20,7 +20,7 @@ export default function DashboardLayout({ children }: IDashboardLayoutProps) {
       <Suspense fallback={<DashboardTabsView activeKey={null} />}>
         <DashboardTabs />
       </Suspense>
-      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
+      <main className="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col px-4 py-2 sm:px-6 sm:py-10">
         {children}
       </main>
     </div>

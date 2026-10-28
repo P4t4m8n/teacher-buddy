@@ -67,7 +67,7 @@ export default function DashboardIndex({
       <h1 className="shrink-0 text-2xl font-bold tracking-tight">לוח בקרה</h1>
       <section
         aria-labelledby="students-heading"
-        className="mt-8 flex min-h-0 flex-1 flex-col"
+        className="mt-4 flex min-h-0 flex-1 flex-col"
       >
         <div className="mb-4 flex shrink-0 items-center justify-between gap-4">
           <h2 id="students-heading" className="text-lg font-semibold">

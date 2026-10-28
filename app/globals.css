@@ -19,6 +19,129 @@
   --font-sans: var(--font-heebo);
 }
 
+/* THE DESIGN TOKENS. Each color is written ONCE for light mode, then overridden ONCE for dark mode below.
+   Components just say `bg-surface`, no `dark:` pairs needed. `static` keeps them in the CSS even before use. */
+@theme static {
+  /* Text, from loudest to quietest. */
+  --color-ink: var(--color-slate-900);
+  --color-body: var(--color-slate-700);
+  --color-soft: var(--color-slate-600);
+  --color-subtle: var(--color-slate-500);
+  --color-faint: var(--color-slate-400);
+
+  /* Backgrounds. */
+  --color-surface: white;
+  --color-field: white;
+  --color-raised: var(--color-slate-50);
+  --color-row-hover: var(--color-slate-50);
+  --color-hover: var(--color-slate-100);
+  --color-disabled: var(--color-slate-100);
+  --color-disabled-text: var(--color-slate-400);
+  --color-muted: var(--color-slate-200);
+  --color-backdrop: color-mix(in oklab, var(--color-slate-950) 50%, transparent);
+
+  /* Borders and dividers. */
+  --color-line: var(--color-slate-200);
+  --color-line-strong: var(--color-slate-300);
+  --color-line-soft: var(--color-slate-100);
+
+  /* Accent (the indigo one). */
+  --color-accent: var(--color-indigo-600);
+  --color-accent-hover: var(--color-indigo-500);
+  --color-accent-ring: var(--color-indigo-500);
+  --color-accent-text: var(--color-indigo-700);
+  --color-accent-soft: var(--color-indigo-100);
+  --color-accent-faint: var(--color-indigo-50);
+  --color-on-accent: white;
+
+  /* Danger (the red one). */
+  --color-danger: var(--color-red-600);
+  --color-danger-hover: var(--color-red-500);
+  --color-danger-text: var(--color-red-600);
+  --color-invalid: var(--color-red-500);
+  --color-danger-alert-text: var(--color-red-700);
+  --color-danger-alert-bg: var(--color-red-50);
+  --color-danger-alert-border: var(--color-red-200);
+
+  /* Warning box (the amber one). */
+  --color-warning-text: var(--color-amber-900);
+  --color-warning-bg: var(--color-amber-50);
+  --color-warning-border: var(--color-amber-300);
+
+  /* Assignment status badges. */
+  --color-status-todo-text: var(--color-amber-700);
+  --color-status-todo-bg: var(--color-amber-50);
+  --color-status-submitted-text: var(--color-sky-700);
+  --color-status-submitted-bg: var(--color-sky-50);
+  --color-status-checked-text: var(--color-emerald-700);
+  --color-status-checked-bg: var(--color-emerald-50);
+
+  /* Rounded corners: small things, cards, modals. */
+  --radius-control: var(--radius-lg);
+  --radius-card: var(--radius-xl);
+  --radius-modal: var(--radius-2xl);
+
+  /* Padding that repeats: table cells, inputs, cards. */
+  --spacing-cell-x: calc(var(--spacing) * 4);
+  --spacing-cell-y: calc(var(--spacing) * 3);
+  --spacing-field-x: calc(var(--spacing) * 3);
+  --spacing-field-y: calc(var(--spacing) * 2.5);
+  --spacing-card: calc(var(--spacing) * 6);
+
+  /* Page widths: forms, detail pages, the whole dashboard. */
+  --container-form: var(--container-xl);
+  --container-detail: var(--container-3xl);
+  --container-page: var(--container-6xl);
+}
+
+/* Same tokens, night shift. Only the ones that actually change are listed. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-ink: var(--color-slate-100);
+    --color-body: var(--color-slate-300);
+    --color-soft: var(--color-slate-300);
+    --color-subtle: var(--color-slate-400);
+    --color-faint: var(--color-slate-500);
+
+    --color-surface: var(--color-slate-900);
+    --color-field: var(--color-slate-950);
+    --color-raised: var(--color-slate-800);
+    --color-row-hover: color-mix(in oklab, var(--color-slate-800) 40%, transparent);
+    --color-hover: var(--color-slate-800);
+    --color-disabled: var(--color-slate-900);
+    --color-disabled-text: var(--color-slate-600);
+    --color-muted: var(--color-slate-800);
+
+    --color-line: var(--color-slate-800);
+    --color-line-strong: var(--color-slate-700);
+    --color-line-soft: var(--color-slate-800);
+
+    --color-accent: var(--color-indigo-500);
+    --color-accent-hover: var(--color-indigo-400);
+    --color-accent-text: var(--color-indigo-300);
+    --color-accent-soft: color-mix(in oklab, var(--color-indigo-500) 20%, transparent);
+    --color-accent-faint: color-mix(in oklab, var(--color-indigo-500) 10%, transparent);
+
+    --color-danger: var(--color-red-500);
+    --color-danger-hover: var(--color-red-400);
+    --color-danger-text: var(--color-red-400);
+    --color-danger-alert-text: var(--color-red-300);
+    --color-danger-alert-bg: color-mix(in oklab, var(--color-red-950) 40%, transparent);
+    --color-danger-alert-border: color-mix(in oklab, var(--color-red-900) 60%, transparent);
+
+    --color-warning-text: var(--color-amber-200);
+    --color-warning-bg: color-mix(in oklab, var(--color-amber-950) 40%, transparent);
+    --color-warning-border: color-mix(in oklab, var(--color-amber-700) 60%, transparent);
+
+    --color-status-todo-text: var(--color-amber-300);
+    --color-status-todo-bg: color-mix(in oklab, var(--color-amber-500) 10%, transparent);
+    --color-status-submitted-text: var(--color-sky-300);
+    --color-status-submitted-bg: color-mix(in oklab, var(--color-sky-500) 10%, transparent);
+    --color-status-checked-text: var(--color-emerald-300);
+    --color-status-checked-bg: color-mix(in oklab, var(--color-emerald-500) 10%, transparent);
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
