@@ -20,6 +20,7 @@ type TFilterSelectProps = {
   // What the select shows: it can run ahead of filter.value while the new address is still loading (eager beaver).
   value: string;
   onChange: (name: string, value: string) => void;
+  isFullRowOnPhone: boolean;
 };
 
 const SELECT_CLASSES =
@@ -57,9 +58,10 @@ export default function ListFilters({
       role="search"
       aria-label="סינון ומיון"
       onSubmit={handleSubmit}
-      className="mb-4 flex shrink-0 flex-wrap items-end gap-3"
+      // Phone: the search takes the whole first row and the selects share the next one. From sm up: one wrapping row.
+      className="mb-4 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-end"
     >
-      <div className="min-w-48 flex-1">
+      <div className="col-span-2 sm:min-w-48 sm:flex-1">
         <FormField
           label={searchLabel}
           name={SEARCH_PARAM}
@@ -74,16 +76,18 @@ export default function ListFilters({
           onBlur={flushSearch}
         />
       </div>
-      {filters.map((filter: TListFilter) => (
+      {filters.map((filter: TListFilter, index: number) => (
         <FilterSelect
           key={filter.name}
           filter={filter}
           value={values[filter.name]}
           onChange={changeFilter}
+          // An odd last select (a lone one) would leave half a row empty on a phone, so it takes the whole row.
+          isFullRowOnPhone={index === filters.length - 1 && filters.length % 2 === 1}
         />
       ))}
       {canClear && (
-        <Button variant="secondary" onClick={clear} className="py-2.5">
+        <Button variant="secondary" onClick={clear} className="col-span-2 py-2.5 sm:col-span-1">
           ניקוי
         </Button>
       )}
@@ -92,11 +96,11 @@ export default function ListFilters({
 }
 
 // The label is linked by id, not wrapped around the select: a wrapping label would also carry the text of every option.
-const FilterSelect = ({ filter, value, onChange }: TFilterSelectProps) => {
+const FilterSelect = ({ filter, value, onChange, isFullRowOnPhone }: TFilterSelectProps) => {
   const id: string = useId();
 
   return (
-    <div className="flex min-w-40 flex-col gap-1.5">
+    <div className={`flex min-w-0 flex-col gap-1.5 sm:min-w-40 ${isFullRowOnPhone ? "col-span-2 sm:col-span-1" : ""}`}>
       <label
         htmlFor={id}
         className="text-sm font-medium text-slate-700 dark:text-slate-300"
@@ -110,7 +114,7 @@ const FilterSelect = ({ filter, value, onChange }: TFilterSelectProps) => {
         onChange={(event: React.ChangeEvent<HTMLSelectElement>) =>
           onChange(filter.name, event.target.value)
         }
-        className={SELECT_CLASSES}
+        className={`${SELECT_CLASSES} w-full min-w-0`}
       >
         {filter.emptyLabel && <option value="">{filter.emptyLabel}</option>}
         {filter.options.map((option: TListFilterOption) => (
